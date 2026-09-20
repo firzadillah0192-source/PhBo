@@ -1,0 +1,10 @@
+# Keep the build context small and make sure nothing secret or stale is copied
+# into the image.
+node_modules
+dist
+.vite
+npm-debug.log*
+.env
+.env.*
+Dockerfile
+.dockerignore

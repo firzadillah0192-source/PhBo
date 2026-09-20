@@ -1,0 +1,133 @@
+# ---------------------------------------------------------------------------
+# Photobooth AI — Docker Compose
+#
+# SAFETY (spec sections 7 + 8):
+#   - Every service uses the dedicated `photobooth-` name prefix.
+#   - Every service joins the dedicated `photobooth-net` network. This compose
+#     file never references or modifies another project's network.
+#   - PostgreSQL and Redis publish NO host ports: they are reachable only from
+#     inside photobooth-net.
+#   - No `docker system prune`, no shared-volume deletion, no global config.
+#   - Host ports are taken from .env (PHOTBOOTH_WEB_PORT / PHOTBOOTH_API_PORT)
+#     so they can be moved without editing this file.
+#
+# Before starting: verify the host ports are actually free (docs/DEPLOYMENT.md).
+# ---------------------------------------------------------------------------
+
+name: photobooth
+
+services:
+  # --- PostgreSQL: metadata + file references only (never image bytes) -----
+  photobooth-postgres:
+    image: postgres:16-alpine
+    container_name: photobooth-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-photobooth}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-photobooth}
+    volumes:
+      - photobooth_pgdata:/var/lib/postgresql/data
+    networks:
+      - photobooth-net
+    # NOTE: deliberately no `ports:` — the database must not be publicly exposed.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-photobooth} -d ${POSTGRES_DB:-photobooth}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # --- Redis: generation queue only ---------------------------------------
+  photobooth-redis:
+    image: redis:7-alpine
+    container_name: photobooth-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - photobooth_redisdata:/data
+    networks:
+      - photobooth-net
+    # NOTE: deliberately no `ports:` — Redis must not be publicly exposed.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # --- FastAPI -------------------------------------------------------------
+  photobooth-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: photobooth-api:local
+    container_name: photobooth-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Container-internal overrides (win over .env defaults that use
+      # host.docker.internal, which is not needed between compose services).
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-photobooth}:${POSTGRES_PASSWORD}@photobooth-postgres:5432/${POSTGRES_DB:-photobooth}
+      REDIS_URL: redis://photobooth-redis:6379/0
+      RUNTIME_DIR: /srv/photobooth
+      TEMPLATES_DIR: /srv/photobooth/templates
+    volumes:
+      - photobooth_runtime:/srv/photobooth
+      - ./templates:/srv/photobooth/templates:ro
+    ports:
+      - "${PHOTBOOTH_API_PORT:-8000}:8000"
+    networks:
+      - photobooth-net
+    # Reach the host's 9router gateway from inside the container.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      photobooth-postgres:
+        condition: service_healthy
+      photobooth-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+
+  # --- Frontend: serves the built React app + proxies /api to photobooth-api
+  photobooth-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: photobooth-web:local
+    container_name: photobooth-web
+    restart: unless-stopped
+    ports:
+      - "${PHOTBOOTH_WEB_PORT:-3000}:80"
+    networks:
+      - photobooth-net
+    depends_on:
+      photobooth-api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--timeout=5", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+networks:
+  # Dedicated network. `docker compose down` for this project will not touch
+  # any other project's network.
+  photobooth-net:
+    name: photobooth-net
+    driver: bridge
+
+volumes:
+  photobooth_pgdata:
+    name: photobooth_pgdata
+  photobooth_redisdata:
+    name: photobooth_redisdata
+  photobooth_runtime:
+    name: photobooth_runtime

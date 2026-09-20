@@ -1,0 +1,15 @@
+# Keep the build context small and make sure no secret or local artifact is
+# copied into the image. Note: .env lives at the repo root and is injected via
+# compose `env_file`, never baked into the image.
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+tests
+.env
+.env.*
+Dockerfile
+.dockerignore
