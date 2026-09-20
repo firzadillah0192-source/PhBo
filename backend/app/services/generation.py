@@ -18,7 +18,8 @@ from app.ai.base import AIProviderError, GenerationOptions
 from app.ai.factory import get_provider
 from app.core.config import get_settings
 from app.db import SessionLocal
-from app.models import ErrorCode, GenerationJob, JobState, Result
+from app.generation.basic import BasicEngineNotConnectedError, get_basic_engine
+from app.models import ErrorCode, GenerationJob, GenerationMode, JobState, Result
 from app.services import storage
 from app.templates_registry import TemplateNotFound, get_registry
 
@@ -57,6 +58,8 @@ def process_job(job_id: str, *, db: Session | None = None) -> str:
         except AIProviderError as exc:
             # Surfaces AI_PROVIDER_NOT_CONNECTED / AI_PROVIDER_ERROR / AI_EMPTY_RESULT
             _fail(session, job, exc.code, exc.message, detail=exc.detail)
+        except BasicEngineNotConnectedError as exc:
+            _fail(session, job, exc.code, str(exc))
         except FileNotFoundError as exc:
             _fail(session, job, ErrorCode.UPLOAD_NOT_FOUND, f"Upload file missing: {exc}")
         except Exception as exc:  # noqa: BLE001 - must never leave a job stuck
@@ -89,44 +92,54 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
 
     user_image = storage.read_file(upload.storage_path)
 
-    provider = get_provider()
+    if job.mode == GenerationMode.BASIC:
+        basic_result = get_basic_engine().generate(user_image, template)
+        image_bytes = basic_result.image_bytes
+        content_type = basic_result.content_type
+        job.provider = "local"
+        job.model = basic_result.engine_name
+    elif job.mode == GenerationMode.ADVANCED:
+        provider = get_provider()
+        if not provider.is_available():
+            from app.ai.base import ProviderNotConnectedError
 
-    # Fail fast and honestly before spending provider time.
-    if not provider.is_available():
-        from app.ai.base import ProviderNotConnectedError
+            raise ProviderNotConnectedError(
+                "AI_PROVIDER_NOT_CONNECTED: provider "
+                f"'{provider.name}' is configured but has no usable credentials. "
+                "Set NINEROUTER_API_KEY (and NINEROUTER_BASE_URL) in the environment."
+            )
 
-        raise ProviderNotConnectedError(
-            "AI_PROVIDER_NOT_CONNECTED: provider "
-            f"'{provider.name}' is configured but has no usable credentials. "
-            "Set NINEROUTER_API_KEY (and NINEROUTER_BASE_URL) in the environment."
+        job.provider = provider.name
+        job.model = getattr(provider, "_model", None)
+        session.commit()
+        ai_result = provider.generate(
+            user_image,
+            template,
+            GenerationOptions(width=template.width, height=template.height),
         )
+        image_bytes = ai_result.image_bytes
+        content_type = ai_result.content_type
+        job.provider = ai_result.provider
+        job.model = ai_result.model
+    else:
+        raise ValueError(f"Unsupported generation mode: {job.mode}")
 
-    job.provider = provider.name
-    job.model = getattr(provider, "_model", None)
-    session.commit()
-
-    ai_result = provider.generate(
-        user_image,
-        template,
-        GenerationOptions(width=template.width, height=template.height),
-    )
-
-    if not ai_result.image_bytes:
+    if not image_bytes:
         from app.ai.base import ProviderEmptyResultError
 
-        raise ProviderEmptyResultError("AI_EMPTY_RESULT: provider returned zero bytes.")
+        raise ProviderEmptyResultError("AI_EMPTY_RESULT: generation engine returned zero bytes.")
 
     # Verify the provider actually returned a decodable image before we claim
     # success. A non-image blob must never become a COMPLETED job.
-    with Image.open(io.BytesIO(ai_result.image_bytes)) as out_img:
+    with Image.open(io.BytesIO(image_bytes)) as out_img:
         out_img.load()
         out_w, out_h = out_img.size
 
     result_id = _new_id()
     result_path = storage.save_result(
         result_id=result_id,
-        data=ai_result.image_bytes,
-        content_type=ai_result.content_type,
+        data=image_bytes,
+        content_type=content_type,
     )
 
     result = Result(
@@ -134,13 +147,13 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
         job_id=job.id,
         template_id=template.id,
         storage_path=str(result_path),
-        content_type=ai_result.content_type,
-        size_bytes=len(ai_result.image_bytes),
+        content_type=content_type,
+        size_bytes=len(image_bytes),
         width=out_w,
         height=out_h,
-        sha256=_sha(ai_result.image_bytes),
-        provider=ai_result.provider,
-        model=ai_result.model,
+        sha256=_sha(image_bytes),
+        provider=job.provider,
+        model=job.model,
     )
     session.add(result)
 
@@ -152,8 +165,8 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
 
     print(
         f"[worker] job {job.id} COMPLETED result={result_id} "
-        f"{out_w}x{out_h} {len(ai_result.image_bytes)}B "
-        f"provider={ai_result.provider} model={ai_result.model} "
+        f"{out_w}x{out_h} {len(image_bytes)}B "
+        f"provider={job.provider} model={job.model} "
         f"runtime_dir={settings.runtime_dir}",
         flush=True,
     )

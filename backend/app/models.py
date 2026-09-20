@@ -39,6 +39,13 @@ class JobState:
     ALL = (QUEUED, PROCESSING, COMPLETED, FAILED)
 
 
+class GenerationMode:
+    BASIC = "BASIC"
+    ADVANCED = "ADVANCED"
+
+    ALL = (BASIC, ADVANCED)
+
+
 class ErrorCode:
     VALIDATION_FAILED = "VALIDATION_FAILED"
     UPLOAD_NOT_FOUND = "UPLOAD_NOT_FOUND"
@@ -48,6 +55,7 @@ class ErrorCode:
     AI_PROVIDER_NOT_CONNECTED = "AI_PROVIDER_NOT_CONNECTED"
     AI_PROVIDER_ERROR = "AI_PROVIDER_ERROR"
     AI_EMPTY_RESULT = "AI_EMPTY_RESULT"
+    BASIC_ENGINE_NOT_CONNECTED = "BASIC_ENGINE_NOT_CONNECTED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
@@ -84,6 +92,11 @@ class GenerationJob(Base):
 
     upload_id: Mapped[str] = mapped_column(ForeignKey("uploads.id"), index=True)
     template_id: Mapped[str] = mapped_column(String(128), index=True)
+    # Existing jobs predate modes; they used the AI path.
+    mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, default=GenerationMode.ADVANCED,
+        server_default=GenerationMode.ADVANCED,
+    )
 
     state: Mapped[str] = mapped_column(String(16), default=JobState.QUEUED, index=True)
 

@@ -94,6 +94,34 @@ services:
       retries: 5
       start_period: 30s
 
+  # Worker remains opt-in until a generation engine is validated on this VPS.
+  photobooth-worker:
+    profiles: ["generation"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: photobooth-api:local
+    container_name: photobooth-worker
+    command: ["python", "-m", "worker.main"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-photobooth}:${POSTGRES_PASSWORD}@photobooth-postgres:5432/${POSTGRES_DB:-photobooth}
+      REDIS_URL: redis://photobooth-redis:6379/0
+      RUNTIME_DIR: /srv/photobooth
+      TEMPLATES_DIR: /srv/photobooth/templates
+    volumes:
+      - photobooth_runtime:/srv/photobooth
+      - ./templates:/srv/photobooth/templates:ro
+    networks:
+      - photobooth-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      photobooth-postgres:
+        condition: service_healthy
+      photobooth-redis:
+        condition: service_healthy
 
   # --- Frontend: serves the built React app + proxies /api to photobooth-api
   photobooth-web:

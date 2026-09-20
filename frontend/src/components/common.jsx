@@ -6,31 +6,29 @@ import { ApiError } from '../api.js'
 export function HealthBadge({ health }) {
   if (!health) return <div className="badge badge-unknown">checking…</div>
   const ok = health.status === 'ok'
-  const aiOk = health.ai_provider_connected
   return (
     <div className="badges">
       <div className={'badge ' + (ok ? 'badge-ok' : 'badge-warn')}>API: {health.status}</div>
-      <div className={'badge ' + (aiOk ? 'badge-ok' : 'badge-warn')}>
-        AI: {aiOk ? health.ai_provider : 'NOT CONNECTED'}
-      </div>
     </div>
   )
 }
 
-const STEPS = ['upload', 'template', 'processing', 'result']
+const STEPS = ['mode', 'template', 'upload', 'ready', 'processing', 'result']
 
 const STEP_LABELS = {
-  upload: '1 · Upload',
-  template: '2 · Template',
-  processing: '3 · Processing',
-  result: '4 · Result',
+  mode: '1 · Mode',
+  template: '2 · Experience',
+  upload: '3 · Photo',
+  ready: '4 · Generate',
+  processing: '5 · Processing',
+  result: '6 · Result',
 }
 
 export function Stepper({ step }) {
   return (
     <ol className="stepper">
       {STEPS.map((s) => (
-        <li key={s} className={'step ' + (s === step ? 'step-active' : '')}>
+        <li key={s} className={'step ' + (s === step || (s === 'processing' && step === 'failed') ? 'step-active' : '')}>
           {STEP_LABELS[s] || s}
         </li>
       ))}

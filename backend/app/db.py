@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import get_settings
@@ -52,7 +52,22 @@ def get_db() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    """Create tables. Imports models so they are registered on the metadata."""
+    """Create tables and add the single mode column to existing installations."""
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    # create_all does not alter an existing table. The default preserves all
+    # jobs created before mode selection; they always used the AI path.
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS "
+                "mode VARCHAR(16) NOT NULL DEFAULT 'ADVANCED'"
+            ))
+    elif engine.dialect.name == "sqlite":
+        if "mode" not in {column["name"] for column in inspect(engine).get_columns("generation_jobs")}:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE generation_jobs ADD COLUMN mode VARCHAR(16) "
+                    "NOT NULL DEFAULT 'ADVANCED'"
+                ))

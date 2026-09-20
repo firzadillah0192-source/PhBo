@@ -8,13 +8,19 @@ You are not the product owner. Do not independently redesign the product or chan
 
 ## Product and Scope
 
-Photobooth AI is a web-first AI photobooth. The current vertical slice is:
+Photobooth AI is a web-first photobooth with two modes in the same app/backend:
+
+- BASIC: deterministic Python/local face fitting and composition (engine pending).
+- ADVANCED: generative AI behind provider and experience preset boundaries.
+
+The current vertical slice is:
 
 `Upload Photo -> Validate -> Choose Template -> Generate -> Processing -> Preview -> Download`
 
 The initial template is `sci-fi-space-commander-001`; one template is enough for the MVP. Do not implement Android, Google Drive, QR download, kiosk mode, printing, template management, admin, authentication, analytics, or other future features unless explicitly requested.
 
 AI is template-dominant facial resemblance, not literal face swap. Access AI through a provider abstraction; never hard-code a single vendor. If no real provider is connected, report `AI_PROVIDER_NOT_CONNECTED`. Never fabricate a generated image or report placeholder output as success.
+If the Basic engine is unavailable, report `BASIC_ENGINE_NOT_CONNECTED`; a face sticker or copied photo is not a completed result. Do not expose prompts, model IDs or provider names as customer choices.
 
 ## Technology Direction
 

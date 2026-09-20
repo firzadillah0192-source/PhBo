@@ -71,6 +71,7 @@ def create_generation(
     job = GenerationJob(
         upload_id=upload.id,
         template_id=payload.template_id,
+        mode=payload.mode,
         state=JobState.QUEUED,
     )
     db.add(job)
@@ -85,6 +86,7 @@ def create_generation(
         state=job.state,
         upload_id=job.upload_id,
         template_id=job.template_id,
+        mode=job.mode,
         created_at=job.created_at,
     )
 
@@ -112,6 +114,7 @@ def get_generation(job_id: str, db: Session = Depends(get_db)) -> GenerationStat
         state=job.state,
         upload_id=job.upload_id,
         template_id=job.template_id,
+        mode=job.mode,
         provider=job.provider,
         model=job.model,
         error_code=job.error_code,

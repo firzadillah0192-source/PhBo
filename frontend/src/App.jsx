@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createGeneration, getGeneration, getHealth, getTemplates, uploadPhoto } from './api.js'
 import { ErrorBanner, HealthBadge, Stepper, toError } from './components/common.jsx'
-import { TemplateStep, UploadStep } from './components/UploadSteps.jsx'
+import { ModeStep, TemplateStep, UploadStep } from './components/UploadSteps.jsx'
 import { ProcessingStep, ResultStep } from './components/ResultSteps.jsx'
 
 const POLL_INTERVAL_MS = 1500
 
 /**
  * Root component. Owns the vertical-slice state machine:
- *   upload -> template -> processing (poll) -> result
+ *   mode -> template/experience -> upload -> processing (poll) -> result
  *
  * Generation is asynchronous by contract (spec section 13): POST returns a
  * job_id, we poll until COMPLETED (result_id) or FAILED (error_code).
@@ -16,7 +16,8 @@ const POLL_INTERVAL_MS = 1500
 export default function App() {
   const [health, setHealth] = useState(null)
   const [templates, setTemplates] = useState([])
-  const [step, setStep] = useState('upload')
+  const [step, setStep] = useState('mode')
+  const [mode, setMode] = useState(null)
 
   const [upload, setUpload] = useState(null)
   const [selectedTemplateId, setSelectedTemplateId] = useState(null)
@@ -68,6 +69,7 @@ export default function App() {
         } else if (status.state === 'FAILED') {
           clearInterval(pollRef.current)
           setBusy(false)
+          setStep('failed')
           setError({
             title: 'Generation failed',
             code: status.error_code,
@@ -89,7 +91,7 @@ export default function App() {
     try {
       const uploaded = await uploadPhoto(file)
       setUpload(uploaded)
-      setStep('template')
+      setStep('ready')
     } catch (err) {
       setError(toError(err, 'Upload failed.'))
     } finally {
@@ -98,12 +100,12 @@ export default function App() {
   }, [])
 
   const startGeneration = useCallback(async () => {
-    if (!upload || !selectedTemplateId) return
+    if (!upload || !selectedTemplateId || mode !== 'ADVANCED') return
     setBusy(true)
     setError(null)
     setJob(null)
     try {
-      const created = await createGeneration(upload.upload_id, selectedTemplateId)
+      const created = await createGeneration(upload.upload_id, selectedTemplateId, mode)
       setJob(created)
       setStep('processing')
       startPolling(created.job_id)
@@ -111,14 +113,23 @@ export default function App() {
       setError(toError(err, 'Could not start generation.'))
       setBusy(false)
     }
-  }, [upload, selectedTemplateId, startPolling])
+  }, [upload, selectedTemplateId, mode, startPolling])
+
+  const chooseMode = useCallback((selectedMode) => {
+    setMode(selectedMode)
+    setUpload(null)
+    setSelectedTemplateId(templates[0]?.id ?? null)
+    setError(null)
+    setStep('template')
+  }, [templates])
 
   const reset = useCallback(() => {
     clearInterval(pollRef.current)
     setUpload(null)
+    setMode(null)
     setJob(null)
     setError(null)
-    setStep('upload')
+    setStep('mode')
     setBusy(false)
   }, [])
 
@@ -126,7 +137,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         <h1>Photobooth AI</h1>
-        <p className="subtitle">Upload → Validate → Template → Generate → Preview → Download</p>
+        <p className="subtitle">Choose → Upload → Generate → Preview → Download</p>
         <HealthBadge health={health} />
       </header>
 
@@ -134,32 +145,43 @@ export default function App() {
 
       {error && <ErrorBanner error={error} onDismiss={() => setError(null)} />}
 
-      {!health?.ai_provider_connected && (
+      {mode === 'ADVANCED' && health && !health.ai_provider_connected && (
         <div className="warn-banner">
-          <strong>AI_PROVIDER_NOT_CONNECTED</strong> — no AI provider is configured, so generation
-          will fail with that explicit error. Set <code>AI_PROVIDER</code> +{' '}
-          <code>NINEROUTER_API_KEY</code> to enable real generation. Upload, validation and the job
-          pipeline still work end-to-end.
+          <strong>Generate AI is not connected yet.</strong> You can try the workflow, but generation
+          will report a failure until the AI service is ready.
         </div>
       )}
 
       <main className="main">
-        {step === 'upload' && (
-          <UploadStep busy={busy} onFile={handleFile} hasUpload={!!upload} />
-        )}
+        {step === 'mode' && <ModeStep onSelect={chooseMode} />}
 
-        {step === 'template' && upload && (
+        {(step === 'template' || step === 'ready') && (
           <TemplateStep
             upload={upload}
+            mode={mode}
             templates={templates}
             selectedTemplateId={selectedTemplateId}
             onSelect={setSelectedTemplateId}
             onGenerate={startGeneration}
+            onContinue={() => setStep('upload')}
+            onChangePhoto={() => setStep('upload')}
             busy={busy}
           />
         )}
 
+        {step === 'upload' && (
+          <UploadStep busy={busy} onFile={handleFile} mode={mode} onBack={() => setStep('template')} />
+        )}
+
         {step === 'processing' && <ProcessingStep job={job} upload={upload} />}
+
+        {step === 'failed' && (
+          <section className="card">
+            <h2>Could not generate a result</h2>
+            <p className="hint">No image was created for this request.</p>
+            <div className="actions"><button onClick={reset}>Start over</button></div>
+          </section>
+        )}
 
         {step === 'result' && job?.result_id && <ResultStep job={job} onReset={reset} />}
       </main>

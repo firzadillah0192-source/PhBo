@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.models import ErrorCode, JobState
@@ -41,7 +43,6 @@ class TemplateResponse(BaseModel):
     id: str
     name: str
     description: str
-    prompt: str = Field(description="Template-dominant prompt sent to the provider")
     preview_url: str | None = None
     width: int
     height: int
@@ -75,6 +76,9 @@ class UploadResponse(BaseModel):
 class GenerationCreateRequest(BaseModel):
     upload_id: str = Field(min_length=1, description="ID returned by POST /api/uploads")
     template_id: str = Field(min_length=1, description="ID from GET /api/templates")
+    mode: Literal["BASIC", "ADVANCED"] = Field(
+        default="ADVANCED", description="Defaults to ADVANCED for existing clients"
+    )
 
 
 class GenerationCreateResponse(BaseModel):
@@ -82,6 +86,7 @@ class GenerationCreateResponse(BaseModel):
     state: str = Field(description="One of QUEUED / PROCESSING / COMPLETED / FAILED")
     upload_id: str
     template_id: str
+    mode: Literal["BASIC", "ADVANCED"]
     created_at: datetime
 
 
@@ -93,6 +98,7 @@ class GenerationStatusResponse(BaseModel):
     state: str
     upload_id: str
     template_id: str
+    mode: Literal["BASIC", "ADVANCED"]
     provider: str | None = None
     model: str | None = None
     error_code: str | None = Field(

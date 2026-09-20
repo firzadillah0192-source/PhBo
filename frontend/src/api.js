@@ -81,14 +81,14 @@ export function uploadPhoto(file) {
 }
 
 /**
- * POST /api/generations {upload_id, template_id}
- * -> 202 {job_id, state, upload_id, template_id, created_at}
+ * POST /api/generations {upload_id, template_id, mode}
+ * -> 202 {job_id, state, upload_id, template_id, mode, created_at}
  */
-export function createGeneration(uploadId, templateId) {
+export function createGeneration(uploadId, templateId, mode) {
   return request('/generations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ upload_id: uploadId, template_id: templateId }),
+    body: JSON.stringify({ upload_id: uploadId, template_id: templateId, mode }),
   })
 }
 

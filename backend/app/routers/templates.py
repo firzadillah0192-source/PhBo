@@ -26,7 +26,6 @@ def list_templates() -> TemplateListResponse:
                 id=t.id,
                 name=t.name,
                 description=t.description,
-                prompt=t.prompt,
                 preview_url=(
                     f"/api/templates/{t.id}/preview" if t.preview_filename else None
                 ),
