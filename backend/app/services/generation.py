@@ -18,10 +18,12 @@ from app.ai.base import AIProviderError, GenerationOptions
 from app.ai.factory import get_provider
 from app.core.config import get_settings
 from app.db import SessionLocal
-from app.generation.basic import BasicEngineNotConnectedError, get_basic_engine
+from app.generation.basic import BasicGenerationError, get_basic_engine
+from app.generation.basic.engine import make_session_output
 from app.models import ErrorCode, GenerationJob, GenerationMode, JobState, Result
 from app.services import storage
 from app.templates_registry import TemplateNotFound, get_registry
+from app.experiences import get_experience
 
 
 def _now() -> datetime:
@@ -58,8 +60,8 @@ def process_job(job_id: str, *, db: Session | None = None) -> str:
         except AIProviderError as exc:
             # Surfaces AI_PROVIDER_NOT_CONNECTED / AI_PROVIDER_ERROR / AI_EMPTY_RESULT
             _fail(session, job, exc.code, exc.message, detail=exc.detail)
-        except BasicEngineNotConnectedError as exc:
-            _fail(session, job, exc.code, str(exc))
+        except BasicGenerationError as exc:
+            _fail(session, job, exc.code, exc.message)
         except FileNotFoundError as exc:
             _fail(session, job, ErrorCode.UPLOAD_NOT_FOUND, f"Upload file missing: {exc}")
         except Exception as exc:  # noqa: BLE001 - must never leave a job stuck
@@ -88,18 +90,33 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
     if upload is None:
         raise FileNotFoundError(f"upload row missing for job {job.id}")
 
-    template = get_registry().get(job.template_id)
+    template = get_registry().get(job.template_id) if job.mode == GenerationMode.BASIC else None
+    experience = get_experience(job.experience_id) if job.mode == GenerationMode.ADVANCED and job.experience_id else None
 
     user_image = storage.read_file(upload.storage_path)
 
     if job.mode == GenerationMode.BASIC:
-        basic_result = get_basic_engine().generate(user_image, template)
-        image_bytes = basic_result.image_bytes
-        content_type = basic_result.content_type
+        settings.ensure_runtime_dirs()
+        template_path = settings.templates_dir / template.id / (template.asset_filename or "")
+        output_path = make_session_output(settings.tmp_dir, job.id)
+        basic_result = get_basic_engine().generate(
+            user_image_path=upload.storage_path,
+            template_id=template.id if template else "",
+            output_path=output_path,
+            options={"template": template, "template_path": template_path},
+        )
+        if not output_path.exists() or output_path.stat().st_size == 0:
+            raise BasicGenerationError(
+                "BASIC_ENGINE_ERROR: engine returned without a real PNG output"
+            )
+        image_bytes = output_path.read_bytes()
+        content_type = "image/png"
         job.provider = "local"
         job.model = basic_result.engine_name
     elif job.mode == GenerationMode.ADVANCED:
         provider = get_provider()
+        if experience is None:
+            raise ValueError("ADVANCED experience preset is missing")
         if not provider.is_available():
             from app.ai.base import ProviderNotConnectedError
 
@@ -109,13 +126,17 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
                 "Set NINEROUTER_API_KEY (and NINEROUTER_BASE_URL) in the environment."
             )
 
-        job.provider = provider.name
-        job.model = getattr(provider, "_model", None)
+        job.provider = experience.provider
+        job.model = experience.model
         session.commit()
         ai_result = provider.generate(
             user_image,
-            template,
-            GenerationOptions(width=template.width, height=template.height),
+            None,
+            GenerationOptions(
+                width=1024,
+                height=1024,
+                extra={"experience": experience},
+            ),
         )
         image_bytes = ai_result.image_bytes
         content_type = ai_result.content_type
@@ -145,7 +166,7 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
     result = Result(
         id=result_id,
         job_id=job.id,
-        template_id=template.id,
+        template_id=template.id if template else "",
         storage_path=str(result_path),
         content_type=content_type,
         size_bytes=len(image_bytes),

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { createGeneration, getGeneration, getHealth, getTemplates, uploadPhoto } from './api.js'
+import { createGeneration, getExperiences, getGeneration, getHealth, getTemplates, uploadPhoto } from './api.js'
 import { ErrorBanner, HealthBadge, Stepper, toError } from './components/common.jsx'
 import { ModeStep, TemplateStep, UploadStep } from './components/UploadSteps.jsx'
 import { ProcessingStep, ResultStep } from './components/ResultSteps.jsx'
@@ -16,11 +16,13 @@ const POLL_INTERVAL_MS = 1500
 export default function App() {
   const [health, setHealth] = useState(null)
   const [templates, setTemplates] = useState([])
+  const [experiences, setExperiences] = useState([])
   const [step, setStep] = useState('mode')
   const [mode, setMode] = useState(null)
 
   const [upload, setUpload] = useState(null)
   const [selectedTemplateId, setSelectedTemplateId] = useState(null)
+  const [selectedExperienceId, setSelectedExperienceId] = useState(null)
 
   const [job, setJob] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -46,6 +48,15 @@ export default function App() {
         }
       } catch (err) {
         if (alive) setError(toError(err, 'Could not load templates.'))
+      }
+      try {
+        const e = await getExperiences()
+        if (alive) {
+          setExperiences(e.experiences || [])
+          if (e.experiences?.length >= 1) setSelectedExperienceId(e.experiences[0].id)
+        }
+      } catch (err) {
+        if (alive) setError(toError(err, 'Could not load experiences.'))
       }
     })()
     return () => {
@@ -100,12 +111,16 @@ export default function App() {
   }, [])
 
   const startGeneration = useCallback(async () => {
-    if (!upload || !selectedTemplateId || mode !== 'ADVANCED') return
+    if (!upload) return
+    if (mode === 'BASIC' && !selectedTemplateId) return
+    if (mode === 'ADVANCED' && !selectedExperienceId) return
     setBusy(true)
     setError(null)
     setJob(null)
     try {
-      const created = await createGeneration(upload.upload_id, selectedTemplateId, mode)
+      const created = mode === 'BASIC'
+        ? await createGeneration(upload.upload_id, mode, selectedTemplateId)
+        : await createGeneration(upload.upload_id, mode, null, selectedExperienceId)
       setJob(created)
       setStep('processing')
       startPolling(created.job_id)
@@ -113,15 +128,16 @@ export default function App() {
       setError(toError(err, 'Could not start generation.'))
       setBusy(false)
     }
-  }, [upload, selectedTemplateId, mode, startPolling])
+  }, [upload, selectedTemplateId, selectedExperienceId, mode, startPolling])
 
   const chooseMode = useCallback((selectedMode) => {
     setMode(selectedMode)
     setUpload(null)
     setSelectedTemplateId(templates[0]?.id ?? null)
+    setSelectedExperienceId(experiences[0]?.id ?? null)
     setError(null)
     setStep('template')
-  }, [templates])
+  }, [templates, experiences])
 
   const reset = useCallback(() => {
     clearInterval(pollRef.current)
@@ -160,8 +176,11 @@ export default function App() {
             upload={upload}
             mode={mode}
             templates={templates}
+            experiences={experiences}
             selectedTemplateId={selectedTemplateId}
+            selectedExperienceId={selectedExperienceId}
             onSelect={setSelectedTemplateId}
+            onSelectExperience={setSelectedExperienceId}
             onGenerate={startGeneration}
             onContinue={() => setStep('upload')}
             onChangePhoto={() => setStep('upload')}

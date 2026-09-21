@@ -64,10 +64,22 @@ def init_db() -> None:
                 "ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS "
                 "mode VARCHAR(16) NOT NULL DEFAULT 'ADVANCED'"
             ))
+            conn.execute(text(
+                "ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS "
+                "experience_id VARCHAR(128)"
+            ))
     elif engine.dialect.name == "sqlite":
-        if "mode" not in {column["name"] for column in inspect(engine).get_columns("generation_jobs")}:
-            with engine.begin() as conn:
+        columns = {column["name"] for column in inspect(engine).get_columns("generation_jobs")}
+        with engine.begin() as conn:
+            if "mode" not in columns:
                 conn.execute(text(
                     "ALTER TABLE generation_jobs ADD COLUMN mode VARCHAR(16) "
                     "NOT NULL DEFAULT 'ADVANCED'"
                 ))
+            if "experience_id" not in columns:
+                conn.execute(text(
+                    "ALTER TABLE generation_jobs ADD COLUMN experience_id VARCHAR(128)"
+                ))
+    from app.catalog import seed_catalog
+    with SessionLocal() as session:
+        seed_catalog(session)

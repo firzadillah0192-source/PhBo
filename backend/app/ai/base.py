@@ -72,7 +72,7 @@ class AIProvider(ABC):
     def generate(
         self,
         user_image: bytes,
-        template: "TemplateDefinition",  # noqa: F821 - avoids import cycle
+        template: "TemplateDefinition | None",  # noqa: F821 - avoids import cycle
         options: GenerationOptions,
     ) -> AIResult:
         """Turn a user photo + template into a real result image."""

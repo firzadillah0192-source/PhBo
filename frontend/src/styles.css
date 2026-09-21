@@ -392,3 +392,22 @@ a.primary {
   font-size: 12px;
   text-align: center;
 }
+
+.experience-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  display: grid;
+  align-items: stretch;
+}
+
+.experience-grid .template {
+  min-height: 128px;
+}
+
+.experience-thumbnail {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: var(--panel);
+}

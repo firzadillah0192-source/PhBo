@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -56,6 +56,11 @@ class ErrorCode:
     AI_PROVIDER_ERROR = "AI_PROVIDER_ERROR"
     AI_EMPTY_RESULT = "AI_EMPTY_RESULT"
     BASIC_ENGINE_NOT_CONNECTED = "BASIC_ENGINE_NOT_CONNECTED"
+    BASIC_FACE_NOT_FOUND = "BASIC_FACE_NOT_FOUND"
+    BASIC_MULTIPLE_FACES = "BASIC_MULTIPLE_FACES"
+    BASIC_LANDMARKS_UNAVAILABLE = "BASIC_LANDMARKS_UNAVAILABLE"
+    BASIC_TEMPLATE_METADATA_MISSING = "BASIC_TEMPLATE_METADATA_MISSING"
+    BASIC_ENGINE_ERROR = "BASIC_ENGINE_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
@@ -92,6 +97,7 @@ class GenerationJob(Base):
 
     upload_id: Mapped[str] = mapped_column(ForeignKey("uploads.id"), index=True)
     template_id: Mapped[str] = mapped_column(String(128), index=True)
+    experience_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     # Existing jobs predate modes; they used the AI path.
     mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default=GenerationMode.ADVANCED,
@@ -138,3 +144,41 @@ class Result(Base):
     model: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     job: Mapped[GenerationJob] = relationship(back_populates="result")
+
+
+class ManagedExperience(Base):
+    """Admin-managed Advanced preset metadata and private prompt."""
+
+    __tablename__ = "admin_experiences"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    thumbnail_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    internal_prompt: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128))
+    reference_mode: Mapped[str] = mapped_column(String(64), default="SINGLE_USER_IMAGE")
+    output_format: Mapped[str] = mapped_column(String(16), default="PNG")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    updated_by: Mapped[str] = mapped_column(String(128), default="admin")
+
+
+class ManagedTemplate(Base):
+    """Admin-managed Basic template metadata and filesystem references."""
+
+    __tablename__ = "admin_templates"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    image_path: Mapped[str] = mapped_column(String(512))
+    metadata_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    updated_by: Mapped[str] = mapped_column(String(128), default="admin")

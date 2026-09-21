@@ -16,10 +16,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.catalog import experience_definition, get_experience_row, get_template_row, template_definition
 from app.models import ErrorCode, GenerationJob, JobState, Upload
 from app.queue import enqueue
 from app.schemas import GenerationCreateRequest, GenerationCreateResponse, GenerationStatusResponse
-from app.templates_registry import TemplateNotFound, get_registry
+
 
 router = APIRouter(tags=["generations"])
 
@@ -57,20 +58,30 @@ def create_generation(
             },
         )
 
-    try:
-        get_registry().get(payload.template_id)
-    except TemplateNotFound as exc:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error_code": ErrorCode.TEMPLATE_NOT_FOUND,
-                "message": f"template '{payload.template_id}' not found",
-            },
-        ) from exc
+    template_id = payload.template_id or ""
+    experience_id = None
+    if payload.mode == "BASIC":
+        row = get_template_row(db, template_id)
+        if row is None or not row.enabled:
+            raise HTTPException(status_code=404, detail={"error_code": ErrorCode.TEMPLATE_NOT_FOUND, "message": f"template '{template_id}' not found or disabled"})
+        try:
+            template_definition(db, template_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail={"error_code": ErrorCode.TEMPLATE_NOT_FOUND, "message": f"template '{template_id}' not found"}) from exc
+    else:
+        experience_id = payload.experience_id
+        row = get_experience_row(db, experience_id or "")
+        if row is None or not row.enabled:
+            raise HTTPException(status_code=404, detail={"error_code": "EXPERIENCE_NOT_FOUND", "message": f"experience '{experience_id}' not found or disabled"})
+        try:
+            experience_definition(db, experience_id or "")
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail={"error_code": "EXPERIENCE_NOT_FOUND", "message": f"experience '{experience_id}' not found"}) from exc
 
     job = GenerationJob(
         upload_id=upload.id,
-        template_id=payload.template_id,
+        template_id=template_id,
+        experience_id=experience_id,
         mode=payload.mode,
         state=JobState.QUEUED,
     )
@@ -85,7 +96,8 @@ def create_generation(
         job_id=job.id,
         state=job.state,
         upload_id=job.upload_id,
-        template_id=job.template_id,
+        template_id=job.template_id or None,
+        experience_id=job.experience_id,
         mode=job.mode,
         created_at=job.created_at,
     )
@@ -113,7 +125,8 @@ def get_generation(job_id: str, db: Session = Depends(get_db)) -> GenerationStat
         job_id=job.id,
         state=job.state,
         upload_id=job.upload_id,
-        template_id=job.template_id,
+        template_id=job.template_id or None,
+        experience_id=job.experience_id,
         mode=job.mode,
         provider=job.provider,
         model=job.model,

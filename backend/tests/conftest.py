@@ -81,11 +81,14 @@ class StubProvider(AIProvider):
         options: GenerationOptions,
     ) -> AIResult:
         # Record what the real code handed us, so tests can assert on it.
+        experience = options.extra.get("experience")
+        prompt = experience.prompt if experience else template.build_prompt()
         self.calls.append(
             {
                 "user_image_bytes": len(user_image),
-                "template_id": template.id,
-                "prompt": template.build_prompt(),
+                "template_id": template.id if template else None,
+                "experience_id": experience.id if experience else None,
+                "prompt": prompt,
                 "width": options.width,
                 "height": options.height,
             }
@@ -96,7 +99,7 @@ class StubProvider(AIProvider):
             content_type="image/png",
             provider=self.name,
             model="stub-model",
-            prompt_used=template.build_prompt(),
+            prompt_used=prompt,
             raw_meta={"stub": True},
         )
 

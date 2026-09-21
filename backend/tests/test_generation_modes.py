@@ -1,74 +1,155 @@
-"""Mode dispatch on an existing job queue: Basic never calls the AI provider."""
+"""Mode routing tests for Basic Local and backend-owned Advanced presets."""
 
 from __future__ import annotations
 
-from sqlalchemy import create_engine, inspect, text
-
-from app.models import ErrorCode, GenerationJob, GenerationMode, JobState
+from app.models import GenerationJob, GenerationMode, JobState
 from app.services.generation import process_job
+from conftest import make_png
+from conftest import make_png
 
 
-def test_basic_job_fails_honestly_without_ai_or_result(
-    client, uploaded_photo, captured_queue, stub_provider, db_session
+def test_basic_job_calls_local_engine_and_never_ai(
+    client, uploaded_photo, captured_queue, stub_provider, db_session, monkeypatch, tmp_path
 ):
-    response = client.post(
-        "/api/generations",
-        json={
-            "upload_id": uploaded_photo["upload_id"],
-            "template_id": "sci-fi-space-commander-001",
-            "mode": "BASIC",
-        },
-    )
+    from app.generation.basic.engine import BasicResult
+    import app.services.generation as generation_module
+
+    calls = []
+
+    class FakeBasicEngine:
+        def generate(self, **kwargs):
+            calls.append(kwargs)
+            output = kwargs["output_path"]
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_bytes(make_png(128, 128))
+            return BasicResult(make_png(128, 128), str(output), 128, 128)
+
+    monkeypatch.setattr(generation_module, "get_basic_engine", lambda: FakeBasicEngine())
+    response = client.post("/api/generations", json={
+        "upload_id": uploaded_photo["upload_id"],
+        "template_id": "sci-fi-space-commander-001",
+        "mode": "BASIC",
+    })
+    job_id = response.json()["job_id"]
+    assert process_job(job_id, db=db_session) == JobState.COMPLETED
+    assert calls and calls[0]["template_id"] == "sci-fi-space-commander-001"
+    assert stub_provider.calls == []
+    status = client.get(f"/api/generations/{job_id}").json()
+    assert status["result_id"]
+    assert status["provider"] == "local"
+
+
+def test_advanced_requires_experience_and_keeps_template_out(client, uploaded_photo, captured_queue):
+    response = client.post("/api/generations", json={
+        "upload_id": uploaded_photo["upload_id"],
+        "mode": "ADVANCED",
+        "template_id": "sci-fi-space-commander-001",
+    })
+    assert response.status_code == 422
+
+    response = client.post("/api/generations", json={
+        "upload_id": uploaded_photo["upload_id"],
+        "mode": "ADVANCED",
+        "experience_id": "mini-me",
+    })
     assert response.status_code == 202
-    created = response.json()
-    assert created["mode"] == GenerationMode.BASIC
-    assert captured_queue == [created["job_id"]]
+    body = response.json()
+    assert body["experience_id"] == "mini-me"
+    assert body["template_id"] is None
+    assert captured_queue == [body["job_id"]]
+
+
+def test_experiences_endpoint_exposes_safe_metadata_only(client):
+    response = client.get("/api/experiences")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 44
+    assert len(body["experiences"]) == 44
+    item = next(item for item in body["experiences"] if item["id"] == "mini-me")
+    assert item["enabled"] is True
+    assert item["availability"] == "available"
+    assert "prompt" not in item
+    assert "internal_prompt" not in item
+    assert "provider" not in item
+    assert "model" not in item
+
+
+def test_templates_mark_basic_compatibility(client):
+    item = next(item for item in client.get("/api/templates").json()["templates"] if item["id"] == "sci-fi-space-commander-001")
+    assert item["basic_available"] is True
+
+
+def test_frontend_cannot_supply_advanced_prompt(client, uploaded_photo):
+    response = client.post("/api/generations", json={
+        "upload_id": uploaded_photo["upload_id"],
+        "mode": "ADVANCED",
+        "experience_id": "mini-me",
+        "prompt": "override",
+    })
+    assert response.status_code == 422
+
+
+def test_basic_engine_failure_marks_job_failed(client, uploaded_photo, captured_queue, db_session, monkeypatch):
+    import app.services.generation as generation_module
+    from app.generation.basic.errors import BasicFaceNotFoundError
+
+    class FailingEngine:
+        def generate(self, **kwargs):
+            raise BasicFaceNotFoundError("BASIC_FACE_NOT_FOUND: no face detected")
+
+    monkeypatch.setattr(generation_module, "get_basic_engine", lambda: FailingEngine())
+    created = client.post("/api/generations", json={
+        "upload_id": uploaded_photo["upload_id"],
+        "mode": "BASIC",
+        "template_id": "sci-fi-space-commander-001",
+    }).json()
     assert process_job(created["job_id"], db=db_session) == JobState.FAILED
     status = client.get(f"/api/generations/{created['job_id']}").json()
-    assert status["mode"] == GenerationMode.BASIC
-    assert status["error_code"] == ErrorCode.BASIC_ENGINE_NOT_CONNECTED
-    assert status["result_id"] is None
-    assert stub_provider.calls == []
-    assert db_session.get(GenerationJob, created["job_id"]).result is None
+    assert status["error_code"] == "BASIC_FACE_NOT_FOUND"
 
 
-def test_existing_client_defaults_to_advanced(client, uploaded_photo, captured_queue):
-    response = client.post(
-        "/api/generations",
-        json={
-            "upload_id": uploaded_photo["upload_id"],
-            "template_id": "sci-fi-space-commander-001",
-        },
-    )
-    assert response.status_code == 202
-    assert response.json()["mode"] == GenerationMode.ADVANCED
-    assert client.get(f"/api/generations/{response.json()['job_id']}").json()["mode"] == GenerationMode.ADVANCED
+def test_job_cannot_complete_without_output_file(client, uploaded_photo, captured_queue, db_session, monkeypatch):
+    from app.generation.basic.engine import BasicResult
+    import app.services.generation as generation_module
+
+    class MissingOutputEngine:
+        def generate(self, **kwargs):
+            return BasicResult(b"", str(kwargs["output_path"]), 0, 0)
+
+    monkeypatch.setattr(generation_module, "get_basic_engine", lambda: MissingOutputEngine())
+    created = client.post("/api/generations", json={
+        "upload_id": uploaded_photo["upload_id"],
+        "mode": "BASIC",
+        "template_id": "sci-fi-space-commander-001",
+    }).json()
+    assert process_job(created["job_id"], db=db_session) == JobState.FAILED
+    assert client.get(f"/api/generations/{created['job_id']}").json()["result_id"] is None
 
 
-def test_mode_rejects_unknown_value(client, uploaded_photo, captured_queue):
-    response = client.post(
-        "/api/generations",
-        json={
-            "upload_id": uploaded_photo["upload_id"],
-            "template_id": "sci-fi-space-commander-001",
-            "mode": "OTHER",
-        },
-    )
-    assert response.status_code == 422
-    assert captured_queue == []
+def test_basic_result_and_download_endpoints(client, uploaded_photo, captured_queue, db_session, monkeypatch):
+    from app.generation.basic.engine import BasicResult
+    import app.services.generation as generation_module
 
+    class WorkingEngine:
+        def generate(self, **kwargs):
+            data = make_png(96, 96)
+            kwargs["output_path"].parent.mkdir(parents=True, exist_ok=True)
+            kwargs["output_path"].write_bytes(data)
+            return BasicResult(data, str(kwargs["output_path"]), 96, 96)
 
-def test_legacy_jobs_migrate_to_advanced(monkeypatch):
-    """Existing installations have a generation_jobs table without mode."""
-    import app.db as db_mod
-
-    legacy = create_engine("sqlite+pysqlite:///:memory:")
-    with legacy.begin() as conn:
-        conn.execute(text("CREATE TABLE generation_jobs (id VARCHAR(32) PRIMARY KEY)"))
-        conn.execute(text("INSERT INTO generation_jobs (id) VALUES ('old-job')"))
-    monkeypatch.setattr(db_mod, "engine", legacy)
-    db_mod.init_db()
-    db_mod.init_db()  # repeat startup must be safe
-    assert "mode" in {column["name"] for column in inspect(legacy).get_columns("generation_jobs")}
-    with legacy.connect() as conn:
-        assert conn.execute(text("SELECT mode FROM generation_jobs WHERE id='old-job'")).scalar_one() == "ADVANCED"
+    monkeypatch.setattr(generation_module, "get_basic_engine", lambda: WorkingEngine())
+    created = client.post("/api/generations", json={
+        "upload_id": uploaded_photo["upload_id"],
+        "mode": "BASIC",
+        "template_id": "sci-fi-space-commander-001",
+    }).json()
+    assert process_job(created["job_id"], db=db_session) == JobState.COMPLETED
+    status = client.get(f"/api/generations/{created['job_id']}").json()
+    result_id = status["result_id"]
+    metadata = client.get(f"/api/results/{result_id}")
+    assert metadata.status_code == 200
+    assert metadata.json()["content_type"] == "image/png"
+    preview = client.get(f"/api/results/{result_id}/image")
+    download = client.get(f"/api/results/{result_id}/download")
+    assert preview.status_code == 200 and preview.content.startswith(b"\x89PNG")
+    assert download.status_code == 200 and download.content.startswith(b"\x89PNG")

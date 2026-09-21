@@ -26,6 +26,9 @@ from __future__ import annotations
 
 import base64
 import binascii
+import io
+
+from PIL import Image
 
 import httpx
 
@@ -39,6 +42,7 @@ from app.ai.base import (
 )
 from app.services.image_validation import normalize_for_provider
 from app.templates_registry import TemplateDefinition
+from app.experiences import ExperienceDefinition
 
 
 class NineRouterProvider(AIProvider):
@@ -65,7 +69,7 @@ class NineRouterProvider(AIProvider):
     def generate(
         self,
         user_image: bytes,
-        template: TemplateDefinition,
+        template: TemplateDefinition | None,
         options: GenerationOptions,
     ) -> AIResult:
         if not self.is_available():
@@ -77,12 +81,22 @@ class NineRouterProvider(AIProvider):
         jpeg_bytes, _ = normalize_for_provider(user_image)
         data_uri = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("ascii")
 
-        prompt = template.build_prompt()
-        width = options.width or template.width
-        height = options.height or template.height
+        experience: ExperienceDefinition | None = options.extra.get("experience")
+        if experience is not None:
+            prompt = experience.prompt
+            model = experience.model
+            width = options.width or 1024
+            height = options.height or 1024
+        else:
+            if template is None:
+                raise AIProviderError("AI_PROVIDER_ERROR: template or experience preset is required")
+            prompt = template.build_prompt()
+            model = self._model
+            width = options.width or template.width
+            height = options.height or template.height
 
         payload = {
-            "model": self._model,
+            "model": model,
             "prompt": prompt,
             "image": data_uri,
             "size": f"{width}x{height}",
@@ -114,13 +128,7 @@ class NineRouterProvider(AIProvider):
                 detail=response.text[:2000],
             )
 
-        try:
-            body = response.json()
-        except ValueError as exc:
-            raise AIProviderError(
-                "9router returned a non-JSON 200 response", detail=response.text[:2000]
-            ) from exc
-
+        body = _parse_provider_body(response)
         image_bytes, meta = _extract_image(body)
         if not image_bytes:
             raise ProviderEmptyResultError(
@@ -128,19 +136,52 @@ class NineRouterProvider(AIProvider):
                 f"Raw response keys: {sorted(body.keys()) if isinstance(body, dict) else type(body)}"
             )
 
+        image_bytes = _as_png(image_bytes)
         return AIResult(
             image_bytes=image_bytes,
-            content_type=_guess_content_type(image_bytes),
+            content_type="image/png",
             provider=self.name,
-            model=self._model,
+            model=model,
             prompt_used=prompt,
             raw_meta={
                 "size": f"{width}x{height}",
-                "created": body.get("created") if isinstance(body, dict) else None,
+                "created": meta.get("created"),
                 **meta,
             },
         )
 
+
+
+def _parse_provider_body(response: httpx.Response) -> object:
+    """Parse either JSON or the provider's SSE event stream."""
+    content_type = response.headers.get("content-type", "").lower()
+    if "text/event-stream" not in content_type:
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise AIProviderError(
+                "9router returned a non-JSON/non-SSE 200 response", detail=response.text[:2000]
+            ) from exc
+
+    events: list[object] = []
+    for raw_line in response.text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(":") or line == "data: [DONE]":
+            continue
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        try:
+            events.append(__import__("json").loads(payload))
+        except ValueError as exc:
+            raise AIProviderError(
+                "9router returned invalid SSE JSON data", detail=payload[:1000]
+            ) from exc
+
+    for event in events:
+        if isinstance(event, dict) and isinstance(event.get("data"), list):
+            return event
+    raise ProviderEmptyResultError("AI_EMPTY_RESULT: 9router SSE contained no image data")
 
 def _extract_image(body: object) -> tuple[bytes, dict]:
     """Pull image bytes out of the OpenAI-compatible response shape."""
@@ -151,6 +192,8 @@ def _extract_image(body: object) -> tuple[bytes, dict]:
     data = body.get("data")
     if not isinstance(data, list) or not data:
         return b"", meta
+    if isinstance(body.get("created"), (int, float, str)):
+        meta["created"] = body.get("created")
 
     first = data[0]
     if not isinstance(first, dict):
@@ -193,3 +236,13 @@ def _guess_content_type(data: bytes) -> str:
 def _short(text: str, limit: int = 300) -> str:
     text = " ".join(text.split())
     return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+def _as_png(data: bytes) -> bytes:
+    """Normalize provider b64_json output to the preset's PNG contract."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return data
+    with Image.open(io.BytesIO(data)) as image:
+        output = io.BytesIO()
+        image.convert("RGBA").save(output, format="PNG")
+        return output.getvalue()

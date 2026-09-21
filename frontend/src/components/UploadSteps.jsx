@@ -8,7 +8,7 @@ export function ModeStep({ onSelect }) {
       <div className="mode-grid">
         <button className="mode-card" onClick={() => onSelect('BASIC')}>
           <strong>Basic</strong>
-          <span>Local image processing · in development</span>
+          <span>Experimental local face fitting · no external AI</span>
         </button>
         <button className="mode-card" onClick={() => onSelect('ADVANCED')}>
           <strong>Advanced</strong>
@@ -72,8 +72,11 @@ export function UploadStep({ busy, onFile, mode, onBack }) {
 export function TemplateStep({
   upload,
   templates,
+  experiences,
   selectedTemplateId,
+  selectedExperienceId,
   onSelect,
+  onSelectExperience,
   onGenerate,
   onContinue,
   onChangePhoto,
@@ -92,17 +95,20 @@ export function TemplateStep({
             {(upload.size_bytes / 1024).toFixed(0)} KB
           </p>
         </div>}
-        <div className="template-list">
-          {templates.length === 0 && <p className="hint">No templates available.</p>}
-          {templates.map((t) => (
-            <button
-              key={t.id}
-              className={'template ' + (t.id === selectedTemplateId ? 'template-selected' : '')}
-              aria-pressed={t.id === selectedTemplateId}
-              onClick={() => onSelect(t.id)}
-            >
+        <div className={mode === 'ADVANCED' ? 'template-list experience-grid' : 'template-list'}>
+          {mode === 'BASIC' && templates.length === 0 && <p className="hint">No Basic templates available.</p>}
+          {mode === 'ADVANCED' && experiences.length === 0 && <p className="hint">No Advanced experiences available.</p>}
+          {mode === 'BASIC' && templates.map((t) => (
+            <button key={t.id} className={'template ' + (t.id === selectedTemplateId ? 'template-selected' : '')} aria-pressed={t.id === selectedTemplateId} onClick={() => onSelect(t.id)}>
               <div className="template-name">{t.name}</div>
               <div className="template-desc">{t.description}</div>
+            </button>
+          ))}
+          {mode === 'ADVANCED' && experiences.map((experience) => (
+            <button key={experience.id} className={'template ' + (experience.id === selectedExperienceId ? 'template-selected' : '')} aria-pressed={experience.id === selectedExperienceId} onClick={() => onSelectExperience(experience.id)}>
+              {experience.thumbnail && <img className="experience-thumbnail" src={experience.thumbnail} alt="" />}
+              <div className="template-name">{experience.name}</div>
+              <div className="template-desc">{experience.description}</div>
             </button>
           ))}
         </div>
@@ -110,16 +116,17 @@ export function TemplateStep({
       <div className="actions">
         {upload ? (
           <>
-            <button className="primary" disabled={!selectedTemplateId || busy || mode === 'BASIC'} onClick={onGenerate}>
-              {busy ? 'Starting…' : mode === 'BASIC' ? 'Generate Local · in development' : 'Generate AI'}
+            <button className="primary" disabled={(!selectedTemplateId && mode === 'BASIC') || (!selectedExperienceId && mode === 'ADVANCED') || busy} onClick={onGenerate}>
+              {busy ? 'Starting…' : mode === 'BASIC' ? 'Generate Local' : 'Generate AI'}
             </button>
             <button disabled={busy} onClick={onChangePhoto}>Change photo</button>
           </>
         ) : (
-          <button className="primary" disabled={!selectedTemplateId} onClick={onContinue}>Continue to upload</button>
+          <button className="primary" disabled={mode === 'BASIC' ? !selectedTemplateId : !selectedExperienceId} onClick={onContinue}>Continue to upload</button>
         )}
       </div>
-      {mode === 'BASIC' && <p className="hint">Local face fitting is not connected yet. No result will be generated in Basic mode.</p>}
+      {mode === 'BASIC' && <p className="hint">Experimental local face fitting. No external AI provider is used.</p>}
+      {mode === 'ADVANCED' && <p className="hint">The selected experience uses a backend preset; prompts are not editable here.</p>}
     </section>
   )
 }
