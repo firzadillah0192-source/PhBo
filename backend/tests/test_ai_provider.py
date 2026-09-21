@@ -29,6 +29,7 @@ from app.ai.base import (
 from app.ai.factory import NullProvider, build_provider
 from app.ai.ninerouter import NineRouterProvider
 from app.core.config import get_settings
+from app.experiences import get_experience
 from app.templates_registry import get_registry
 from conftest import make_jpeg, make_png
 
@@ -242,3 +243,41 @@ def test_9router_non_json_200_raises(monkeypatch):
     template = get_registry().get("sci-fi-space-commander-001")
     with pytest.raises(AIProviderError, match="non-JSON"):
         _provider().generate(make_jpeg(), template, GenerationOptions())
+
+
+def test_mini_me_uses_single_image_preset_and_decodes_png(monkeypatch):
+    fake_png = make_png(64, 64)
+    captured = {}
+
+    def fake_post(url, *, json, headers, timeout):
+        captured["json"] = json
+        return httpx.Response(200, json={"data": [{"b64_json": base64.b64encode(fake_png).decode("ascii")}]}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    experience = get_experience("mini-me")
+    result = _provider(model="ignored-by-preset").generate(
+        make_jpeg(), None, GenerationOptions(extra={"experience": experience})
+    )
+    assert result.image_bytes.startswith(b"\x89PNG")
+    assert result.content_type == "image/png"
+    assert captured["json"]["model"] == "cx/gpt-image-2.5"
+    assert captured["json"]["prompt"] == experience.prompt
+    assert "image" in captured["json"]
+    assert "images" not in captured["json"]
+    assert "template" not in captured["json"]
+    assert captured["json"]["image"].startswith("data:image/jpeg;base64,")
+
+
+def test_9router_parses_sse_data_b64_json(monkeypatch):
+    fake_png = make_png(48, 48)
+    event = {"data": [{"b64_json": base64.b64encode(fake_png).decode("ascii") }]}
+    sse = "data: " + __import__("json").dumps(event) + "\n\n data: [DONE]\n"
+
+    def fake_post(url, *, json, headers, timeout):
+        return httpx.Response(200, content=sse.encode(), headers={"content-type": "text/event-stream"}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    experience = get_experience("mini-me")
+    result = _provider().generate(make_jpeg(), None, GenerationOptions(extra={"experience": experience}))
+    assert result.image_bytes.startswith(b"\x89PNG")
+    assert result.content_type == "image/png"

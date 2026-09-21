@@ -42,7 +42,7 @@ def test_templates_lists_mvp_template(client):
     template = next(t for t in body["templates"] if t["id"] == "sci-fi-space-commander-001")
     assert template["name"] == "Sci-Fi Space Commander"
     assert template["width"] > 0 and template["height"] > 0
-    assert template["prompt"].strip() != ""
+    assert "prompt" not in template  # Internal preset text stays on the server.
 
 
 def test_template_preview_404_when_no_preview_file(client):

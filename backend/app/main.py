@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.db import init_db
-from app.routers import generations, health, results, templates, uploads
+from app.routers import admin, experiences, generations, health, results, templates, uploads
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,6 +62,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(templates.router)
+    app.include_router(experiences.router)
+    app.include_router(admin.router)
     app.include_router(uploads.router)
     app.include_router(generations.router)
     app.include_router(results.router)

@@ -20,12 +20,7 @@ export function ProcessingStep({ job, upload }) {
             State: <strong>{state}</strong>
           </p>
           {job?.job_id && <p className="meta">job {job.job_id}</p>}
-          {job?.provider && (
-            <p className="meta">
-              provider {job.provider} · {job.model}
-            </p>
-          )}
-          <p className="hint">AI generation can take a while. This page polls the job state.</p>
+          <p className="hint">Your photo is processing. This page checks its progress.</p>
         </div>
       </div>
     </section>
@@ -43,12 +38,7 @@ export function ResultStep({ job, onReset }) {
       </div>
       <p className="meta">
         job {job.job_id} · template {job.template_id}
-        {job.provider && (
-          <>
-            {' '}
-            · provider {job.provider} · {job.model}
-          </>
-        )}
+        {' '}· {job.mode === 'BASIC' ? 'Basic' : 'Advanced'}
       </p>
       <div className="actions">
         <a className="primary" href={resultDownloadUrl(resultId)} download>

@@ -49,6 +49,8 @@ class TemplateDefinition:
     width: int
     height: int
     preview_filename: str | None = None
+    asset_filename: str | None = None
+    face_region: tuple[int, int, int, int] | None = None
 
     def build_prompt(self) -> str:
         """Full prompt sent to the provider: template rules + template brief."""
@@ -84,6 +86,8 @@ _FALLBACK_TEMPLATES: list[dict] = [
         ),
         "width": 1024,
         "height": 1024,
+        "asset_filename": "template.png",
+        "face_region": [300, 150, 424, 560],
     }
 ]
 
@@ -108,6 +112,8 @@ class TemplateRegistry:
                 width=int(raw.get("width", 1024)),
                 height=int(raw.get("height", 1024)),
                 preview_filename=raw.get("preview_filename"),
+                asset_filename=raw.get("asset_filename"),
+                face_region=tuple(raw["face_region"]) if raw.get("face_region") else None,
             )
 
         # Then overlay any JSON manifests found on disk (disk wins).
@@ -133,6 +139,8 @@ class TemplateRegistry:
                     width=int(data.get("width", 1024)),
                     height=int(data.get("height", 1024)),
                     preview_filename="preview.png" if preview.exists() else None,
+                    asset_filename=data.get("asset_filename"),
+                    face_region=tuple(data["face_region"]) if data.get("face_region") else None,
                 )
 
         return templates

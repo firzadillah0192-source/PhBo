@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
     app_name: str = "Photobooth AI"
     environment: str = "development"
+    # Empty means all admin endpoints are disabled (fail closed).
+    admin_token: str = ""
 
     # --- Database (PostgreSQL) -------------------------------------------
     database_url: str = Field(
@@ -55,9 +57,9 @@ class Settings(BaseSettings):
     # 9router is an OpenAI-compatible gateway. Base URL must be reachable from
     # inside the container: host.docker.internal is mapped via extra_hosts in
     # docker-compose.yml.
-    ninerouter_base_url: str = Field(default="http://host.docker.internal:20128/v1")
+    ninerouter_base_url: str = Field(default="https://9router.zafirz.my.id/v1")
     ninerouter_api_key: str = Field(default="")
-    ninerouter_model: str = Field(default="ag/nano-banana-pro")
+    ninerouter_model: str = Field(default="cx/gpt-image-2.5")
     ninerouter_timeout_seconds: float = 300.0
 
     # --- CORS -------------------------------------------------------------

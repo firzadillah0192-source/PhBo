@@ -64,9 +64,14 @@ export function getHealth() {
   return request('/health')
 }
 
-/** GET /api/templates -> {templates: [...], count} */
+/** GET /api/templates -> BASIC-only templates */
 export function getTemplates() {
   return request('/templates')
+}
+
+/** GET /api/experiences -> safe ADVANCED-only metadata */
+export function getExperiences() {
+  return request('/experiences')
 }
 
 /**
@@ -81,14 +86,16 @@ export function uploadPhoto(file) {
 }
 
 /**
- * POST /api/generations {upload_id, template_id}
- * -> 202 {job_id, state, upload_id, template_id, created_at}
+ * POST /api/generations uses template_id for BASIC and experience_id for ADVANCED.
  */
-export function createGeneration(uploadId, templateId) {
+export function createGeneration(uploadId, mode, templateId = null, experienceId = null) {
+  const body = { upload_id: uploadId, mode }
+  if (mode === 'BASIC') body.template_id = templateId
+  if (mode === 'ADVANCED') body.experience_id = experienceId
   return request('/generations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ upload_id: uploadId, template_id: templateId }),
+    body: JSON.stringify(body),
   })
 }
 

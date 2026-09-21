@@ -30,7 +30,7 @@ from conftest import make_jpeg
 def test_generation_rejects_unknown_upload(client):
     response = client.post(
         "/api/generations",
-        json={"upload_id": "doesnotexist", "template_id": "sci-fi-space-commander-001"},
+        json={"upload_id": "doesnotexist", "template_id": "sci-fi-space-commander-001", "mode": "BASIC"},
     )
     assert response.status_code == 404
     assert response.json()["detail"]["error_code"] == "UPLOAD_NOT_FOUND"
@@ -39,7 +39,7 @@ def test_generation_rejects_unknown_upload(client):
 def test_generation_rejects_unknown_template(client, uploaded_photo):
     response = client.post(
         "/api/generations",
-        json={"upload_id": uploaded_photo["upload_id"], "template_id": "no-such-template"},
+        json={"upload_id": uploaded_photo["upload_id"], "template_id": "no-such-template", "mode": "BASIC"},
     )
     assert response.status_code == 404
     assert response.json()["detail"]["error_code"] == "TEMPLATE_NOT_FOUND"
@@ -59,6 +59,7 @@ def test_generation_returns_202_queued_and_is_pollable(client, uploaded_photo, c
         json={
             "upload_id": uploaded_photo["upload_id"],
             "template_id": "sci-fi-space-commander-001",
+            "mode": "BASIC",
         },
     )
     assert response.status_code == 202, response.text
@@ -94,6 +95,7 @@ def test_generation_status_shape_has_all_contract_fields(client, uploaded_photo,
         json={
             "upload_id": uploaded_photo["upload_id"],
             "template_id": "sci-fi-space-commander-001",
+            "mode": "BASIC",
         },
     )
     job_id = response.json()["job_id"]
