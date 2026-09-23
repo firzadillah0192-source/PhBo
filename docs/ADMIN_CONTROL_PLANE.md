@@ -58,13 +58,11 @@ guarantee.
 
 ## Migration sequence
 
-Apply migrations forward-only in this order:
-
-```text
-001_admin_registry.sql
-002_usage_auth.sql
-003_control_plane.sql
-```
+The SQL migrations are applied manually and forward-only; there is no Alembic
+runner or migration-history table. API startup calls SQLAlchemy `create_all`
+and a small set of hard-coded compatibility alterations, but it does not
+discover or execute these SQL files. See [MIGRATIONS.md](MIGRATIONS.md) for the
+complete inventory and production procedure.
 
 The third migration preserves existing accounts, jobs, registry rows, uploads,
 and runtime assets. It creates identities, ledger, subscription, event, audit,

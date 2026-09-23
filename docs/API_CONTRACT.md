@@ -76,13 +76,16 @@ The PostgreSQL mode column is added on startup with a default of `ADVANCED`;
 old rows keep their original meaning. The worker is optional in Compose via
 the `generation` profile; enabling it is required for jobs to leave `QUEUED`.
 
-Apply the Basic marketing-preview migration after the existing registry and
-publication migrations: `001_admin_registry.sql`, `002_usage_auth.sql`,
+Apply schema migrations manually and forward-only; there is no filename-driven
+migration runner. Apply `001_admin_registry.sql`, `002_usage_auth.sql`,
 `003_control_plane.sql`, `004_experience_publication.sql`,
-`005_preview_factory.sql`, `006_basic_marketing_preview.sql`, then
-`007_publish_initial_experience.sql`. The final migration only publishes the
-untouched `mini-me` starter when the public catalog is otherwise empty; it
-does not override an existing Admin publication decision.
+`005_preview_factory.sql`, `006_basic_marketing_preview.sql`,
+`007_publish_initial_experience.sql`, `008_provider_usage_operations.sql`,
+then `009_result_claims.sql`. The numbering is deliberate: provider usage
+already owns migration 008. Migration 007 only publishes the untouched
+`mini-me` starter when the public catalog is otherwise empty; it does not
+override an existing Admin publication decision. See [MIGRATIONS.md](MIGRATIONS.md)
+for application behavior and the exact order.
 
 ## Local verification
 

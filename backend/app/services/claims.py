@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import secrets
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -35,14 +36,64 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def public_claim_url(request, token: str) -> str:
+def public_claim_origin(request) -> str:
     settings = get_settings()
     base = settings.result_claim_public_base_url.strip().rstrip("/")
+    if base:
+        parsed = urlsplit(base)
+        hostname = (parsed.hostname or "").lower()
+        try:
+            port = parsed.port
+        except ValueError:
+            port = -1
+        invalid = (
+            parsed.scheme.lower() != "https"
+            or not hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in ("", "/")
+            or parsed.query
+            or parsed.fragment
+            or port not in (None, 443)
+            or hostname in {"localhost", "host.docker.internal"}
+            or hostname.endswith((".localhost", ".local", ".internal"))
+        )
+        try:
+            invalid = invalid or not ipaddress.ip_address(hostname).is_global
+        except ValueError:
+            invalid = invalid or "." not in hostname
+        if settings.environment.lower() in {"production", "prod"}:
+            invalid = invalid or hostname != "phobo.zafirz.my.id"
+        if invalid:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error_code": "CLAIM_PUBLIC_URL_MISCONFIGURED",
+                    "message": "Secure photo-link delivery is temporarily unavailable.",
+                },
+            )
+        rendered_host = f"[{hostname}]" if ":" in hostname else hostname
+        return f"https://{rendered_host}"
+
+    if settings.environment.lower() in {"production", "prod"}:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error_code": "CLAIM_PUBLIC_URL_MISCONFIGURED",
+                "message": "Secure photo-link delivery is temporarily unavailable.",
+            },
+        )
+
     if not base:
         proto = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
         host = request.headers.get("host", request.url.netloc)
         base = f"{proto}://{host}"
-    return f"{base}/r/{quote(token, safe='')}"
+    return base.rstrip("/")
+
+
+def public_claim_url(request, token: str, *, origin: str | None = None) -> str:
+    safe_origin = origin or public_claim_origin(request)
+    return f"{safe_origin.rstrip('/')}/r/{quote(token, safe='')}"
 
 
 def _unavailable(message: str = "This photo is no longer available.") -> HTTPException:

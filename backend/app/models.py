@@ -198,7 +198,7 @@ class ResultClaim(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     result_id: Mapped[str] = mapped_column(ForeignKey("results.id"), index=True)
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     first_accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

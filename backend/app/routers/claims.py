@@ -15,6 +15,7 @@ from app.services.claims import (
     create_or_reuse_claim,
     get_claim_by_token,
     load_owned_result,
+    public_claim_origin,
     public_claim_url,
     register_download,
     result_bytes,
@@ -51,6 +52,7 @@ def create_result_claim(
     db: Session = Depends(get_db),
 ) -> ResultClaimResponse:
     result = load_owned_result(db, result_id, identity)
+    origin = public_claim_origin(request)
     kiosk_session_id = ensure_kiosk_session(request, response) if payload and payload.kiosk else None
     claim, token = create_or_reuse_claim(
         db,
@@ -60,7 +62,7 @@ def create_result_claim(
         refresh=payload.refresh if payload else False,
         kiosk_session_id=kiosk_session_id,
     )
-    url = public_claim_url(request, token)
+    url = public_claim_url(request, token, origin=origin)
     return ResultClaimResponse(claim_url=url, qr_payload=url, expires_at=claim.expires_at)
 
 

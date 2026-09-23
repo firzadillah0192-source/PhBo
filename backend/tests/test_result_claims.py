@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+import pytest
 
 from app.main import app
+from app.main import _safe_log_path
 from app.models import GenerationJob, JobState, Result, ResultClaim, Upload, new_id
 from app.services import storage
 from app.services.claims import token_hash
+from app.services import claims as claims_service
 from conftest import make_png
 
 
@@ -92,11 +96,13 @@ def test_public_claim_image_download_and_isolation(client, uploaded_photo, db_se
     assert public["download_url"] == f"/api/public/results/{token}/download"
     assert "result_id" not in public
     assert client.get(public["image_url"]).content == data
+    assert client.get(public["image_url"]).headers["cache-control"] == "private, no-store"
 
     # The existing authenticated web download remains usable alongside QR delivery.
     ordinary_download = client.get(f"/api/results/{result_id}/download")
     assert ordinary_download.status_code == 200
     assert ordinary_download.content == data
+    assert ordinary_download.headers["cache-control"] == "private, no-store"
 
     downloaded = client.get(public["download_url"])
     assert downloaded.status_code == 200
@@ -198,3 +204,57 @@ def test_explicit_refresh_revokes_the_previous_claim(client, uploaded_photo, db_
     assert second_token != first_token
     assert client.get(f"/api/public/results/{first_token}").status_code == 404
     assert client.get(f"/api/public/results/{second_token}").status_code == 200
+
+
+def test_production_claim_url_is_canonical(client, uploaded_photo, db_session, monkeypatch):
+    result_id, _ = _completed_result(db_session, uploaded_photo)
+    monkeypatch.setattr(
+        claims_service,
+        "get_settings",
+        lambda: SimpleNamespace(
+            environment="production",
+            result_claim_public_base_url="https://phobo.zafirz.my.id///",
+            result_claim_ttl_hours=24,
+        ),
+    )
+
+    response = client.post(f"/api/results/{result_id}/claim", json={})
+    assert response.status_code == 200, response.text
+    url = response.json()["claim_url"]
+    assert url.startswith("https://phobo.zafirz.my.id/r/")
+    assert "//r/" not in url
+    assert result_id not in url
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "",
+        "http://phobo.zafirz.my.id",
+        "https://localhost",
+        "https://photobooth-api:8000",
+        "https://phobo.zafirz.my.id/customer",
+    ],
+)
+def test_production_claim_url_rejects_unsafe_configuration_without_creating_claim(
+    client, uploaded_photo, db_session, monkeypatch, base_url
+):
+    result_id, _ = _completed_result(db_session, uploaded_photo)
+    monkeypatch.setattr(
+        claims_service,
+        "get_settings",
+        lambda: SimpleNamespace(
+            environment="production",
+            result_claim_public_base_url=base_url,
+            result_claim_ttl_hours=24,
+        ),
+    )
+
+    response = client.post(f"/api/results/{result_id}/claim", json={})
+    assert response.status_code == 503
+    assert db_session.query(ResultClaim).filter(ResultClaim.result_id == result_id).count() == 0
+
+
+def test_claim_tokens_are_redacted_from_application_error_paths():
+    assert _safe_log_path("/api/public/results/opaque-token/download") == "/api/public/results/[REDACTED]"
+    assert _safe_log_path("/r/opaque-token") == "/r/[REDACTED]"

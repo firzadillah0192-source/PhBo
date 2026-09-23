@@ -56,7 +56,7 @@ def get_result(result_id: str, identity: Identity = Depends(get_identity), db: S
 @router.get("/api/results/{result_id}/image", summary="Inline result image")
 def result_image(result_id: str, identity: Identity = Depends(get_identity), db: Session = Depends(get_db)) -> Response:
     result = _load_result(result_id, db, identity)
-    return Response(content=_read_or_404(result), media_type=result.content_type, headers={"Cache-Control": "private, max-age=600"})
+    return Response(content=_read_or_404(result), media_type=result.content_type, headers={"Cache-Control": "private, no-store"})
 
 
 @router.get("/api/results/{result_id}/download", summary="Download result image")
@@ -66,5 +66,8 @@ def result_download(result_id: str, identity: Identity = Depends(get_identity), 
     return Response(
         content=_read_or_404(result),
         media_type=result.content_type,
-        headers={"Content-Disposition": f'attachment; filename="photobooth-{result.template_id}-{result.id}.{ext}"'},
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": f'attachment; filename="photobooth-{result.template_id}-{result.id}.{ext}"',
+        },
     )

@@ -23,6 +23,14 @@ logging.basicConfig(
 logger = logging.getLogger("photobooth.api")
 
 
+def _safe_log_path(path: str) -> str:
+    if path.startswith("/api/public/results/"):
+        return "/api/public/results/[REDACTED]"
+    if path.startswith("/r/"):
+        return "/r/[REDACTED]"
+    return path
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     settings = get_settings()
@@ -76,12 +84,12 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         # Never hide an error behind a fallback success response.
-        logger.exception("unhandled error on %s %s", request.method, request.url.path)
+        logger.exception("unhandled error on %s %s", request.method, _safe_log_path(request.url.path))
         return JSONResponse(
             status_code=500,
             content={
                 "error_code": "INTERNAL_ERROR",
-                "message": f"{type(exc).__name__}: {exc}",
+                "message": "The request could not be completed. Please try again.",
             },
         )
 
