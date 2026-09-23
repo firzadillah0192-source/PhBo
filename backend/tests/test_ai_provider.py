@@ -29,6 +29,7 @@ from app.ai.base import (
 from app.ai.factory import NullProvider, build_provider
 from app.ai.ninerouter import NineRouterProvider
 from app.core.config import get_settings
+from app.experiences import get_experience
 from app.templates_registry import get_registry
 from conftest import make_jpeg, make_png
 
@@ -242,3 +243,102 @@ def test_9router_non_json_200_raises(monkeypatch):
     template = get_registry().get("sci-fi-space-commander-001")
     with pytest.raises(AIProviderError, match="non-JSON"):
         _provider().generate(make_jpeg(), template, GenerationOptions())
+
+
+def test_mini_me_uses_single_image_preset_and_decodes_png(monkeypatch):
+    fake_png = make_png(64, 64)
+    captured = {}
+
+    def fake_post(url, *, json, headers, timeout):
+        captured["json"] = json
+        return httpx.Response(200, json={"data": [{"b64_json": base64.b64encode(fake_png).decode("ascii")}]}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    experience = get_experience("mini-me")
+    result = _provider(model="ignored-by-preset").generate(
+        make_jpeg(), None, GenerationOptions(extra={"experience": experience})
+    )
+    assert result.image_bytes.startswith(b"\x89PNG")
+    assert result.content_type == "image/png"
+    assert captured["json"]["model"] == "cx/gpt-image-2.5"
+    assert captured["json"]["prompt"] == experience.prompt
+    assert "image" in captured["json"]
+    assert "images" not in captured["json"]
+    assert "template" not in captured["json"]
+    assert captured["json"]["image"].startswith("data:image/jpeg;base64,")
+
+
+def test_9router_prompt_only_omits_reference_image(monkeypatch):
+    fake_png = make_png(64, 64)
+    captured = {}
+
+    def fake_post(url, *, json, headers, timeout):
+        captured["json"] = json
+        return httpx.Response(200, json={"data": [{"b64_json": base64.b64encode(fake_png).decode("ascii")}]}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    experience = get_experience("mini-me")
+    result = _provider().generate(
+        None,
+        None,
+        GenerationOptions(extra={"experience": experience, "prompt_override": "An original fictional portrait"}),
+    )
+    assert result.image_bytes.startswith(b"\x89PNG")
+    assert captured["json"]["prompt"] == "An original fictional portrait"
+    assert "image" not in captured["json"]
+
+
+def test_9router_parses_sse_data_b64_json(monkeypatch):
+    fake_png = make_png(48, 48)
+    event = {"data": [{"b64_json": base64.b64encode(fake_png).decode("ascii") }]}
+    sse = "data: " + __import__("json").dumps(event) + "\n\n data: [DONE]\n"
+
+    def fake_post(url, *, json, headers, timeout):
+        return httpx.Response(200, content=sse.encode(), headers={"content-type": "text/event-stream"}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    experience = get_experience("mini-me")
+    result = _provider().generate(make_jpeg(), None, GenerationOptions(extra={"experience": experience}))
+    assert result.image_bytes.startswith(b"\x89PNG")
+    assert result.content_type == "image/png"
+
+
+def test_9router_captures_explicit_operational_metadata_only(monkeypatch):
+    fake_png = make_png(64, 64)
+
+    def fake_post(url, *, json, headers, timeout):
+        return httpx.Response(
+            200,
+            json={
+                "id": "body-request-id",
+                "model": "vendor/image-v3",
+                "provider": "vendor-a",
+                "account": {"id": "acct-real", "label": "oauth-a"},
+                "routing_strategy": "failover",
+                "usage": {
+                    "input_text_tokens": 3,
+                    "input_image_tokens": 4,
+                    "output_image_tokens": 5,
+                    "total_tokens": 12,
+                    "api_key": "must-not-persist",
+                },
+                "data": [{"b64_json": base64.b64encode(fake_png).decode("ascii")}],
+            },
+            headers={"x-request-id": "header-request-id"},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    experience = get_experience("mini-me")
+    result = _provider().generate(
+        make_jpeg(), None, GenerationOptions(extra={"experience": experience})
+    )
+    assert result.model == "vendor/image-v3"
+    assert result.raw_meta["provider_request_id"] == "body-request-id"
+    assert result.raw_meta["upstream_provider"] == "vendor-a"
+    assert result.raw_meta["provider_account_id"] == "acct-real"
+    assert result.raw_meta["provider_account_label"] == "oauth-a"
+    assert result.raw_meta["provider_strategy_hint"] == "failover"
+    assert result.raw_meta["usage"]["total_tokens"] == 12
+    assert "api_key" not in result.raw_meta["usage"]
+

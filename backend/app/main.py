@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.db import init_db
-from app.routers import generations, health, results, templates, uploads
+from app.routers import account, admin, admin_operations, admin_usage, claims, experiences, generations, health, results, templates, uploads
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,15 +56,22 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
         allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
 
     app.include_router(health.router)
+    app.include_router(account.router)
+    app.include_router(admin.auth_router)
     app.include_router(templates.router)
+    app.include_router(experiences.router)
+    app.include_router(admin.router)
+    app.include_router(admin_operations.router)
+    app.include_router(admin_usage.router)
     app.include_router(uploads.router)
     app.include_router(generations.router)
     app.include_router(results.router)
+    app.include_router(claims.router)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):

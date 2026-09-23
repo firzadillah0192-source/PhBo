@@ -10,17 +10,24 @@ from __future__ import annotations
 import io
 import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 
 from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.ai.base import AIProviderError, GenerationOptions
 from app.ai.factory import get_provider
+from app.catalog import ExperienceNotFound, experience_definition, get_template_row, template_definition
 from app.core.config import get_settings
 from app.db import SessionLocal
-from app.models import ErrorCode, GenerationJob, JobState, Result
+from app.generation.basic import BasicGenerationError, get_basic_engine
+from app.generation.basic.engine import make_session_output
+from app.models import ErrorCode, GenerationJob, GenerationMode, JobState, Result
+from app.services.provider_runs import complete_provider_run, fail_provider_run, start_provider_run
 from app.services import storage
-from app.templates_registry import TemplateNotFound, get_registry
+from app.services.control_plane import record_generation_event
+from app.services.quota import settle_for_job
+from app.templates_registry import TemplateNotFound
 
 
 def _now() -> datetime:
@@ -41,22 +48,27 @@ def process_job(job_id: str, *, db: Session | None = None) -> str:
             print(f"[worker] job {job_id} not found in database", flush=True)
             return JobState.FAILED
 
-        if job.state == JobState.COMPLETED:
+        if job.state in (JobState.COMPLETED, JobState.FAILED):
             return job.state
 
         job.state = JobState.PROCESSING
         job.started_at = _now()
         job.error_code = None
         job.error_message = None
+        record_generation_event(session, job.id, "processing_started", "Worker started processing")
         session.commit()
 
         try:
             _run_generation(session, job)
         except TemplateNotFound as exc:
             _fail(session, job, ErrorCode.TEMPLATE_NOT_FOUND, str(exc))
+        except ExperienceNotFound as exc:
+            _fail(session, job, ErrorCode.EXPERIENCE_NOT_FOUND, str(exc))
         except AIProviderError as exc:
             # Surfaces AI_PROVIDER_NOT_CONNECTED / AI_PROVIDER_ERROR / AI_EMPTY_RESULT
             _fail(session, job, exc.code, exc.message, detail=exc.detail)
+        except BasicGenerationError as exc:
+            _fail(session, job, exc.code, exc.message)
         except FileNotFoundError as exc:
             _fail(session, job, ErrorCode.UPLOAD_NOT_FOUND, f"Upload file missing: {exc}")
         except Exception as exc:  # noqa: BLE001 - must never leave a job stuck
@@ -85,65 +97,146 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
     if upload is None:
         raise FileNotFoundError(f"upload row missing for job {job.id}")
 
-    template = get_registry().get(job.template_id)
+    template_row = get_template_row(session, job.template_id) if job.mode == GenerationMode.BASIC else None
+    if job.mode == GenerationMode.BASIC:
+        if template_row is None:
+            raise TemplateNotFound(job.template_id)
+        template = template_definition(session, job.template_id)
+    else:
+        template = None
+    experience = (
+        experience_definition(session, job.experience_id)
+        if job.mode == GenerationMode.ADVANCED and job.experience_id
+        else None
+    )
 
     user_image = storage.read_file(upload.storage_path)
 
-    provider = get_provider()
-
-    # Fail fast and honestly before spending provider time.
-    if not provider.is_available():
-        from app.ai.base import ProviderNotConnectedError
-
-        raise ProviderNotConnectedError(
-            "AI_PROVIDER_NOT_CONNECTED: provider "
-            f"'{provider.name}' is configured but has no usable credentials. "
-            "Set NINEROUTER_API_KEY (and NINEROUTER_BASE_URL) in the environment."
+    if job.mode == GenerationMode.BASIC:
+        settings.ensure_runtime_dirs()
+        template_path = Path(template_row.image_path)
+        if not template_path.is_file():
+            raise BasicGenerationError(
+                f"BASIC_TEMPLATE_METADATA_MISSING: template asset missing for '{job.template_id}': {template_path}",
+                code=ErrorCode.BASIC_TEMPLATE_METADATA_MISSING,
+            )
+        output_path = make_session_output(settings.tmp_dir, job.id)
+        basic_result = get_basic_engine().generate(
+            user_image_path=upload.storage_path,
+            template_id=template.id if template else "",
+            output_path=output_path,
+            options={"template": template, "template_path": template_path},
         )
+        if not output_path.exists() or output_path.stat().st_size == 0:
+            raise BasicGenerationError(
+                "BASIC_ENGINE_ERROR: engine returned without a real PNG output"
+            )
+        image_bytes = output_path.read_bytes()
+        content_type = "image/png"
+        job.provider = "local"
+        job.model = basic_result.engine_name
+    elif job.mode == GenerationMode.ADVANCED:
+        provider = get_provider()
+        if experience is None:
+            raise ValueError("ADVANCED experience preset is missing")
 
-    job.provider = provider.name
-    job.model = getattr(provider, "_model", None)
-    session.commit()
+        job.provider = provider.name
+        job.model = experience.model
+        provider_run = start_provider_run(
+            session,
+            job=job,
+            provider_name=provider.name,
+            provider_model=experience.model,
+        )
+        session.commit()
+        try:
+            if not provider.is_available():
+                from app.ai.base import ProviderNotConnectedError
 
-    ai_result = provider.generate(
-        user_image,
-        template,
-        GenerationOptions(width=template.width, height=template.height),
-    )
+                raise ProviderNotConnectedError(
+                    "AI_PROVIDER_NOT_CONNECTED: provider "
+                    f"'{provider.name}' is configured but has no usable credentials. "
+                    "Set NINEROUTER_API_KEY (and NINEROUTER_BASE_URL) in the environment.",
+                    operational_meta={"upstream_status": "NOT_CONNECTED", "retry_count": 0},
+                )
+            ai_result = provider.generate(
+                user_image,
+                None,
+                GenerationOptions(
+                    width=1024,
+                    height=1024,
+                    extra={"experience": experience},
+                ),
+            )
+        except Exception as exc:  # provider boundary: persist every terminal failure
+            fail_provider_run(session, provider_run, exc)
+            record_generation_event(
+                session,
+                job.id,
+                "provider_run_failed",
+                str(getattr(exc, "code", ErrorCode.INTERNAL_ERROR)),
+                metadata={"provider_run_id": provider_run.id, "provider": provider_run.provider_name},
+            )
+            session.commit()
+            raise
 
-    if not ai_result.image_bytes:
+        complete_provider_run(session, provider_run, ai_result)
+        record_generation_event(
+            session,
+            job.id,
+            "provider_run_succeeded",
+            "Provider execution metadata recorded",
+            metadata={
+                "provider_run_id": provider_run.id,
+                "provider": provider_run.provider_name,
+                "usage_available": provider_run.provider_usage_raw_json is not None,
+                "account_available": bool(
+                    provider_run.provider_account_id or provider_run.provider_account_label
+                ),
+            },
+        )
+        image_bytes = ai_result.image_bytes
+        content_type = ai_result.content_type
+        job.provider = ai_result.provider
+        job.model = ai_result.model
+    else:
+        raise ValueError(f"Unsupported generation mode: {job.mode}")
+
+    if not image_bytes:
         from app.ai.base import ProviderEmptyResultError
 
-        raise ProviderEmptyResultError("AI_EMPTY_RESULT: provider returned zero bytes.")
+        raise ProviderEmptyResultError("AI_EMPTY_RESULT: generation engine returned zero bytes.")
 
     # Verify the provider actually returned a decodable image before we claim
     # success. A non-image blob must never become a COMPLETED job.
-    with Image.open(io.BytesIO(ai_result.image_bytes)) as out_img:
+    with Image.open(io.BytesIO(image_bytes)) as out_img:
         out_img.load()
         out_w, out_h = out_img.size
 
     result_id = _new_id()
     result_path = storage.save_result(
         result_id=result_id,
-        data=ai_result.image_bytes,
-        content_type=ai_result.content_type,
+        data=image_bytes,
+        content_type=content_type,
     )
 
     result = Result(
         id=result_id,
         job_id=job.id,
-        template_id=template.id,
+        template_id=template.id if template else "",
         storage_path=str(result_path),
-        content_type=ai_result.content_type,
-        size_bytes=len(ai_result.image_bytes),
+        content_type=content_type,
+        size_bytes=len(image_bytes),
         width=out_w,
         height=out_h,
-        sha256=_sha(ai_result.image_bytes),
-        provider=ai_result.provider,
-        model=ai_result.model,
+        sha256=_sha(image_bytes),
+        provider=job.provider,
+        model=job.model,
     )
     session.add(result)
 
+    settle_for_job(session, job.id, successful=True)
+    record_generation_event(session, job.id, "result_stored", "Generation result stored")
     job.state = JobState.COMPLETED
     job.finished_at = _now()
     job.error_code = None
@@ -152,8 +245,8 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
 
     print(
         f"[worker] job {job.id} COMPLETED result={result_id} "
-        f"{out_w}x{out_h} {len(ai_result.image_bytes)}B "
-        f"provider={ai_result.provider} model={ai_result.model} "
+        f"{out_w}x{out_h} {len(image_bytes)}B "
+        f"provider={job.provider} model={job.model} "
         f"runtime_dir={settings.runtime_dir}",
         flush=True,
     )
@@ -168,6 +261,8 @@ def _fail(
     detail: str | None = None,
 ) -> None:
     job.state = JobState.FAILED
+    settle_for_job(session, job.id, successful=False)
+    record_generation_event(session, job.id, "job_failed", code)
     job.error_code = code
     job.error_message = message if not detail else f"{message} | {detail[:800]}"
     job.finished_at = _now()

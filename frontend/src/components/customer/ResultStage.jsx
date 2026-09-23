@@ -1,0 +1,176 @@
+import React, { useEffect, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
+import { createResultClaim, resultDownloadUrl, resultImageUrl, uploadPreviewUrl } from '../../api.js'
+
+function claimTokenFromUrl(claimUrl) {
+  try {
+    const path = new URL(claimUrl, window.location.origin).pathname
+    return path.startsWith('/r/') ? decodeURIComponent(path.slice(3)) : null
+  } catch {
+    return null
+  }
+}
+
+export default function ResultStage({ resultId, uploadId, onReset, onTryLook, kiosk = false, resetSeconds = 90 }) {
+  const [revealed, setRevealed] = useState(false)
+  const [comparing, setComparing] = useState(false)
+  const [split, setSplit] = useState(50)
+  const [claim, setClaim] = useState(null)
+  const [claimBusy, setClaimBusy] = useState(false)
+  const [claimError, setClaimError] = useState('')
+  const [shareMessage, setShareMessage] = useState('')
+  const [remaining, setRemaining] = useState(resetSeconds)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setRevealed(true), 70)
+    return () => window.clearTimeout(timer)
+  }, [resultId])
+
+  useEffect(() => {
+    if (!kiosk) return undefined
+    const key = `photobooth:result-claim:${resultId}`
+    let alive = true
+    setClaimBusy(true)
+    setClaimError('')
+    const reuseToken = window.sessionStorage.getItem(key)
+    createResultClaim(resultId, reuseToken, false, true).then((next) => {
+      if (!alive) return
+      setClaim(next)
+      const token = claimTokenFromUrl(next.claim_url)
+      if (token) window.sessionStorage.setItem(key, token)
+    }).catch((error) => {
+      if (alive) setClaimError(error?.status === 409 ? 'A valid QR link already exists for this photo.' : 'We could not prepare the QR link.')
+    }).finally(() => {
+      if (alive) setClaimBusy(false)
+    })
+    return () => { alive = false }
+  }, [kiosk, resultId])
+
+  useEffect(() => {
+    if (!kiosk) return undefined
+    setRemaining(resetSeconds)
+    const interval = window.setInterval(() => {
+      setRemaining((value) => {
+        if (value <= 1) {
+          window.clearInterval(interval)
+          onReset()
+          return 0
+        }
+        return value - 1
+      })
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [kiosk, onReset, resetSeconds, resultId])
+
+  const shareResult = async () => {
+    setShareMessage('')
+    const key = `photobooth:result-claim:${resultId}`
+    const reuseToken = window.sessionStorage.getItem(key)
+    let next
+    try {
+      next = await createResultClaim(resultId, reuseToken)
+    } catch (error) {
+      if (error?.errorCode === 'CLAIM_REFRESH_REQUIRED') {
+        try {
+          next = await createResultClaim(resultId, null, true)
+        } catch {
+          setShareMessage('We could not prepare a new share link. Please try again.')
+          return
+        }
+      } else {
+        setShareMessage(error?.status === 409 ? 'A secure share link already exists. Reload this result to reuse it.' : 'We could not prepare a share link.')
+        return
+      }
+    }
+    const token = claimTokenFromUrl(next.claim_url)
+    if (token) window.sessionStorage.setItem(key, token)
+    setClaim(next)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Photobooth AI photo', url: next.claim_url })
+        return
+      } catch (error) {
+        if (error?.name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(next.claim_url)
+      setShareMessage('Secure share link copied.')
+    } catch {
+      setShareMessage('Use your browser share menu to share this photo.')
+    }
+  }
+
+  const refreshClaim = () => {
+    setClaimBusy(true)
+    setClaimError('')
+    createResultClaim(resultId, null, true, true).then((next) => {
+      setClaim(next)
+      const token = claimTokenFromUrl(next.claim_url)
+      if (token) window.sessionStorage.setItem(`photobooth:result-claim:${resultId}`, token)
+    }).catch(() => setClaimError('We could not create a new QR link. Please try again.')).finally(() => setClaimBusy(false))
+  }
+
+  const result = claim?.image_url || resultImageUrl(resultId)
+  const original = uploadId ? uploadPreviewUrl(uploadId) : null
+  const expires = claim?.expires_at ? new Date(claim.expires_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : null
+
+  if (kiosk) {
+    return (
+      <section className={`kiosk-result-stage customer-stage-enter ${revealed ? 'is-revealed' : ''}`}>
+        <div className="kiosk-result-heading">
+          <p className="customer-kicker">Kiosk delivery</p>
+          <h1>Your photo<br /><em>is ready.</em></h1>
+          <p>Scan to save this photo to your phone.</p>
+        </div>
+        <figure className="kiosk-result-photo">
+          <img src={result} alt="Your finished Photobooth AI portrait" />
+        </figure>
+        <div className="kiosk-claim-panel">
+          {claim ? <QRCodeSVG value={claim.qr_payload} size={238} level="M" includeMargin bgColor="#ffffff" fgColor="#111216" title="Scan to save your Photobooth AI photo" /> : <div className="kiosk-qr-placeholder">{claimBusy ? 'Preparing secure QR...' : 'QR unavailable'}</div>}
+          <strong>Scan to save</strong>
+          <small>{expires ? `Available until ${expires}.` : 'Available for 24 hours.'}</small>
+          {claimError && <p className="kiosk-claim-error">{claimError}</p>}
+          {claimError && <button className="customer-inline-button" disabled={claimBusy} onClick={refreshClaim}>{claimBusy ? 'Creating...' : 'Create a new QR link'}</button>}
+        </div>
+        <div className="kiosk-result-actions">
+          <button className="customer-solid-button" onClick={onReset}>Create another <b>-&gt;</b></button>
+          {remaining <= 15 && <small>Returning to start in {remaining}s.</small>}
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className={`result-stage customer-stage-enter ${revealed ? 'is-revealed' : ''}`}>
+      <header>
+        <div><p className="customer-kicker">Celestial master print</p><h1>Another you.</h1></div>
+        {original && <button className={`compare-toggle ${comparing ? 'is-active' : ''}`} onClick={() => setComparing((value) => !value)}>{comparing ? 'Close comparison' : 'Compare before / after'}</button>}
+      </header>
+      <figure className={`result-frame ${comparing ? 'is-comparing' : ''}`}>
+        <img src={result} alt="Your finished Photobooth AI portrait" />
+        {comparing && original && (
+          <>
+            <div className="compare-before" style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}>
+              <img src={original} alt="Your original portrait" />
+              <span>Before</span>
+            </div>
+            <div className="compare-divider" style={{ left: `${split}%` }}><i>&lt;-&gt;</i></div>
+            <span className="compare-after">After</span>
+            <input aria-label="Before and after comparison" type="range" min="0" max="100" value={split} onChange={(event) => setSplit(Number(event.target.value))} />
+          </>
+        )}
+        <div className="result-light" aria-hidden="true" />
+      </figure>
+      <footer>
+        <div>
+          <button className="customer-inline-button" onClick={onReset}>Create another</button>
+          <button className="customer-inline-button" onClick={onTryLook}>Try another look</button>
+          <button className="customer-inline-button" onClick={shareResult}>Share</button>
+          {shareMessage && <small className="result-share-message" role="status">{shareMessage}</small>}
+        </div>
+        <a className="customer-solid-button" href={resultDownloadUrl(resultId)} download>Download portrait <b>v</b></a>
+      </footer>
+    </section>
+  )
+}

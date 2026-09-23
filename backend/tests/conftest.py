@@ -34,6 +34,7 @@ os.environ["RUNTIME_DIR"] = str(_TMP_ROOT / "runtime")
 os.environ["TEMPLATES_DIR"] = str(_TMP_ROOT / "templates")
 os.environ["AI_PROVIDER"] = "none"
 os.environ["NINEROUTER_API_KEY"] = ""
+os.environ["ADMIN_TOKEN"] = "test-admin-token"
 
 import pytest  # noqa: E402
 from PIL import Image  # noqa: E402
@@ -41,6 +42,7 @@ from PIL import Image  # noqa: E402
 from app.ai.base import AIProvider, AIResult, GenerationOptions  # noqa: E402
 from app.db import SessionLocal, init_db  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
+from app.models import ExperienceStatus, ManagedExperience  # noqa: E402
 
 
 def make_jpeg(width: int = 640, height: int = 480, color=(200, 160, 130)) -> bytes:
@@ -76,16 +78,19 @@ class StubProvider(AIProvider):
 
     def generate(
         self,
-        user_image: bytes,
+        user_image: bytes | None,
         template,
         options: GenerationOptions,
     ) -> AIResult:
         # Record what the real code handed us, so tests can assert on it.
+        experience = options.extra.get("experience")
+        prompt = experience.prompt if experience else template.build_prompt()
         self.calls.append(
             {
-                "user_image_bytes": len(user_image),
-                "template_id": template.id,
-                "prompt": template.build_prompt(),
+                "user_image_bytes": len(user_image or b""),
+                "template_id": template.id if template else None,
+                "experience_id": experience.id if experience else None,
+                "prompt": prompt,
                 "width": options.width,
                 "height": options.height,
             }
@@ -96,7 +101,7 @@ class StubProvider(AIProvider):
             content_type="image/png",
             provider=self.name,
             model="stub-model",
-            prompt_used=template.build_prompt(),
+            prompt_used=prompt,
             raw_meta={"stub": True},
         )
 
@@ -109,6 +114,12 @@ def anyio_backend() -> str:
 @pytest.fixture(scope="session", autouse=True)
 def _create_schema():
     init_db()
+    # Explicit fixture approval keeps legacy generation tests focused on the
+    # worker path; production seeding never auto-publishes experiences.
+    with SessionLocal() as session:
+        mini_me = session.get(ManagedExperience, "mini-me")
+        mini_me.status = ExperienceStatus.PUBLISHED
+        session.commit()
     yield
 
 

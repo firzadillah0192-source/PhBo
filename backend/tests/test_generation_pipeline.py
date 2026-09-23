@@ -15,11 +15,12 @@ Two paths are asserted, deliberately kept apart:
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import pytest
 from PIL import Image
 
-from app.models import ErrorCode, GenerationJob, JobState, Result
+from app.models import ErrorCode, GenerationJob, JobState, Result, Upload
 from app.services.generation import process_job
 from conftest import make_jpeg
 
@@ -30,7 +31,7 @@ from conftest import make_jpeg
 def test_generation_rejects_unknown_upload(client):
     response = client.post(
         "/api/generations",
-        json={"upload_id": "doesnotexist", "template_id": "sci-fi-space-commander-001"},
+        json={"upload_id": "doesnotexist", "template_id": "sci-fi-space-commander-001", "mode": "BASIC"},
     )
     assert response.status_code == 404
     assert response.json()["detail"]["error_code"] == "UPLOAD_NOT_FOUND"
@@ -39,10 +40,29 @@ def test_generation_rejects_unknown_upload(client):
 def test_generation_rejects_unknown_template(client, uploaded_photo):
     response = client.post(
         "/api/generations",
-        json={"upload_id": uploaded_photo["upload_id"], "template_id": "no-such-template"},
+        json={"upload_id": uploaded_photo["upload_id"], "template_id": "no-such-template", "mode": "BASIC"},
     )
     assert response.status_code == 404
     assert response.json()["detail"]["error_code"] == "TEMPLATE_NOT_FOUND"
+
+
+def test_generation_rejects_upload_when_file_is_missing(client, uploaded_photo, captured_queue, db_session):
+    upload = db_session.get(Upload, uploaded_photo["upload_id"])
+    assert upload is not None
+    Path(upload.storage_path).unlink()
+
+    response = client.post(
+        "/api/generations",
+        json={
+            "upload_id": uploaded_photo["upload_id"],
+            "template_id": "sci-fi-space-commander-001",
+            "mode": "BASIC",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["error_code"] == "UPLOAD_NOT_FOUND"
+    assert captured_queue == []
 
 
 def test_generation_rejects_missing_fields(client):
@@ -59,6 +79,7 @@ def test_generation_returns_202_queued_and_is_pollable(client, uploaded_photo, c
         json={
             "upload_id": uploaded_photo["upload_id"],
             "template_id": "sci-fi-space-commander-001",
+            "mode": "BASIC",
         },
     )
     assert response.status_code == 202, response.text
@@ -94,6 +115,7 @@ def test_generation_status_shape_has_all_contract_fields(client, uploaded_photo,
         json={
             "upload_id": uploaded_photo["upload_id"],
             "template_id": "sci-fi-space-commander-001",
+            "mode": "BASIC",
         },
     )
     job_id = response.json()["job_id"]

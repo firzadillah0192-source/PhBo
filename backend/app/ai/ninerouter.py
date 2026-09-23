@@ -10,11 +10,14 @@ verified empirically against the live service (see docs/AI_PROVIDER.md):
     {
       "model": "<provider-prefixed model id>",
       "prompt": "<template-dominant prompt>",
-      "image": "data:image/jpeg;base64,<user photo>",
       "size": "<W>x<H>",
       "n": 1,
       "response_format": "b64_json"
     }
+
+Image input is optional: when it is absent, 9router performs prompt-only
+text-to-image generation. This is used for Admin marketing previews so no
+third-party or personal reference image is sent.
 
     -> 200 {"created": int, "data": [{"b64_json": "<base64 png/jpeg>"}]}
 
@@ -26,6 +29,9 @@ from __future__ import annotations
 
 import base64
 import binascii
+import io
+
+from PIL import Image
 
 import httpx
 
@@ -39,6 +45,7 @@ from app.ai.base import (
 )
 from app.services.image_validation import normalize_for_provider
 from app.templates_registry import TemplateDefinition
+from app.experiences import ExperienceDefinition
 
 
 class NineRouterProvider(AIProvider):
@@ -64,8 +71,8 @@ class NineRouterProvider(AIProvider):
 
     def generate(
         self,
-        user_image: bytes,
-        template: TemplateDefinition,
+        user_image: bytes | None,
+        template: TemplateDefinition | None,
         options: GenerationOptions,
     ) -> AIResult:
         if not self.is_available():
@@ -74,21 +81,30 @@ class NineRouterProvider(AIProvider):
                 "Set NINEROUTER_BASE_URL and NINEROUTER_API_KEY."
             )
 
-        jpeg_bytes, _ = normalize_for_provider(user_image)
-        data_uri = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("ascii")
-
-        prompt = template.build_prompt()
-        width = options.width or template.width
-        height = options.height or template.height
+        experience: ExperienceDefinition | None = options.extra.get("experience")
+        if experience is not None:
+            prompt = options.extra.get("prompt_override") or experience.prompt
+            model = experience.model
+            width = options.width or 1024
+            height = options.height or 1024
+        else:
+            if template is None:
+                raise AIProviderError("AI_PROVIDER_ERROR: template or experience preset is required")
+            prompt = template.build_prompt()
+            model = self._model
+            width = options.width or template.width
+            height = options.height or template.height
 
         payload = {
-            "model": self._model,
+            "model": model,
             "prompt": prompt,
-            "image": data_uri,
             "size": f"{width}x{height}",
             "n": 1,
             "response_format": "b64_json",
         }
+        if user_image:
+            jpeg_bytes, _ = normalize_for_provider(user_image)
+            payload["image"] = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("ascii")
 
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -101,46 +117,177 @@ class NineRouterProvider(AIProvider):
             response = httpx.post(url, json=payload, headers=headers, timeout=self._timeout)
         except httpx.TimeoutException as exc:
             raise AIProviderError(
-                f"9router request timed out after {self._timeout:.0f}s", detail=str(exc)
+                f"9router request timed out after {self._timeout:.0f}s",
+                detail=str(exc),
+                operational_meta={"upstream_status": "TIMEOUT", "retry_count": 0},
             ) from exc
         except httpx.HTTPError as exc:
             raise AIProviderError(
-                f"Could not reach 9router at {url}", detail=str(exc)
+                f"Could not reach 9router at {url}",
+                detail=str(exc),
+                operational_meta={"upstream_status": "CONNECTION_ERROR", "retry_count": 0},
             ) from exc
 
         if response.status_code != 200:
+            error_body = _try_json(response)
             raise AIProviderError(
                 f"9router returned HTTP {response.status_code}: {_short(response.text)}",
                 detail=response.text[:2000],
+                operational_meta={
+                    **_response_operational_metadata(response, error_body),
+                    "http_status": response.status_code,
+                    "upstream_status": "FAILED",
+                },
             )
 
-        try:
-            body = response.json()
-        except ValueError as exc:
-            raise AIProviderError(
-                "9router returned a non-JSON 200 response", detail=response.text[:2000]
-            ) from exc
-
+        body = _parse_provider_body(response)
         image_bytes, meta = _extract_image(body)
         if not image_bytes:
             raise ProviderEmptyResultError(
                 "AI_EMPTY_RESULT: 9router responded successfully but returned no image bytes. "
-                f"Raw response keys: {sorted(body.keys()) if isinstance(body, dict) else type(body)}"
+                f"Raw response keys: {sorted(body.keys()) if isinstance(body, dict) else type(body)}",
+                operational_meta={
+                    **_response_operational_metadata(response, body),
+                    "upstream_status": "EMPTY_RESULT",
+                },
             )
 
+        image_bytes = _as_png(image_bytes)
+        operational_meta = _response_operational_metadata(response, body)
+        response_model = operational_meta.get("response_model")
         return AIResult(
             image_bytes=image_bytes,
-            content_type=_guess_content_type(image_bytes),
+            content_type="image/png",
             provider=self.name,
-            model=self._model,
+            model=response_model if isinstance(response_model, str) else model,
             prompt_used=prompt,
             raw_meta={
                 "size": f"{width}x{height}",
-                "created": body.get("created") if isinstance(body, dict) else None,
+                "created": meta.get("created"),
                 **meta,
+                **operational_meta,
             },
         )
 
+
+
+_SECRET_KEYS = {"authorization", "api_key", "apikey", "access_token", "refresh_token", "secret", "credential", "password"}
+
+
+def _try_json(response: httpx.Response) -> object:
+    try:
+        return response.json()
+    except ValueError:
+        return {}
+
+
+def _safe_usage(value: object) -> dict | None:
+    if not isinstance(value, dict):
+        return None
+
+    def clean(item: object, key: str = "") -> object:
+        if key.lower() in _SECRET_KEYS:
+            return None
+        if isinstance(item, dict):
+            return {
+                str(child_key): clean(child_value, str(child_key))
+                for child_key, child_value in item.items()
+                if str(child_key).lower() not in _SECRET_KEYS
+            }
+        if isinstance(item, list):
+            return [clean(child) for child in item[:100]]
+        if isinstance(item, (str, int, float, bool)) or item is None:
+            return item
+        return str(item)[:500]
+
+    return clean(value)
+
+
+def _first_value(*values: object) -> str | None:
+    for value in values:
+        if isinstance(value, (str, int)) and str(value).strip():
+            return str(value).strip()[:255]
+    return None
+
+
+def _response_operational_metadata(response: httpx.Response, body: object) -> dict:
+    """Return only explicit, non-secret routing/usage evidence from 9Router."""
+
+    payload = body if isinstance(body, dict) else {}
+    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    router = payload.get("router") if isinstance(payload.get("router"), dict) else {}
+    account = payload.get("account") if isinstance(payload.get("account"), dict) else {}
+    usage = _safe_usage(payload.get("usage"))
+    retry_value = _first_value(
+        payload.get("retry_count"), metadata.get("retry_count"), response.headers.get("x-retry-count")
+    )
+    try:
+        retry_count = max(0, int(retry_value)) if retry_value is not None else 0
+    except ValueError:
+        retry_count = 0
+
+    result = {
+        "provider_request_id": _first_value(
+            payload.get("request_id"), payload.get("id"), metadata.get("request_id"),
+            response.headers.get("x-request-id"), response.headers.get("request-id"),
+            response.headers.get("x-provider-request-id"),
+        ),
+        "upstream_provider": _first_value(
+            payload.get("provider"), metadata.get("provider"), router.get("provider"),
+            response.headers.get("x-upstream-provider"),
+        ),
+        "response_model": _first_value(payload.get("model"), metadata.get("model")),
+        "provider_account_id": _first_value(
+            payload.get("account_id"), account.get("id"), metadata.get("account_id"),
+            router.get("account_id"), response.headers.get("x-upstream-account-id"),
+            response.headers.get("x-account-id"),
+        ),
+        "provider_account_label": _first_value(
+            payload.get("account_label"), account.get("label"), account.get("name"),
+            metadata.get("account_label"), router.get("account_label"),
+            response.headers.get("x-upstream-account-label"), response.headers.get("x-account-label"),
+        ),
+        "provider_strategy_hint": _first_value(
+            payload.get("routing_strategy"), metadata.get("routing_strategy"),
+            router.get("strategy"), response.headers.get("x-routing-strategy"),
+            response.headers.get("x-router-strategy"),
+        ),
+        "usage": usage,
+        "retry_count": retry_count,
+    }
+    return {key: value for key, value in result.items() if value is not None}
+
+
+def _parse_provider_body(response: httpx.Response) -> object:
+    """Parse either JSON or the provider's SSE event stream."""
+    content_type = response.headers.get("content-type", "").lower()
+    if "text/event-stream" not in content_type:
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise AIProviderError(
+                "9router returned a non-JSON/non-SSE 200 response", detail=response.text[:2000]
+            ) from exc
+
+    events: list[object] = []
+    for raw_line in response.text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith(":") or line == "data: [DONE]":
+            continue
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        try:
+            events.append(__import__("json").loads(payload))
+        except ValueError as exc:
+            raise AIProviderError(
+                "9router returned invalid SSE JSON data", detail=payload[:1000]
+            ) from exc
+
+    for event in events:
+        if isinstance(event, dict) and isinstance(event.get("data"), list):
+            return event
+    raise ProviderEmptyResultError("AI_EMPTY_RESULT: 9router SSE contained no image data")
 
 def _extract_image(body: object) -> tuple[bytes, dict]:
     """Pull image bytes out of the OpenAI-compatible response shape."""
@@ -151,6 +298,8 @@ def _extract_image(body: object) -> tuple[bytes, dict]:
     data = body.get("data")
     if not isinstance(data, list) or not data:
         return b"", meta
+    if isinstance(body.get("created"), (int, float, str)):
+        meta["created"] = body.get("created")
 
     first = data[0]
     if not isinstance(first, dict):
@@ -193,3 +342,13 @@ def _guess_content_type(data: bytes) -> str:
 def _short(text: str, limit: int = 300) -> str:
     text = " ".join(text.split())
     return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+def _as_png(data: bytes) -> bytes:
+    """Normalize provider b64_json output to the preset's PNG contract."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return data
+    with Image.open(io.BytesIO(data)) as image:
+        output = io.BytesIO()
+        image.convert("RGBA").save(output, format="PNG")
+        return output.getvalue()

@@ -49,6 +49,10 @@ class TemplateDefinition:
     width: int
     height: int
     preview_filename: str | None = None
+    asset_filename: str | None = None
+    face_region: tuple[int, int, int, int] | None = None
+    face_anchors: dict[str, tuple[float, float]] | None = None
+    mask_polygon: tuple[tuple[float, float], ...] | None = None
 
     def build_prompt(self) -> str:
         """Full prompt sent to the provider: template rules + template brief."""
@@ -82,8 +86,23 @@ _FALLBACK_TEMPLATES: list[dict] = [
             "medium close-up, subject on the left third, eye-level camera, 85mm-equivalent lens, "
             "f/2.0, photorealistic, high dynamic range, no text, no watermark, no logo."
         ),
-        "width": 1024,
-        "height": 1024,
+        "width": 1060,
+        "height": 1484,
+        "asset_filename": "template.png",
+        "face_region": [404, 182, 210, 250],
+        "face_anchors": {
+            "left_eye": [461, 265],
+            "right_eye": [549, 263],
+            "nose": [507, 318],
+            "mouth": [506, 357],
+            "chin": [507, 419]
+        },
+        "mask_polygon": [
+            [436, 257], [457, 238], [485, 235], [511, 239],
+            [542, 236], [566, 250], [579, 283], [574, 325],
+            [555, 363], [529, 382], [505, 391], [477, 382],
+            [452, 361], [436, 327], [429, 286]
+        ],
     }
 ]
 
@@ -108,6 +127,10 @@ class TemplateRegistry:
                 width=int(raw.get("width", 1024)),
                 height=int(raw.get("height", 1024)),
                 preview_filename=raw.get("preview_filename"),
+                asset_filename=raw.get("asset_filename"),
+                face_region=tuple(raw["face_region"]) if raw.get("face_region") else None,
+                face_anchors=_parse_face_anchors(raw.get("face_anchors")),
+                mask_polygon=_parse_mask_polygon(raw.get("mask_polygon")),
             )
 
         # Then overlay any JSON manifests found on disk (disk wins).
@@ -133,6 +156,10 @@ class TemplateRegistry:
                     width=int(data.get("width", 1024)),
                     height=int(data.get("height", 1024)),
                     preview_filename="preview.png" if preview.exists() else None,
+                    asset_filename=data.get("asset_filename"),
+                    face_region=tuple(data["face_region"]) if data.get("face_region") else None,
+                    face_anchors=_parse_face_anchors(data.get("face_anchors")),
+                    mask_polygon=_parse_mask_polygon(data.get("mask_polygon")),
                 )
 
         return templates
@@ -164,3 +191,24 @@ def get_registry() -> TemplateRegistry:
     if _registry is None:
         _registry = TemplateRegistry()
     return _registry
+
+
+def _parse_face_anchors(raw: object) -> dict[str, tuple[float, float]] | None:
+    if not isinstance(raw, dict):
+        return None
+    parsed: dict[str, tuple[float, float]] = {}
+    for name, point in raw.items():
+        if isinstance(point, (list, tuple)) and len(point) == 2:
+            parsed[str(name)] = (float(point[0]), float(point[1]))
+    return parsed or None
+
+
+def _parse_mask_polygon(raw: object) -> tuple[tuple[float, float], ...] | None:
+    if not isinstance(raw, (list, tuple)):
+        return None
+    points = tuple(
+        (float(point[0]), float(point[1]))
+        for point in raw
+        if isinstance(point, (list, tuple)) and len(point) == 2
+    )
+    return points if len(points) >= 3 else None

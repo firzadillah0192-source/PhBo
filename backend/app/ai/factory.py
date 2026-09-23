@@ -39,8 +39,8 @@ class NullProvider(AIProvider):
 
     def generate(
         self,
-        user_image: bytes,
-        template: TemplateDefinition,
+        user_image: bytes | None,
+        template: TemplateDefinition | None,
         options: GenerationOptions,
     ):
         raise ProviderNotConnectedError(

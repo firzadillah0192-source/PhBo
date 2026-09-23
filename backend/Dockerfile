@@ -6,7 +6,8 @@ FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    MPLCONFIGDIR=/tmp/matplotlib
 
 WORKDIR /app
 
@@ -18,6 +19,10 @@ RUN apt-get update \
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# MediaPipe Face Mesh is installed without optional OpenCV-contrib/JAX extras;
+# the image already pins headless OpenCV and uses the bundled CPU model.
+RUN pip install --no-cache-dir --no-deps mediapipe==0.10.21
 
 COPY app ./app
 COPY worker ./worker

@@ -2,7 +2,21 @@
   "id": "sci-fi-space-commander-001",
   "name": "Sci-Fi Space Commander",
   "description": "Cinematic sci-fi portrait of a starship commander on a command deck. The template is the visual authority; the user photo contributes only moderate facial resemblance.",
-  "width": 1024,
-  "height": 1024,
-  "prompt": "Subject: a confident starship commander standing on the bridge of a capital starship. Costume: dark charcoal high-collared uniform jacket with brushed-metal rank insignia on the left collar and a subdued mission patch on the left shoulder. Hairstyle: short, neatly cropped dark hair with a clean, slightly receding hairline; clean-shaven, no facial hair. Head proportion: strong square jaw, broad cheekbones, calm authoritative expression with slight closed-mouth confidence. Skin treatment: realistic skin texture with fine pores, subtle subsurface scattering, no plastic smoothing, no heavy retouching. Lighting: cool cyan key light from a large viewport camera-left, warm amber rim from console panels camera-right, soft fill, cinematic contrast ratio about 4:1. Pose: three-quarter turn to camera, shoulders squared, chin slightly lifted. Background: out-of-focus command deck with holographic tactical displays and a starfield through the viewport, shallow depth of field. Composition: medium close-up, subject on the left third, eye-level camera, 85mm-equivalent lens, f/2.0, photorealistic, high dynamic range, no text, no watermark, no logo."
+  "width": 1060,
+  "height": 1484,
+  "prompt": "Subject: a confident starship commander standing on the bridge of a capital starship. Costume: dark charcoal high-collared uniform jacket with brushed-metal rank insignia on the left collar and a subdued mission patch on the left shoulder. Hairstyle: short, neatly cropped dark hair with a clean, slightly receding hairline; clean-shaven, no facial hair. Head proportion: strong square jaw, broad cheekbones, calm authoritative expression with slight closed-mouth confidence. Skin treatment: realistic skin texture with fine pores, subtle subsurface scattering, no plastic smoothing, no heavy retouching. Lighting: cool cyan key light from a large viewport camera-left, warm amber rim from console panels camera-right, soft fill, cinematic contrast ratio about 4:1. Pose: three-quarter turn to camera, shoulders squared, chin slightly lifted. Background: out-of-focus command deck with holographic tactical displays and a starfield through the viewport, shallow depth of field. Composition: medium close-up, subject on the left third, eye-level camera, 85mm-equivalent lens, f/2.0, photorealistic, high dynamic range, no text, no watermark, no logo.",
+  "asset_filename": "template.png",
+  "preview_filename": "preview.png",
+  "face_region": [
+    404, 182, 210, 250
+  ],
+  "face_anchors": {
+    "left_eye": [461, 265], "right_eye": [549, 263], "nose": [507, 318],
+    "mouth": [506, 357], "chin": [507, 419]
+  },
+  "mask_polygon": [
+    [436, 257], [457, 238], [485, 235], [511, 239], [542, 236], [566, 250],
+    [579, 283], [574, 325], [555, 363], [529, 382], [505, 391], [477, 382],
+    [452, 361], [436, 327], [429, 286]
+  ]
 }

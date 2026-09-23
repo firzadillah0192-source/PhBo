@@ -1,0 +1,32 @@
+import React from 'react'
+import { uploadPreviewUrl } from '../../api.js'
+
+export default function ProcessingStage({ job, upload }) {
+  const state = job?.state || 'QUEUED'
+  const copy = state === 'QUEUED'
+    ? ['Preparing your portrait', 'The studio is setting the light and opening your place in the queue.']
+    : ['Building your world', 'Atmosphere, character, and photographic detail are coming together.']
+  const uploadId = upload?.upload_id || job?.upload_id
+
+  return (
+    <section className="processing-stage customer-stage-enter" aria-live="polite">
+      <div className="processing-portal">
+        <span className="processing-orbit orbit-one" aria-hidden="true" />
+        <span className="processing-orbit orbit-two" aria-hidden="true" />
+        <figure>
+          {uploadId && <img src={uploadPreviewUrl(uploadId)} alt="Your portrait being prepared" />}
+          <i className="processing-light" />
+          <span className="processing-depth" />
+          <span className="processing-mist" />
+        </figure>
+      </div>
+      <div className="processing-copy">
+        <p className="customer-kicker">In the celestial studio</p>
+        <h1>{copy[0]}</h1>
+        <p>{copy[1]}</p>
+        <span className="processing-pulse"><i />{state === 'QUEUED' ? 'Waiting for the studio' : 'Creating your image'}</span>
+        <small>No need to keep this page open. Your studio route is saved.</small>
+      </div>
+    </section>
+  )
+}

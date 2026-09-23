@@ -1,7 +1,7 @@
 """AIProvider abstraction.
 
 The application must never be hard-wired to one vendor. Every provider
-implements `generate(user_image, template, options) -> AIResult` and lives
+implements `generate(user_image | None, template, options) -> AIResult` and lives
 behind this interface. Selection happens in `factory.py` from configuration.
 
 Per spec section 4: if no real provider is connected we raise
@@ -20,10 +20,19 @@ class AIProviderError(Exception):
 
     code = "AI_PROVIDER_ERROR"
 
-    def __init__(self, message: str, *, detail: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        detail: str | None = None,
+        operational_meta: dict | None = None,
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.detail = detail
+        # Provider adapters may attach non-secret request/usage evidence here.
+        # It is consumed only by the worker's operational audit persistence.
+        self.operational_meta = operational_meta or {}
 
 
 class ProviderNotConnectedError(AIProviderError):
@@ -71,11 +80,11 @@ class AIProvider(ABC):
     @abstractmethod
     def generate(
         self,
-        user_image: bytes,
-        template: "TemplateDefinition",  # noqa: F821 - avoids import cycle
+        user_image: bytes | None,
+        template: "TemplateDefinition | None",  # noqa: F821 - avoids import cycle
         options: GenerationOptions,
     ) -> AIResult:
-        """Turn a user photo + template into a real result image."""
+        """Turn an optional user photo plus template into a real result image."""
         raise NotImplementedError
 
     def is_available(self) -> bool:

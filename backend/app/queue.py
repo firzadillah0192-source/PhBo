@@ -45,6 +45,26 @@ def enqueue(job_id: str) -> None:
     get_redis().lpush(get_settings().queue_name, job_id)
 
 
+def preview_queue_name() -> str:
+    return f"{get_settings().queue_name}:previews"
+
+
+def enqueue_preview(job_id: str) -> None:
+    """Push an internal Admin preview job onto an isolated queue."""
+    get_redis().lpush(preview_queue_name(), job_id)
+
+
+def dequeue_any(timeout: int = DEQUEUE_TIMEOUT_SECONDS) -> tuple[str, str] | None:
+    """Pop either a customer job or an internal preview job."""
+    result = get_redis().brpop(
+        [get_settings().queue_name, preview_queue_name()], timeout=timeout
+    )
+    if not result:
+        return None
+    queue_name, job_id = result
+    return ("preview" if queue_name == preview_queue_name() else "customer", job_id)
+
+
 def dequeue(timeout: int = DEQUEUE_TIMEOUT_SECONDS) -> str | None:
     """Blocking pop. Returns job_id, or None when the queue stayed empty.
 

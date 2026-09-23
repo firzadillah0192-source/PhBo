@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import get_settings
@@ -52,7 +52,98 @@ def get_db() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    """Create tables. Imports models so they are registered on the metadata."""
+    """Create tables and apply additive compatibility migrations."""
     from app import models  # noqa: F401
+    from app import auth_models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    # create_all does not alter an existing table. The default preserves all
+    # jobs created before mode selection; they always used the AI path.
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS "
+                "mode VARCHAR(16) NOT NULL DEFAULT 'ADVANCED'"
+            ))
+            conn.execute(text(
+                "ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS "
+                "experience_id VARCHAR(128)"
+            ))
+            # Existing seeded experiences intentionally become drafts on the
+            # first rollout. Admin must explicitly publish customer presets.
+            conn.execute(text(
+                "ALTER TABLE admin_experiences ADD COLUMN IF NOT EXISTS "
+                "status VARCHAR(16) NOT NULL DEFAULT 'draft'"
+            ))
+            conn.execute(text(
+                "ALTER TABLE admin_experiences ADD COLUMN IF NOT EXISTS "
+                "category VARCHAR(64) NOT NULL DEFAULT 'Design'"
+            ))
+            conn.execute(text(
+                "ALTER TABLE admin_experiences ADD COLUMN IF NOT EXISTS "
+                "preview_status VARCHAR(16) NOT NULL DEFAULT 'MISSING'"
+            ))
+            conn.execute(text(
+                "ALTER TABLE admin_experiences ADD COLUMN IF NOT EXISTS preview_error TEXT"
+            ))
+            conn.execute(text(
+                "UPDATE admin_experiences SET preview_status = 'READY' "
+                "WHERE thumbnail_path IS NOT NULL AND preview_status = 'MISSING'"
+            ))
+            conn.execute(text("ALTER TABLE uploads ADD COLUMN IF NOT EXISTS account_id VARCHAR(32)"))
+            conn.execute(text("ALTER TABLE uploads ADD COLUMN IF NOT EXISTS guest_id VARCHAR(64)"))
+            conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS account_id VARCHAR(32)"))
+            conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS guest_id VARCHAR(64)"))
+            conn.execute(text("ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS marketing_preview_path VARCHAR(512)"))
+    elif engine.dialect.name == "sqlite":
+        columns = {column["name"] for column in inspect(engine).get_columns("generation_jobs")}
+        with engine.begin() as conn:
+            if "mode" not in columns:
+                conn.execute(text(
+                    "ALTER TABLE generation_jobs ADD COLUMN mode VARCHAR(16) "
+                    "NOT NULL DEFAULT 'ADVANCED'"
+                ))
+            if "experience_id" not in columns:
+                conn.execute(text(
+                    "ALTER TABLE generation_jobs ADD COLUMN experience_id VARCHAR(128)"
+                ))
+        columns = {column["name"] for column in inspect(engine).get_columns("admin_experiences")}
+        with engine.begin() as conn:
+            if "status" not in columns:
+                conn.execute(text(
+                    "ALTER TABLE admin_experiences ADD COLUMN status VARCHAR(16) "
+                    "NOT NULL DEFAULT 'draft'"
+                ))
+            if "category" not in columns:
+                conn.execute(text(
+                    "ALTER TABLE admin_experiences ADD COLUMN category VARCHAR(64) "
+                    "NOT NULL DEFAULT 'Design'"
+                ))
+            if "preview_status" not in columns:
+                conn.execute(text(
+                    "ALTER TABLE admin_experiences ADD COLUMN preview_status VARCHAR(16) "
+                    "NOT NULL DEFAULT 'MISSING'"
+                ))
+            if "preview_error" not in columns:
+                conn.execute(text("ALTER TABLE admin_experiences ADD COLUMN preview_error TEXT"))
+            conn.execute(text(
+                "UPDATE admin_experiences SET preview_status = 'READY' "
+                "WHERE thumbnail_path IS NOT NULL AND preview_status = 'MISSING'"
+            ))
+    # SQLite test databases may predate the ownership columns.
+    if engine.dialect.name == "sqlite":
+        columns = {column["name"] for column in inspect(engine).get_columns("uploads")}
+        with engine.begin() as conn:
+            if "account_id" not in columns:
+                conn.execute(text("ALTER TABLE uploads ADD COLUMN account_id VARCHAR(32)"))
+            if "guest_id" not in columns:
+                conn.execute(text("ALTER TABLE uploads ADD COLUMN guest_id VARCHAR(64)"))
+        columns = {column["name"] for column in inspect(engine).get_columns("generation_jobs")}
+        with engine.begin() as conn:
+            if "account_id" not in columns:
+                conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN account_id VARCHAR(32)"))
+            if "guest_id" not in columns:
+                conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN guest_id VARCHAR(64)"))
+    from app.catalog import seed_catalog
+    with SessionLocal() as session:
+        seed_catalog(session)
