@@ -294,6 +294,8 @@ class BasicGenerationEngine:
                 photometric_debug_images = {
                     "17_geometry_base.png": geometry_base,
                     "18_f_multiband_pyramid_layers.png": _pyramid_trace_preview(pyramid_trace),
+                    "19_f_warped_user.png": warped_user,
+                    "20_f_harmonized_user.png": adjusted_user,
                 }
             else:
                 result = multiband_composite(geometry_base, adjusted_user, texture_mask)
@@ -387,7 +389,6 @@ class BasicGenerationEngine:
             warped_user,
             adjusted_user,
             texture_mask,
-            geometry_base,
             result,
             diagnostics,
             final_dense,
@@ -961,7 +962,6 @@ def _write_debug_images(
     warped_user,
     adjusted_user,
     texture_mask,
-    geometry_base,
     result,
     diagnostics,
     final_dense,
