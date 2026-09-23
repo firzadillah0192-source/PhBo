@@ -104,6 +104,22 @@ USER_DOMINANT_IDENTITY_TEXTURE = MappingProxyType({
     "cheeks": 0.45,
 })
 
+FREQUENCY_IDENTITY_TEXTURE = MappingProxyType({
+    "eyes": 0.70,
+    "eyebrows": 0.65,
+    "nose": 0.65,
+    "mouth": 0.70,
+    "cheeks": 0.45,
+})
+
+FREQUENCY_CONTRAST_IDENTITY_TEXTURE = MappingProxyType({
+    "eyes": 0.66,
+    "eyebrows": 0.62,
+    "nose": 0.62,
+    "mouth": 0.66,
+    "cheeks": 0.40,
+})
+
 
 @dataclass(frozen=True)
 class BasicIdentityProfile:
@@ -119,6 +135,7 @@ class BasicIdentityProfile:
     enable_soft_contour_mask: bool = False
     warp_user_texture: bool = False
     texture_pipeline: str = "regional_alpha"
+    local_contrast_strength: float = 0.0
 
 
 IDENTITY_PROFILES = MappingProxyType({
@@ -162,6 +179,32 @@ IDENTITY_PROFILES = MappingProxyType({
         enable_soft_contour_mask=True,
         warp_user_texture=True,
         texture_pipeline="multiband_local_illumination",
+    ),
+    # Photometric-only experiments: geometry inputs intentionally match F.
+    "frequency_identity": BasicIdentityProfile(
+        name="frequency_identity",
+        morphology_strength=SOFT_CONTOUR_MORPHOLOGY,
+        identity_texture_strength=FREQUENCY_IDENTITY_TEXTURE,
+        mesh_profile="semantic_166_soft",
+        use_template_landmarks=True,
+        semantic_boundary_alignment=True,
+        contour_movement_limits=SOFT_CONTOUR_LIMITS,
+        enable_soft_contour_mask=True,
+        warp_user_texture=True,
+        texture_pipeline="frequency_authority",
+    ),
+    "frequency_identity_contrast": BasicIdentityProfile(
+        name="frequency_identity_contrast",
+        morphology_strength=SOFT_CONTOUR_MORPHOLOGY,
+        identity_texture_strength=FREQUENCY_CONTRAST_IDENTITY_TEXTURE,
+        mesh_profile="semantic_166_soft",
+        use_template_landmarks=True,
+        semantic_boundary_alignment=True,
+        contour_movement_limits=SOFT_CONTOUR_LIMITS,
+        enable_soft_contour_mask=True,
+        warp_user_texture=True,
+        texture_pipeline="frequency_authority",
+        local_contrast_strength=0.14,
     ),
 })
 

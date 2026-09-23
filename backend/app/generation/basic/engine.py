@@ -19,6 +19,7 @@ from app.templates_registry import TemplateDefinition
 from .blending import (
     composite,
     estimate_eye_similarity,
+    frequency_separated_identity,
     geometry_influence_mask,
     geometry_polygon_for_region,
     harmonize_color,
@@ -26,6 +27,7 @@ from .blending import (
     identity_texture_mask,
     multiband_composite,
     piecewise_affine_warp,
+    restore_local_face_contrast,
     soft_face_mask,
     transform_points,
     warp_face,
@@ -281,9 +283,45 @@ class BasicGenerationEngine:
             ),
             inward_only=identity_profile.warp_user_texture,
         )
+        photometric_debug_images = {}
+        pre_contrast_result = None
         if identity_profile.texture_pipeline == "multiband_local_illumination":
             adjusted_user = harmonize_local_illumination(warped_user, geometry_base, texture_mask)
-            result = multiband_composite(geometry_base, adjusted_user, texture_mask)
+            if options.get("capture_photometric_debug"):
+                result, pyramid_trace = multiband_composite(
+                    geometry_base, adjusted_user, texture_mask, return_trace=True
+                )
+                photometric_debug_images = {
+                    "17_geometry_base.png": geometry_base,
+                    "18_f_multiband_pyramid_layers.png": _pyramid_trace_preview(pyramid_trace),
+                }
+            else:
+                result = multiband_composite(geometry_base, adjusted_user, texture_mask)
+        elif identity_profile.texture_pipeline == "frequency_authority":
+            adjusted_user, frequency_layers = frequency_separated_identity(
+                geometry_base,
+                warped_user,
+                texture_mask,
+            )
+            pre_contrast_result = composite(geometry_base, adjusted_user, texture_mask)
+            result = restore_local_face_contrast(
+                pre_contrast_result,
+                texture_mask,
+                strength=identity_profile.local_contrast_strength,
+            ) if identity_profile.local_contrast_strength > 0.0 else pre_contrast_result
+            photometric_debug_images = {
+                "01_template_low_frequency.png": frequency_layers["template_low_frequency"],
+                "02_user_warped.png": warped_user,
+                "03_user_low_frequency.png": frequency_layers["identity_low_frequency"],
+                "04_user_mid_frequency.png": frequency_layers["identity_mid_frequency"],
+                "05_user_high_frequency.png": frequency_layers["identity_high_frequency"],
+                "06_frequency_composite.png": frequency_layers["frequency_composite"],
+                "07_mask.png": np.rint(np.clip(texture_mask, 0.0, 1.0) * 255).astype(np.uint8),
+                "08_pre_contrast.png": pre_contrast_result,
+                "09_post_contrast.png": result,
+                "10_final.png": result,
+                "11_geometry_base.png": geometry_base,
+            }
         else:
             adjusted_user = harmonize_color(warped_user, geometry_base, texture_mask)
             result = composite(geometry_base, adjusted_user, texture_mask)
@@ -349,10 +387,12 @@ class BasicGenerationEngine:
             warped_user,
             adjusted_user,
             texture_mask,
+            geometry_base,
             result,
             diagnostics,
             final_dense,
             registration.matrix,
+            photometric_debug_images,
         )
         if not cv2.imwrite(str(output), result, [cv2.IMWRITE_PNG_COMPRESSION, 3]):
             raise RuntimeError("could not write Basic Local PNG result")
@@ -650,6 +690,7 @@ def _diagnostics(
             "soft_contour_enabled": identity_profile.enable_soft_contour_mask,
             "warp_user_texture": identity_profile.warp_user_texture,
             "texture_pipeline": identity_profile.texture_pipeline,
+            "local_contrast_strength": identity_profile.local_contrast_strength,
             "production_default_unchanged": identity_profile.name == "production",
         },
         "landmark_backend": landmark_metadata,
@@ -920,10 +961,12 @@ def _write_debug_images(
     warped_user,
     adjusted_user,
     texture_mask,
+    geometry_base,
     result,
     diagnostics,
     final_dense,
     registration_matrix,
+    photometric_debug_images,
 ) -> None:
     debug_dir.mkdir(parents=True, exist_ok=True)
     source_debug = source.copy()
@@ -998,10 +1041,48 @@ def _write_debug_images(
             "09_jaw_cheek_overlay.jpg": jaw_cheek_debug,
             "10_texture_mask.png": raw_texture_mask,
         }
+    images.update(photometric_debug_images)
     for filename, image in images.items():
-        if not cv2.imwrite(str(debug_dir / filename), image, [cv2.IMWRITE_JPEG_QUALITY, 94]):
+        params = (
+            [cv2.IMWRITE_PNG_COMPRESSION, 3]
+            if Path(filename).suffix.lower() == ".png"
+            else [cv2.IMWRITE_JPEG_QUALITY, 94]
+        )
+        if not cv2.imwrite(str(debug_dir / filename), image, params):
             raise RuntimeError(f"could not write Basic debug image {filename}")
     (debug_dir / "geometry.json").write_text(json.dumps(diagnostics, indent=2) + "\n", encoding="utf-8")
+
+
+def _pyramid_trace_preview(trace: dict[str, list[np.ndarray]]) -> np.ndarray:
+    """Build a compact contact sheet of the legacy F multiband layers."""
+    names = ("template_laplacian", "identity_laplacian", "blended_laplacian")
+    levels = len(trace["blended_laplacian"])
+    cell_width = 320
+    cell_height = 420
+    sheet = np.full((levels * cell_height, len(names) * cell_width, 3), 24, dtype=np.uint8)
+    for column, name in enumerate(names):
+        for level, values in enumerate(trace[name]):
+            layer = np.asarray(values, dtype=np.float32)
+            if level == levels - 1:
+                visible = np.clip(layer, 0, 255).astype(np.uint8)
+            else:
+                bound = max(float(np.percentile(np.abs(layer), 99.5)), 1.0)
+                visible = np.rint(128.0 + 112.0 * np.clip(layer / bound, -1.0, 1.0)).astype(np.uint8)
+            visible = cv2.resize(visible, (cell_width, cell_height), interpolation=cv2.INTER_AREA)
+            row = level * cell_height
+            col = column * cell_width
+            sheet[row:row + cell_height, col:col + cell_width] = visible
+            cv2.putText(
+                sheet,
+                f"{name} L{level}",
+                (col + 8, row + 24),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                (0, 255, 255),
+                1,
+                cv2.LINE_AA,
+            )
+    return sheet
 
 
 def make_session_output(runtime_tmp: Path, job_id: str) -> Path:

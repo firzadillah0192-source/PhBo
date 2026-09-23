@@ -141,6 +141,126 @@ def harmonize_local_illumination(
     return cv2.cvtColor(np.clip(adjusted, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR)
 
 
+def frequency_separated_identity(
+    template: np.ndarray,
+    identity: np.ndarray,
+    face_mask: np.ndarray,
+    *,
+    low_sigma: float = 14.0,
+    mid_sigma: float = 3.5,
+    mid_luminance_authority: float = 0.76,
+    high_luminance_authority: float = 0.88,
+    mid_chroma_authority: float = 0.58,
+    high_chroma_authority: float = 0.42,
+    user_intrinsic_chroma_authority: float = 0.68,
+    user_intrinsic_luminance_authority: float = 0.25,
+) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """Reconstruct user facial detail over template low-frequency lighting.
+
+    The returned candidate is only composited under the caller's inward-only
+    identity mask. Its low-frequency luminance follows the template. A bounded
+    constant luminance offset and mostly user-derived low-frequency chroma
+    retain some intrinsic skin-tone identity without carrying over selfie
+    illumination gradients.
+    """
+    if template.shape != identity.shape or template.ndim != 3 or template.shape[2] != 3:
+        raise ValueError("frequency identity inputs must be matching BGR images")
+    if face_mask.shape != template.shape[:2]:
+        raise ValueError("frequency identity mask must match image dimensions")
+    authorities = (
+        mid_luminance_authority,
+        high_luminance_authority,
+        mid_chroma_authority,
+        high_chroma_authority,
+        user_intrinsic_chroma_authority,
+        user_intrinsic_luminance_authority,
+    )
+    if any(not 0.0 <= float(value) <= 1.0 for value in authorities):
+        raise ValueError("frequency authorities must be between 0 and 1")
+
+    template_lab = cv2.cvtColor(template, cv2.COLOR_BGR2LAB).astype(np.float32)
+    identity_lab = cv2.cvtColor(identity, cv2.COLOR_BGR2LAB).astype(np.float32)
+    template_low = cv2.GaussianBlur(template_lab, (0, 0), low_sigma, low_sigma)
+    identity_low = cv2.GaussianBlur(identity_lab, (0, 0), low_sigma, low_sigma)
+    identity_mid_base = cv2.GaussianBlur(identity_lab, (0, 0), mid_sigma, mid_sigma)
+    identity_mid = identity_mid_base - identity_low
+    identity_high = identity_lab - identity_mid_base
+
+    active = np.asarray(face_mask) > 0.10
+    if int(active.sum()) < 100:
+        raise ValueError("frequency identity mask has insufficient inner-face coverage")
+
+    # Preserve only a bounded part of the user's mean intrinsic lightness; the
+    # template's spatial illumination field remains authoritative.
+    source_skin_l = float(np.median(identity_low[..., 0][active]))
+    template_skin_l = float(np.median(template_low[..., 0][active]))
+    intrinsic_luminance_delta = float(np.clip(source_skin_l - template_skin_l, -8.0, 8.0))
+
+    reconstructed = template_low.copy()
+    reconstructed[..., 0] = (
+        template_low[..., 0]
+        + intrinsic_luminance_delta * user_intrinsic_luminance_authority
+        + identity_mid[..., 0] * mid_luminance_authority
+        + identity_high[..., 0] * high_luminance_authority
+    )
+    low_chroma = (
+        template_low[..., 1:] * (1.0 - user_intrinsic_chroma_authority)
+        + identity_low[..., 1:] * user_intrinsic_chroma_authority
+    )
+    reconstructed[..., 1:] = (
+        low_chroma
+        + identity_mid[..., 1:] * mid_chroma_authority
+        + identity_high[..., 1:] * high_chroma_authority
+    )
+    reconstructed_bgr = cv2.cvtColor(
+        np.clip(reconstructed, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR
+    )
+
+    return reconstructed_bgr, {
+        "template_low_frequency": cv2.cvtColor(
+            np.clip(template_low, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR
+        ),
+        "identity_low_frequency": cv2.cvtColor(
+            np.clip(identity_low, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR
+        ),
+        "identity_mid_frequency": _signed_luminance_band_preview(identity_mid[..., 0]),
+        "identity_high_frequency": _signed_luminance_band_preview(identity_high[..., 0]),
+        "frequency_composite": reconstructed_bgr,
+        "intrinsic_luminance_delta_lab": np.asarray([intrinsic_luminance_delta], dtype=np.float32),
+    }
+
+
+def _signed_luminance_band_preview(band: np.ndarray) -> np.ndarray:
+    """Show a signed L* band as gray-centered contrast; reconstruction uses LAB."""
+    values = np.asarray(band, dtype=np.float32)
+    bound = max(float(np.percentile(np.abs(values), 99.5)), 1.0)
+    encoded = np.rint(128.0 + 112.0 * np.clip(values / bound, -1.0, 1.0)).astype(np.uint8)
+    return cv2.cvtColor(encoded, cv2.COLOR_GRAY2BGR)
+
+
+def restore_local_face_contrast(
+    image: np.ndarray,
+    regional_mask: np.ndarray,
+    *,
+    strength: float = 0.14,
+    sigma: float = 2.0,
+    maximum_detail: float = 10.0,
+) -> np.ndarray:
+    """Apply a bounded luminance-detail lift only inside facial feature masks."""
+    if image.ndim != 3 or image.shape[2] != 3 or regional_mask.shape != image.shape[:2]:
+        raise ValueError("local contrast inputs must be a BGR image and matching mask")
+    if not 0.0 <= strength <= 0.35 or sigma <= 0 or maximum_detail <= 0:
+        raise ValueError("local contrast parameters are outside safe bounds")
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB).astype(np.float32)
+    luminance = lab[..., 0]
+    local_base = cv2.GaussianBlur(luminance, (0, 0), sigma, sigma)
+    detail = np.clip(luminance - local_base, -maximum_detail, maximum_detail)
+    mask = np.clip(np.asarray(regional_mask, dtype=np.float32), 0.0, 1.0)
+    lab[..., 0] = luminance + detail * (strength * mask)
+    restored = np.clip(lab, 0, 255).astype(np.uint8)
+    return cv2.cvtColor(restored, cv2.COLOR_LAB2BGR)
+
+
 def composite(template: np.ndarray, aligned_face: np.ndarray, mask: np.ndarray) -> np.ndarray:
     alpha = mask[..., None]
     result = aligned_face.astype(np.float32) * alpha + template.astype(np.float32) * (1 - alpha)
@@ -152,7 +272,9 @@ def multiband_composite(
     identity: np.ndarray,
     mask: np.ndarray,
     levels: int = 4,
-) -> np.ndarray:
+    *,
+    return_trace: bool = False,
+) -> np.ndarray | tuple[np.ndarray, dict[str, list[np.ndarray]]]:
     """Deterministic Laplacian-pyramid blend under a regional authority mask."""
     template_float = template.astype(np.float32)
     identity_float = identity.astype(np.float32)
@@ -193,7 +315,15 @@ def multiband_composite(
     for level in range(levels - 1, -1, -1):
         size = (blended_levels[level].shape[1], blended_levels[level].shape[0])
         output = cv2.pyrUp(output, dstsize=size) + blended_levels[level]
-    return np.clip(output, 0, 255).astype(np.uint8)
+    result = np.clip(output, 0, 255).astype(np.uint8)
+    if not return_trace:
+        return result
+    return result, {
+        "template_laplacian": template_laplacian,
+        "identity_laplacian": identity_laplacian,
+        "blended_laplacian": blended_levels,
+        "mask_gaussian": mask_gaussian,
+    }
 
 
 def delaunay_triangles(points: np.ndarray, size: tuple[int, int]) -> list[tuple[int, int, int]]:
