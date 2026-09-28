@@ -8,6 +8,7 @@ heavier landmark model for a later iteration.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -99,14 +100,70 @@ def detect_exactly_one_face(image) -> FaceBox:
     if cascade.empty():
         raise BasicLandmarksUnavailableError("BASIC_LANDMARKS_UNAVAILABLE: face cascade is unavailable")
     faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(64, 64))
-    if len(faces) == 0:
-        raise BasicFaceNotFoundError("BASIC_FACE_NOT_FOUND: no face detected")
     if len(faces) != 1:
-        raise BasicMultipleFacesError(
-            f"BASIC_MULTIPLE_FACES: expected exactly one face, detected {len(faces)}"
-        )
+        # Haar is a useful fast proposal, but its boxes can miss or spuriously
+        # duplicate a single face. Reconcile only disagreements with the
+        # MediaPipe Face Mesh detector already used immediately downstream.
+        return _detect_one_face_with_mediapipe(image)
     x, y, width, height = [int(value) for value in faces[0]]
     return FaceBox(x, y, width, height)
+
+
+def _detect_one_face_with_mediapipe(image) -> FaceBox:
+    """Use the existing Face Mesh detector to resolve a Haar count mismatch."""
+    try:
+        import mediapipe as mp
+
+        from .real_landmarks import _verify_bundled_model
+
+        _verify_bundled_model()
+    except Exception as exc:
+        raise BasicLandmarksUnavailableError(
+            "BASIC_LANDMARKS_UNAVAILABLE: MediaPipe face validation is unavailable"
+        ) from exc
+
+    try:
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        with mp.solutions.face_mesh.FaceMesh(
+            static_image_mode=True,
+            max_num_faces=2,
+            refine_landmarks=True,
+            min_detection_confidence=0.60,
+            min_tracking_confidence=0.60,
+        ) as mesh:
+            result = mesh.process(rgb)
+    except Exception as exc:
+        raise BasicLandmarksUnavailableError(
+            "BASIC_LANDMARKS_UNAVAILABLE: MediaPipe face validation failed"
+        ) from exc
+
+    detected = result.multi_face_landmarks or []
+    if not detected:
+        raise BasicFaceNotFoundError("BASIC_FACE_NOT_FOUND: no face detected")
+    if len(detected) != 1:
+        raise BasicMultipleFacesError(
+            f"BASIC_MULTIPLE_FACES: expected exactly one face, MediaPipe detected {len(detected)}"
+        )
+
+    height, width = image.shape[:2]
+    points = [
+        (float(landmark.x) * width, float(landmark.y) * height)
+        for landmark in detected[0].landmark
+        if math.isfinite(float(landmark.x)) and math.isfinite(float(landmark.y))
+    ]
+    if not points:
+        raise BasicLandmarksUnavailableError(
+            "BASIC_LANDMARKS_UNAVAILABLE: MediaPipe returned no usable face bounds"
+        )
+    x1 = max(0, min(width, math.floor(min(point[0] for point in points))))
+    y1 = max(0, min(height, math.floor(min(point[1] for point in points))))
+    x2 = max(0, min(width, math.ceil(max(point[0] for point in points))))
+    y2 = max(0, min(height, math.ceil(max(point[1] for point in points))))
+    if x2 - x1 < 32 or y2 - y1 < 32:
+        raise BasicLandmarksUnavailableError(
+            "BASIC_LANDMARKS_UNAVAILABLE: detected face is too small"
+        )
+    return FaceBox(x1, y1, x2 - x1, y2 - y1)
 
 
 def estimate_landmarks(face: FaceBox) -> FaceLandmarks:
