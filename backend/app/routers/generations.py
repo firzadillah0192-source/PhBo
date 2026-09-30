@@ -2,23 +2,29 @@
 
 from __future__ import annotations
 
+import logging
+import json
 from datetime import datetime, timezone
-from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.auth import Identity
 from app.catalog import experience_definition, get_experience_row, get_template_row, template_definition
 from app.db import get_db
 from app.dependencies import get_identity
-from app.models import ErrorCode, ExperienceStatus, GenerationJob, JobState, Upload, new_id
+from app.models import ErrorCode, ExperienceStatus, GenerationJob, JobState, Upload, new_id, ClassicLayout, AdvancedFrameStyle, AdvancedOrnament
 from app.queue import enqueue
 from app.schemas import GenerationCreateRequest, GenerationCreateResponse, GenerationStatusResponse
 from app.services.control_plane import record_generation_event
+from app.services.diagnostics import log_image_event, user_agent_category
 from app.services.quota import QuotaExhausted, reserve_for_job, settle_for_job
+from app.services.uploads import upload_belongs_to_identity, upload_file_is_available, upload_is_expired
+from app.services.classic import ClassicLayoutError, validated_frame
+from app.services.advanced_prompt import AdvancedSelectionError, validate_advanced_selection
 
 router = APIRouter(tags=["generations"])
+logger = logging.getLogger("photobooth.generation")
 
 
 def _belongs_to_owner(record, identity: Identity) -> bool:
@@ -36,26 +42,37 @@ def _job_not_found(job_id: str) -> HTTPException:
 @router.post("/api/generations", response_model=GenerationCreateResponse, status_code=202, summary="Enqueue a generation job")
 def create_generation(
     payload: GenerationCreateRequest,
+    request: Request,
     identity: Identity = Depends(get_identity),
     db: Session = Depends(get_db),
 ) -> GenerationCreateResponse:
     upload = db.get(Upload, payload.upload_id)
-    if upload is None or not _belongs_to_owner(upload, identity):
-        raise HTTPException(status_code=404, detail={"error_code": ErrorCode.UPLOAD_NOT_FOUND, "message": f"upload '{payload.upload_id}' not found"})
+    if upload is None or not upload_belongs_to_identity(upload, identity):
+        raise HTTPException(status_code=404, detail={"error_code": ErrorCode.UPLOAD_NOT_FOUND, "message": "The uploaded photo is unavailable."})
+    if upload_is_expired(upload):
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "error_code": ErrorCode.UPLOAD_EXPIRED,
+                "message": "The uploaded photo is no longer available. Please upload it again.",
+            },
+        )
     if upload.validation_status != "VALID":
-        raise HTTPException(status_code=422, detail={"error_code": ErrorCode.VALIDATION_FAILED, "message": f"upload '{payload.upload_id}' did not pass validation"})
-    if not Path(upload.storage_path).is_file():
+        raise HTTPException(status_code=422, detail={"error_code": ErrorCode.VALIDATION_FAILED, "message": "The uploaded photo did not pass validation."})
+    if not upload_file_is_available(upload):
         raise HTTPException(
             status_code=404,
             detail={
                 "error_code": ErrorCode.UPLOAD_NOT_FOUND,
                 "message": "The uploaded photo is no longer available. Please upload it again.",
-                "detail": upload.storage_path,
             },
         )
 
     template_id = payload.template_id or ""
     experience_id = None
+    layout_id = None
+    frame_style_id = None
+    ornament_ids: list[str] = []
     if payload.mode == "BASIC":
         row = get_template_row(db, template_id)
         if row is None or not row.enabled:
@@ -64,6 +81,21 @@ def create_generation(
             template_definition(db, template_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail={"error_code": ErrorCode.TEMPLATE_NOT_FOUND, "message": f"template '{template_id}' not found"}) from exc
+    elif payload.mode == "CLASSIC":
+        layout = db.get(ClassicLayout, payload.layout_id)
+        if layout is None or not layout.active:
+            raise HTTPException(status_code=404, detail={"error_code": "CLASSIC_LAYOUT_NOT_FOUND", "message": "Classic layout unavailable"})
+        try:
+            validated_frame(layout)
+        except ClassicLayoutError as exc:
+            raise HTTPException(status_code=422, detail={"error_code": "CLASSIC_LAYOUT_INVALID", "message": str(exc)}) from exc
+        if len(payload.capture_upload_ids) != layout.shot_count or len(set(payload.capture_upload_ids)) != layout.shot_count:
+            raise HTTPException(status_code=422, detail={"error_code": "CLASSIC_SHOT_COUNT_INVALID", "message": "Incorrect number of distinct captures"})
+        for capture_id in payload.capture_upload_ids:
+            capture = db.get(Upload, capture_id)
+            if capture is None or not upload_belongs_to_identity(capture, identity) or upload_is_expired(capture) or capture.validation_status != "VALID" or not upload_file_is_available(capture):
+                raise HTTPException(status_code=422, detail={"error_code": "CLASSIC_CAPTURE_UNAVAILABLE", "message": "A capture is unavailable"})
+        layout_id = layout.id
     else:
         experience_id = payload.experience_id
         row = get_experience_row(db, experience_id or "")
@@ -73,6 +105,14 @@ def create_generation(
             experience_definition(db, experience_id or "")
         except KeyError as exc:
             raise HTTPException(status_code=404, detail={"error_code": ErrorCode.EXPERIENCE_NOT_FOUND, "message": f"experience '{experience_id}' not found"}) from exc
+        frame_style_id = payload.frame_style_id or "natural"
+        frame = db.get(AdvancedFrameStyle, frame_style_id)
+        ornament_ids = payload.ornament_ids
+        ornaments = db.query(AdvancedOrnament).filter(AdvancedOrnament.id.in_(ornament_ids)).all() if ornament_ids else []
+        try:
+            validate_advanced_selection(row, frame, ornaments, ornament_ids)
+        except (AdvancedSelectionError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail={"error_code": "ADVANCED_SELECTION_INVALID", "message": str(exc)}) from exc
 
     job = GenerationJob(
         id=new_id(),
@@ -81,6 +121,10 @@ def create_generation(
         guest_id=identity.guest_id,
         template_id=template_id,
         experience_id=experience_id,
+        layout_id=layout_id,
+        capture_upload_ids_json=json.dumps(payload.capture_upload_ids) if layout_id else None,
+        frame_style_id=frame_style_id,
+        ornament_ids_json=json.dumps(ornament_ids) if frame_style_id else None,
         mode=payload.mode,
         state=JobState.QUEUED,
     )
@@ -101,9 +145,25 @@ def create_generation(
         db.rollback()
         raise
 
+    log_image_event(
+        logger,
+        "generation_job_created",
+        upload_id=job.upload_id,
+        job_id=job.id,
+        mode=job.mode,
+        user_agent_category=user_agent_category(request.headers.get("user-agent", "")),
+    )
+
     try:
         enqueue(job.id)
     except Exception as exc:
+        log_image_event(
+            logger,
+            "generation_failed",
+            upload_id=job.upload_id,
+            job_id=job.id,
+            failure_code=ErrorCode.QUEUE_UNAVAILABLE,
+        )
         failed = db.get(GenerationJob, job.id)
         if failed is not None:
             failed.state = JobState.FAILED
@@ -121,6 +181,9 @@ def create_generation(
         template_id=job.template_id or None,
         experience_id=job.experience_id,
         mode=job.mode,
+        layout_id=job.layout_id,
+        frame_style_id=job.frame_style_id,
+        ornament_ids=ornament_ids,
         created_at=job.created_at,
     )
 
@@ -142,6 +205,9 @@ def get_generation(
         template_id=job.template_id or None,
         experience_id=job.experience_id,
         mode=job.mode,
+        layout_id=job.layout_id,
+        frame_style_id=job.frame_style_id,
+        ornament_ids=json.loads(job.ornament_ids_json or "[]"),
         provider=job.provider,
         model=job.model,
         error_code=job.error_code,

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+import json
+from math import gcd
+from PIL import Image
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -52,12 +55,22 @@ def _experience(row: ManagedExperience) -> AdminExperienceResponse:
         preview_error=row.preview_error,
         enabled=row.enabled, sort_order=row.sort_order, created_at=row.created_at,
         updated_at=row.updated_at, updated_by=row.updated_by,
+        compatible_frame_style_ids=json.loads(row.compatible_frame_style_ids_json) if row.compatible_frame_style_ids_json else None,
+        compatible_ornament_ids=json.loads(row.compatible_ornament_ids_json) if row.compatible_ornament_ids_json else None,
+        max_ornaments=row.max_ornaments,
     )
 
 
 def _template(row: ManagedTemplate) -> AdminTemplateResponse:
     processing_path = Path(row.image_path)
     preview_path = Path(row.marketing_preview_path) if row.marketing_preview_path else None
+    width = height = None
+    if processing_path.is_file():
+        try:
+            with Image.open(processing_path) as image:
+                width, height = image.size
+        except OSError:
+            pass
     return AdminTemplateResponse(
         id=row.id,
         name=row.name,
@@ -73,6 +86,9 @@ def _template(row: ManagedTemplate) -> AdminTemplateResponse:
         created_at=row.created_at,
         updated_at=row.updated_at,
         updated_by=row.updated_by,
+        canvas_width=width, canvas_height=height,
+        aspect_ratio=f"{width // gcd(width, height)}:{height // gcd(width, height)}" if width and height else None,
+        framed=row.id == "sci-fi-space-commander-framed-001",
     )
 
 
@@ -89,7 +105,12 @@ def admin_experiences(db: Session = Depends(get_db)):
 def create_experience(payload: AdminExperienceCreate, db: Session = Depends(get_db), principal: AdminPrincipal = Depends(require_admin_session)):
     if get_experience_row(db, payload.id):
         raise HTTPException(status_code=409, detail="experience id already exists")
-    row = ManagedExperience(**payload.model_dump(), updated_by="admin")
+    values = payload.model_dump()
+    frame_ids = values.pop("compatible_frame_style_ids")
+    ornament_ids = values.pop("compatible_ornament_ids")
+    values["compatible_frame_style_ids_json"] = json.dumps(frame_ids) if frame_ids is not None else None
+    values["compatible_ornament_ids_json"] = json.dumps(ornament_ids) if ornament_ids is not None else None
+    row = ManagedExperience(**values, updated_by="admin")
     db.add(row)
     record_audit(db, actor_id=principal.actor_id, action="experience_created", target_type="experience", target_id=row.id, metadata={"name": row.name})
     db.commit()
@@ -103,7 +124,10 @@ def patch_experience(experience_id: str, payload: AdminExperiencePatch, db: Sess
     if row is None:
         _not_found("experience", experience_id)
     for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(row, key, value)
+        if key in {"compatible_frame_style_ids", "compatible_ornament_ids"}:
+            setattr(row, key + "_json", json.dumps(value) if value is not None else None)
+        else:
+            setattr(row, key, value)
     row.updated_by = "admin"
     row.updated_at = _now()
     record_audit(db, actor_id=principal.actor_id, action="experience_changed", target_type="experience", target_id=row.id, metadata=payload.model_dump(exclude_unset=True))
@@ -347,7 +371,7 @@ def remove_template_preview(template_id: str, db: Session = Depends(get_db), pri
     row.updated_at = _now()
     record_audit(db, actor_id=principal.actor_id, action="template_marketing_preview_removed", target_type="template", target_id=row.id)
     db.commit()
-    if previous and previous.is_file():
+    if previous and previous.is_file() and previous != Path(row.image_path):
         previous.unlink()
 
 

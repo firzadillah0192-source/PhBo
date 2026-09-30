@@ -107,7 +107,7 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
           : <button className="customer-solid-button" onClick={openCamera} disabled={busy}>Take photo</button>}
         <button className="customer-outline-button" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? 'Preparing photo…' : 'Upload photo'}</button>
       </div>
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; upload(file) }} />
+      <input ref={inputRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; upload(file) }} />
       <ul className="photo-guidance"><li>Face visible</li><li>Good lighting</li><li>Look toward camera</li></ul>
     </section>
   )

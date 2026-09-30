@@ -1,0 +1,22 @@
+{
+  "id": "sci-fi-space-commander-framed-001",
+  "name": "Sci-Fi Space Commander",
+  "description": "Framed Basic Template · 1024 × 1536 portrait with integrated NXBooth branding",
+  "width": 1024,
+  "height": 1536,
+  "asset_filename": "template.png",
+  "prompt": "Template-dominant identity transfer into the existing science-fiction commander portrait. Preserve the hair, armor, background, title, frame, footer and NXBooth branding.",
+  "face_region": [402, 350, 194, 194],
+  "face_anchors": {
+    "left_eye": [451, 426],
+    "right_eye": [545, 426],
+    "nose": [499, 472],
+    "mouth": [499, 512],
+    "chin": [499, 552]
+  },
+  "mask_polygon": [
+    [416, 409], [438, 385], [466, 375], [499, 381], [530, 375],
+    [557, 390], [578, 418], [575, 470], [560, 511], [530, 540],
+    [499, 553], [468, 540], [438, 511], [421, 473]
+  ]
+}

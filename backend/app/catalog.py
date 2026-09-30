@@ -2,13 +2,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.experiences import ExperienceDefinition, list_experiences
-from app.models import ExperienceStatus, ManagedExperience, ManagedTemplate
+from app.models import ExperienceStatus, ManagedExperience, ManagedTemplate, ClassicLayout, AdvancedFrameStyle, AdvancedOrnament
+from app.services.classic import CLASSIC_SEEDS
+from app.services.advanced_prompt import FRAME_STYLE_SEEDS, ORNAMENT_SEEDS
 from app.templates_registry import TemplateDefinition, get_registry
 
 
@@ -44,13 +47,29 @@ def seed_catalog(session: Session) -> None:
         if session.get(ManagedTemplate, item.id) is None:
             directory = settings.templates_dir / item.id
             asset = directory / (item.asset_filename or "base.png")
+            preview = directory / "preview.png"
             metadata = directory / "template.json"
             session.add(ManagedTemplate(
                 id=item.id, name=item.name, description=item.description,
-                image_path=str(asset), marketing_preview_path=None,
+                image_path=str(asset), marketing_preview_path=str(preview) if item.id == "sci-fi-space-commander-framed-001" and preview.is_file() else None,
                 metadata_path=str(metadata) if metadata.exists() else None,
-                enabled=True, sort_order=order, updated_by="seed",
+                enabled=True, sort_order=-1 if item.id == "sci-fi-space-commander-framed-001" else order, updated_by="seed",
             ))
+    for order, (slug, name, filename, raw_slots) in enumerate(CLASSIC_SEEDS):
+        if session.get(ClassicLayout, slug) is None:
+            slots = [dict(x=x, y=y, width=width, height=height, fit="cover") for x, y, width, height in raw_slots]
+            session.add(ClassicLayout(
+                id=slug, slug=slug, name=name, canvas_width=724, canvas_height=2172,
+                shot_count=len(slots), layout_config_json=json.dumps({"slots": slots}),
+                frame_asset_path=str(settings.templates_dir / "_classic" / filename),
+                active=True, sort_order=order,
+            ))
+    for order, (slug, name, description, prompt) in enumerate(FRAME_STYLE_SEEDS):
+        if session.get(AdvancedFrameStyle, slug) is None:
+            session.add(AdvancedFrameStyle(id=slug, slug=slug, name=name, description=description, prompt_fragment=prompt, enabled=True, sort_order=order))
+    for order, (slug, name, description, prompt) in enumerate(ORNAMENT_SEEDS):
+        if session.get(AdvancedOrnament, slug) is None:
+            session.add(AdvancedOrnament(id=slug, slug=slug, name=name, description=description, prompt_fragment=prompt, enabled=True, sort_order=order))
     session.commit()
 
 

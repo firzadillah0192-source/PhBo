@@ -53,6 +53,7 @@ def get_db() -> Iterator[Session]:
 
 def init_db() -> None:
     """Create tables and apply additive compatibility migrations."""
+    get_settings().ensure_runtime_dirs()
     from app import models  # noqa: F401
     from app import auth_models  # noqa: F401
 

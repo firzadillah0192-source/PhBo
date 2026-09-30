@@ -40,10 +40,11 @@ class JobState:
 
 
 class GenerationMode:
+    CLASSIC = "CLASSIC"
     BASIC = "BASIC"
     ADVANCED = "ADVANCED"
 
-    ALL = (BASIC, ADVANCED)
+    ALL = (CLASSIC, BASIC, ADVANCED)
 
 
 class ExperienceStatus:
@@ -80,7 +81,13 @@ class PreviewJobState:
 
 class ErrorCode:
     VALIDATION_FAILED = "VALIDATION_FAILED"
+    UNSUPPORTED_IMAGE_FORMAT = "UNSUPPORTED_IMAGE_FORMAT"
+    IMAGE_DECODE_FAILED = "IMAGE_DECODE_FAILED"
+    IMAGE_NORMALIZATION_FAILED = "IMAGE_NORMALIZATION_FAILED"
+    FACE_VALIDATION_FAILED = "FACE_VALIDATION_FAILED"
     UPLOAD_NOT_FOUND = "UPLOAD_NOT_FOUND"
+    UPLOAD_EXPIRED = "UPLOAD_EXPIRED"
+    UPLOAD_STORAGE_FAILED = "UPLOAD_STORAGE_FAILED"
     TEMPLATE_NOT_FOUND = "TEMPLATE_NOT_FOUND"
     JOB_NOT_FOUND = "JOB_NOT_FOUND"
     RESULT_NOT_FOUND = "RESULT_NOT_FOUND"
@@ -140,6 +147,10 @@ class GenerationJob(Base):
     guest_id: Mapped[str | None] = mapped_column(ForeignKey("guest_sessions.id"), nullable=True, index=True)
     template_id: Mapped[str] = mapped_column(String(128), index=True)
     experience_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    layout_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    capture_upload_ids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    frame_style_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    ornament_ids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Existing jobs predate modes; they used the AI path.
     mode: Mapped[str] = mapped_column(
         String(16), nullable=False, default=GenerationMode.ADVANCED,
@@ -264,6 +275,9 @@ class ManagedExperience(Base):
     model: Mapped[str] = mapped_column(String(128))
     reference_mode: Mapped[str] = mapped_column(String(64), default="SINGLE_USER_IMAGE")
     output_format: Mapped[str] = mapped_column(String(16), default="PNG")
+    compatible_frame_style_ids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    compatible_ornament_ids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    max_ornaments: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
     # `enabled` is retained as a legacy/internal switch. Customer visibility
     # is governed exclusively by the explicit publication status below.
     status: Mapped[str] = mapped_column(
@@ -296,6 +310,47 @@ class ManagedTemplate(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
     updated_by: Mapped[str] = mapped_column(String(128), default="admin")
+
+
+class ClassicLayout(Base):
+    __tablename__ = "classic_layouts"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(128), unique=True)
+    name: Mapped[str] = mapped_column(String(255))
+    canvas_width: Mapped[int] = mapped_column(Integer)
+    canvas_height: Mapped[int] = mapped_column(Integer)
+    shot_count: Mapped[int] = mapped_column(Integer)
+    layout_config_json: Mapped[str] = mapped_column(Text)
+    frame_asset_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class AdvancedFrameStyle(Base):
+    __tablename__ = "advanced_frame_styles"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(128), unique=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    prompt_fragment: Mapped[str] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class AdvancedOrnament(Base):
+    __tablename__ = "advanced_ornaments"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(128), unique=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    prompt_fragment: Mapped[str] = mapped_column(Text, default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class PreviewSource(Base):

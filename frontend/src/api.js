@@ -131,6 +131,16 @@ export function getAdminPreviewJob(id) { return request('/admin/preview-jobs/' +
 export function generateMissingAdminPreviews(body) { return adminJson('POST', '/admin/preview-jobs/generate-missing', body) }
 export function publishReadyAdminExperiences(confirm = true) { return adminJson('POST', '/admin/experiences/publish-ready', { confirm }) }
 export function getAdminTemplates() { return request('/admin/templates') }
+export function getAdminClassicLayouts() { return request('/admin/classic-layouts') }
+export function createAdminClassicLayout(body) { return adminJson('POST', '/admin/classic-layouts', body) }
+export function updateAdminClassicLayout(id, body) { return adminJson('PATCH', '/admin/classic-layouts/' + encodeURIComponent(id), body) }
+export function uploadAdminClassicFrame(id, file) { const form = new FormData(); form.append('file', file); return request('/admin/classic-layouts/' + encodeURIComponent(id) + '/frame', { method: 'POST', body: form }) }
+export function getAdminFrameStyles() { return request('/admin/advanced/frame-styles') }
+export function createAdminFrameStyle(body) { return adminJson('POST', '/admin/advanced/frame-styles', body) }
+export function updateAdminFrameStyle(id, body) { return adminJson('PATCH', '/admin/advanced/frame-styles/' + encodeURIComponent(id), body) }
+export function getAdminOrnaments() { return request('/admin/advanced/ornaments') }
+export function createAdminOrnament(body) { return adminJson('POST', '/admin/advanced/ornaments', body) }
+export function updateAdminOrnament(id, body) { return adminJson('PATCH', '/admin/advanced/ornaments/' + encodeURIComponent(id), body) }
 export function createAdminTemplate(body) { return adminJson('POST', '/admin/templates', body) }
 export function updateAdminTemplate(id, body) { return adminJson('PATCH', '/admin/templates/' + encodeURIComponent(id), body) }
 export function deleteAdminTemplate(id) { return request('/admin/templates/' + encodeURIComponent(id), { method: 'DELETE' }) }

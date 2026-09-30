@@ -63,7 +63,7 @@ def public_claim_origin(request) -> str:
         except ValueError:
             invalid = invalid or "." not in hostname
         if settings.environment.lower() in {"production", "prod"}:
-            invalid = invalid or hostname != "phobo.zafirz.my.id"
+            invalid = invalid or hostname != "nxbooth.gennexbyte.com"
         if invalid:
             raise HTTPException(
                 status_code=503,

@@ -48,6 +48,9 @@ class ExperienceResponse(BaseModel):
     enabled: bool
     sort_order: int = 0
     availability: str
+    compatible_frame_style_ids: list[str] | None = None
+    compatible_ornament_ids: list[str] | None = None
+    max_ornaments: int = 3
 
 
 class ExperienceListResponse(BaseModel):
@@ -72,6 +75,32 @@ class TemplateListResponse(BaseModel):
     count: int
 
 
+class ClassicLayoutResponse(BaseModel):
+    id: str
+    slug: str
+    name: str
+    canvas_width: int
+    canvas_height: int
+    shot_count: int
+    slots: list[dict]
+    preview_url: str
+    enabled: bool
+    sort_order: int
+
+
+class FrameStyleResponse(BaseModel):
+    id: str
+    slug: str
+    name: str
+    description: str
+    enabled: bool
+    sort_order: int
+
+
+class OrnamentResponse(FrameStyleResponse):
+    pass
+
+
 # ---------------------------------------------------------------------------
 # POST /api/uploads
 # ---------------------------------------------------------------------------
@@ -79,6 +108,7 @@ class UploadResponse(BaseModel):
     upload_id: str
     filename: str
     content_type: str
+    normalized_content_type: str = Field(description="Canonical stored media type, normally image/jpeg")
     size_bytes: int
     width: int
     height: int
@@ -87,6 +117,7 @@ class UploadResponse(BaseModel):
     validation_status: str = Field(description="'VALID'")
     preview_url: str
     created_at: datetime
+    expires_at: datetime
 
 
 # ---------------------------------------------------------------------------
@@ -95,12 +126,21 @@ class UploadResponse(BaseModel):
 class GenerationCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     upload_id: str = Field(min_length=1, description="ID returned by POST /api/uploads")
-    mode: Literal["BASIC", "ADVANCED"]
+    mode: Literal["CLASSIC", "BASIC", "ADVANCED"]
     template_id: str | None = Field(default=None, min_length=1)
     experience_id: str | None = Field(default=None, min_length=1)
+    layout_id: str | None = Field(default=None, min_length=1)
+    capture_upload_ids: list[str] = Field(default_factory=list)
+    frame_style_id: str | None = Field(default=None, min_length=1)
+    ornament_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_mode_inputs(self):
+        if self.mode == "CLASSIC":
+            if not self.layout_id or not self.capture_upload_ids or self.upload_id != self.capture_upload_ids[0]:
+                raise ValueError("layout_id and capture_upload_ids beginning with upload_id are required for CLASSIC")
+            if self.template_id or self.experience_id or self.frame_style_id or self.ornament_ids:
+                raise ValueError("AI selections are not accepted for CLASSIC")
         if self.mode == "BASIC" and not self.template_id:
             raise ValueError("template_id is required for BASIC mode")
         if self.mode == "ADVANCED" and not self.experience_id:
@@ -109,6 +149,10 @@ class GenerationCreateRequest(BaseModel):
             raise ValueError("experience_id is not accepted for BASIC mode")
         if self.mode == "ADVANCED" and self.template_id:
             raise ValueError("template_id is not accepted for ADVANCED mode")
+        if self.mode != "CLASSIC" and (self.layout_id or self.capture_upload_ids):
+            raise ValueError("Classic captures are only accepted for CLASSIC mode")
+        if self.mode != "ADVANCED" and (self.frame_style_id or self.ornament_ids):
+            raise ValueError("Frame styles and ornaments are only accepted for ADVANCED mode")
         return self
 
 
@@ -118,7 +162,10 @@ class GenerationCreateResponse(BaseModel):
     upload_id: str
     template_id: str | None
     experience_id: str | None
-    mode: Literal["BASIC", "ADVANCED"]
+    mode: Literal["CLASSIC", "BASIC", "ADVANCED"]
+    layout_id: str | None = None
+    frame_style_id: str | None = None
+    ornament_ids: list[str] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -131,7 +178,10 @@ class GenerationStatusResponse(BaseModel):
     upload_id: str
     template_id: str | None
     experience_id: str | None
-    mode: Literal["BASIC", "ADVANCED"]
+    mode: Literal["CLASSIC", "BASIC", "ADVANCED"]
+    layout_id: str | None = None
+    frame_style_id: str | None = None
+    ornament_ids: list[str] = Field(default_factory=list)
     provider: str | None = None
     model: str | None = None
     error_code: str | None = Field(
@@ -217,6 +267,9 @@ class AdminExperienceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     updated_by: str
+    compatible_frame_style_ids: list[str] | None = None
+    compatible_ornament_ids: list[str] | None = None
+    max_ornaments: int = 3
 
 
 class AdminExperienceCreate(BaseModel):
@@ -233,6 +286,9 @@ class AdminExperienceCreate(BaseModel):
     category: str = Field(default="Design", min_length=1, max_length=64)
     enabled: bool = True
     sort_order: int = 0
+    compatible_frame_style_ids: list[str] | None = None
+    compatible_ornament_ids: list[str] | None = None
+    max_ornaments: int = Field(default=3, ge=0, le=10)
 
 
 class AdminExperiencePatch(BaseModel):
@@ -244,6 +300,9 @@ class AdminExperiencePatch(BaseModel):
     category: str | None = Field(default=None, min_length=1, max_length=64)
     enabled: bool | None = None
     sort_order: int | None = None
+    compatible_frame_style_ids: list[str] | None = None
+    compatible_ornament_ids: list[str] | None = None
+    max_ornaments: int | None = Field(default=None, ge=0, le=10)
 
 
 class AdminTemplateResponse(BaseModel):
@@ -256,6 +315,10 @@ class AdminTemplateResponse(BaseModel):
     preview_missing: bool
     processing_asset_present: bool
     marketing_preview_url: str | None = None
+    canvas_width: int | None = None
+    canvas_height: int | None = None
+    aspect_ratio: str | None = None
+    framed: bool = False
     enabled: bool
     sort_order: int
     created_at: datetime

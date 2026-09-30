@@ -125,6 +125,7 @@ export default function BasicTemplatePanel() {
     {items.length ? <div className="admin-template-list">{items.map((item) => <article className="admin-card admin-template-admin-card" key={item.id}>
       <div className="admin-template-admin-heading"><div><h3>{item.name}</h3><code>{item.id}</code></div><span className={`admin-badge ${item.enabled ? 'ok' : 'warn'}`}>{item.enabled ? 'enabled' : 'disabled'}</span></div>
       <p className="admin-muted">{item.description || 'No description.'}</p>
+      <p className="admin-muted">{item.framed ? 'Framed Basic Template · ' : ''}{item.canvas_width && item.canvas_height ? `${item.canvas_width} × ${item.canvas_height} · ${item.aspect_ratio}` : 'Canvas unavailable'} · {item.enabled ? 'Published' : 'Disabled'}</p>
       <div className="admin-template-asset-grid">
         <PreviewTile label="Processing Asset" description="Used by Basic generation engine" src={adminTemplateProcessingUrl(item.id, item.updated_at)} missing={!item.processing_asset_present} />
         <PreviewTile label="Marketing Preview" description="Shown to customers in the Basic gallery" src={adminTemplatePreviewUrl(item.id, item.updated_at)} missing={item.preview_missing} />

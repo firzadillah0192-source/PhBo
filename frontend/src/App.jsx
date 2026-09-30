@@ -49,6 +49,15 @@ function navigate(path, replace = false) {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
+function uploadFailureMessage(error) {
+  if (error?.errorCode === 'UNSUPPORTED_IMAGE_FORMAT') return 'This image format is not supported. Choose a JPEG, PNG, WebP, HEIC, or HEIF photo.'
+  if (error?.errorCode === 'IMAGE_DECODE_FAILED') return 'The selected photo could not be read. Choose another photo or save it as JPEG.'
+  if (error?.errorCode === 'IMAGE_NORMALIZATION_FAILED') return 'We could not orient or prepare this photo. Choose another photo and try again.'
+  if (error?.errorCode === 'UPLOAD_STORAGE_FAILED') return 'We could not temporarily save this photo. Please try again.'
+  if (error?.errorCode === 'VALIDATION_FAILED') return error.message || 'The photo does not meet the size or dimension requirements.'
+  return 'The photo could not be uploaded. Choose a JPEG, PNG, WebP, HEIC, or HEIF photo under 12 MB.'
+}
+
 export default function App() {
   const admin = window.location.pathname === '/admin' || window.location.pathname === '/admin/'
   const route = parseCustomerRoute(window.location.pathname, window.location.search)
@@ -361,8 +370,8 @@ function CustomerApp() {
         stage: 'review',
       })
     } catch (error) {
-      console.error('Photo upload failed', error)
-      setNotice('That photo could not be prepared. Try a JPEG, PNG, or WebP under 12 MB.')
+      console.warn('Photo upload failed', { code: error?.errorCode || 'UNKNOWN', status: error?.status || null })
+      setNotice(uploadFailureMessage(error))
     } finally {
       setBusy(false)
     }

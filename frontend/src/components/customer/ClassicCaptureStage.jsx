@@ -109,7 +109,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
         <button className="customer-solid-button" onClick={camera ? runCapture : openCamera} disabled={busy}>{busy ? `Capturing ${completed + 1} of ${layout.shot_count}…` : camera ? `Start ${layout.shot_count}-photo countdown` : 'Open camera'}</button>
         <button className="customer-outline-button" onClick={() => inputRef.current?.click()} disabled={busy}>Choose {layout.shot_count} photos</button>
       </div>
-      <input ref={inputRef} hidden multiple type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { uploadSet(event.target.files); event.target.value = '' }} />
+      <input ref={inputRef} hidden multiple type="file" accept="image/*,.heic,.heif" onChange={(event) => { uploadSet(event.target.files); event.target.value = '' }} />
     </section>
   )
 }

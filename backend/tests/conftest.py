@@ -29,6 +29,7 @@ if str(BACKEND_DIR) not in sys.path:
 _TMP_ROOT = Path(tempfile.mkdtemp(prefix="photobooth-tests-"))
 
 os.environ["ENVIRONMENT"] = "test"
+os.environ["COOKIE_SECURE"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["RUNTIME_DIR"] = str(_TMP_ROOT / "runtime")
 os.environ["TEMPLATES_DIR"] = str(_TMP_ROOT / "templates")
@@ -88,6 +89,7 @@ class StubProvider(AIProvider):
         self.calls.append(
             {
                 "user_image_bytes": len(user_image or b""),
+                "user_image_magic": (user_image or b"")[:3],
                 "template_id": template.id if template else None,
                 "experience_id": experience.id if experience else None,
                 "prompt": prompt,

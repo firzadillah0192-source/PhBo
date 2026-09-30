@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from PIL import Image
+
 from app.models import GenerationJob, GenerationMode, JobState
 from app.services.generation import process_job
 from conftest import make_png
@@ -33,6 +37,10 @@ def test_basic_job_calls_local_engine_and_never_ai(
     job_id = response.json()["job_id"]
     assert process_job(job_id, db=db_session) == JobState.COMPLETED
     assert calls and calls[0]["template_id"] == "sci-fi-space-commander-001"
+    with Image.open(calls[0]["user_image_path"]) as uploaded:
+        assert uploaded.format == "JPEG"
+        assert uploaded.mode == "RGB"
+        assert Path(calls[0]["user_image_path"]).suffix == ".jpg"
     assert stub_provider.calls == []
     status = client.get(f"/api/generations/{job_id}").json()
     assert status["result_id"]
@@ -57,6 +65,25 @@ def test_advanced_requires_experience_and_keeps_template_out(client, uploaded_ph
     assert body["experience_id"] == "mini-me"
     assert body["template_id"] is None
     assert captured_queue == [body["job_id"]]
+
+
+def test_advanced_worker_consumes_upload_id_as_canonical_jpeg(client, captured_queue, stub_provider, db_session):
+    uploaded = client.post(
+        "/api/uploads",
+        files={"file": ("camera.PNG", make_png(640, 480), "image/png")},
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    upload_id = uploaded.json()["upload_id"]
+    created = client.post("/api/generations", json={
+        "upload_id": upload_id,
+        "mode": "ADVANCED",
+        "experience_id": "mini-me",
+    })
+    assert created.status_code == 202, created.text
+    job_id = created.json()["job_id"]
+
+    assert process_job(job_id, db=db_session) == JobState.COMPLETED
+    assert stub_provider.calls[-1]["user_image_magic"] == b"\xff\xd8\xff"
 
 
 def test_experiences_endpoint_exposes_safe_metadata_only(client):

@@ -1,4 +1,5 @@
 """Safe Advanced experience metadata for the customer frontend."""
+import json
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -17,6 +18,9 @@ def list_available_experiences(db: Session = Depends(get_db)) -> ExperienceListR
         id=row.id, name=row.name, description=row.description, category=row.category,
         thumbnail=(f"/api/experiences/{row.id}/thumbnail" if row.thumbnail_path and Path(row.thumbnail_path).is_file() else None),
         enabled=True, sort_order=row.sort_order, availability="available",
+        compatible_frame_style_ids=json.loads(row.compatible_frame_style_ids_json) if row.compatible_frame_style_ids_json else None,
+        compatible_ornament_ids=json.loads(row.compatible_ornament_ids_json) if row.compatible_ornament_ids_json else None,
+        max_ornaments=row.max_ornaments,
     ) for row in rows]
     return ExperienceListResponse(experiences=items, count=len(items))
 

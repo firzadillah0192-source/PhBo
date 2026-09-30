@@ -7,14 +7,16 @@ oversized / wrong-type files fail with an explicit reason.
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageCms
 
 from app.core.config import get_settings
 from app.services.image_validation import (
     ImageValidationError,
     normalize_for_provider,
+    normalize_uploaded_image,
     validate_image_bytes,
 )
 from conftest import make_jpeg, make_png
@@ -43,14 +45,23 @@ def test_empty_file_rejected():
 
 
 def test_non_image_rejected():
-    with pytest.raises(ImageValidationError, match="could not be decoded"):
+    with pytest.raises(ImageValidationError, match="could not be decoded") as excinfo:
         validate_image_bytes(b"this is definitely not an image", content_type="image/jpeg")
+    assert excinfo.value.code == "IMAGE_DECODE_FAILED"
 
 
-def test_wrong_content_type_rejected():
+def test_decodable_but_unsupported_format_has_specific_code():
+    buffer = io.BytesIO()
+    Image.new("RGB", (640, 480)).save(buffer, format="GIF")
+    with pytest.raises(ImageValidationError) as excinfo:
+        validate_image_bytes(buffer.getvalue(), content_type="image/gif")
+    assert excinfo.value.code == "UNSUPPORTED_IMAGE_FORMAT"
+
+
+def test_valid_image_is_accepted_with_unusual_or_empty_mime():
     data = make_jpeg()
-    with pytest.raises(ImageValidationError, match="Unsupported content type"):
-        validate_image_bytes(data, content_type="application/pdf")
+    assert validate_image_bytes(data, content_type="application/pdf").format == "JPEG"
+    assert validate_image_bytes(data, content_type="").format == "JPEG"
 
 
 def test_oversized_file_rejected():
@@ -118,3 +129,54 @@ def test_normalize_reduces_oversized_image():
         out.load()
         assert max(out.size) == 1536
         assert out.size[0] > out.size[1]  # aspect ratio preserved
+
+
+@pytest.mark.parametrize("fmt", ["JPEG", "PNG", "WEBP"])
+def test_customer_image_normalizes_to_canonical_jpeg(fmt):
+    buffer = io.BytesIO()
+    Image.new("RGB", (640, 480), (90, 120, 170)).save(buffer, format=fmt)
+    result = normalize_uploaded_image(buffer.getvalue(), content_type="application/octet-stream")
+    assert result.source_format == fmt
+    assert (result.width, result.height) == (640, 480)
+    assert result.data[:3] == b"\xff\xd8\xff"
+    with Image.open(io.BytesIO(result.data)) as normalized:
+        normalized.load()
+        assert normalized.format == "JPEG"
+        assert normalized.mode == "RGB"
+
+
+def test_upload_normalization_physically_applies_exif_orientation():
+    image = Image.new("RGB", (640, 480), (30, 60, 90))
+    exif = image.getexif()
+    exif[274] = 6  # rotate 90 degrees clockwise for display
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", exif=exif)
+
+    result = normalize_uploaded_image(buffer.getvalue())
+    assert (result.width, result.height) == (480, 640)
+    with Image.open(io.BytesIO(result.data)) as normalized:
+        normalized.load()
+        assert normalized.size == (480, 640)
+        assert normalized.getexif().get(274) in (None, 1)
+
+
+def test_upload_normalization_converts_embedded_icc_profile_to_srgb():
+    profile = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    image = Image.new("RGB", (640, 480), (100, 120, 140))
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", icc_profile=profile)
+
+    result = normalize_uploaded_image(buffer.getvalue())
+    with Image.open(io.BytesIO(result.data)) as normalized:
+        normalized.load()
+        assert "icc_profile" not in normalized.info
+        assert normalized.mode == "RGB"
+
+
+def test_synthetic_heif_decode_applies_exif_orientation():
+    pytest.importorskip("pillow_heif")
+    fixture = Path(__file__).parent / "fixtures" / "synthetic-oriented.heic"
+    result = normalize_uploaded_image(fixture.read_bytes(), content_type="image/heic")
+    assert result.source_format == "HEIF"
+    assert (result.width, result.height) == (480, 640)
+    assert result.data[:3] == b"\xff\xd8\xff"

@@ -5,6 +5,7 @@ Run with:  uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -14,7 +15,8 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.db import init_db
-from app.routers import account, admin, admin_operations, admin_usage, claims, experiences, generations, health, results, templates, uploads
+from app.routers import account, admin, admin_operations, admin_usage, claims, experiences, generations, health, results, templates, uploads, product_options, admin_product
+from app.services.uploads import cleanup_expired_uploads
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,13 +39,29 @@ async def lifespan(_app: FastAPI):
     settings.ensure_runtime_dirs()
     init_db()
     logger.info(
-        "startup: env=%s runtime_dir=%s templates_dir=%s ai_provider=%s",
+        "startup: env=%s ai_provider=%s",
         settings.environment,
-        settings.runtime_dir,
-        settings.templates_dir,
         settings.ai_provider,
     )
-    yield
+    async def clean_expired_uploads_periodically():
+        while True:
+            try:
+                await asyncio.to_thread(cleanup_expired_uploads)
+            except Exception:
+                # Keep the API available if maintenance is temporarily blocked;
+                # do not include customer storage paths in logs.
+                logger.error("temporary upload cleanup failed")
+            await asyncio.sleep(settings.upload_cleanup_interval_seconds)
+
+    cleanup_task = asyncio.create_task(clean_expired_uploads_periodically())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
     logger.info("shutdown")
 
 
@@ -72,8 +90,10 @@ def create_app() -> FastAPI:
     app.include_router(account.router)
     app.include_router(admin.auth_router)
     app.include_router(templates.router)
+    app.include_router(product_options.router)
     app.include_router(experiences.router)
     app.include_router(admin.router)
+    app.include_router(admin_product.router)
     app.include_router(admin_operations.router)
     app.include_router(admin_usage.router)
     app.include_router(uploads.router)

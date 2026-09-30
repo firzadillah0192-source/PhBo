@@ -18,12 +18,13 @@ import {
 import { ApiError } from './api.js'
 import { toError } from './components/common.jsx'
 import BasicTemplatePanel from './components/admin/BasicTemplatePanel.jsx'
+import { AdvancedPresetsPanel, ClassicLayoutsPanel } from './components/admin/ThreeModesPanel.jsx'
 
 const SECTIONS = [
   ['overview', 'Overview'], ['users', 'Users'], ['credits', 'Credits'],
   ['subscriptions', 'Subscriptions'], ['generations', 'Generations'],
   ['provider-ops', 'Provider Ops / Routing'],
-  ['experiences', 'Advanced Experiences'], ['templates', 'Basic Templates'],
+  ['classic-layouts', 'Classic Layouts'], ['experiences', 'Advanced Experiences'], ['advanced-presets', 'Advanced Styles'], ['templates', 'Basic Templates'],
   ['admin-users', 'Admin Users'], ['audit', 'Audit Log'], ['settings', 'Settings'],
 ]
 
@@ -290,6 +291,6 @@ export default function AdminPage() {
   const unlock = async (event) => { event.preventDefault(); setLoading(true); setError(''); try { await loginAdmin(token); setToken(''); setUnlocked(true) } catch (e) { setError(errorMessage(e, 'Admin authentication failed.')) } finally { setLoading(false) } }
   const lock = async () => { try { await logoutAdmin() } catch {} setUnlocked(false); setToken(''); setSection('overview') }
   if (!unlocked) return <div className="app admin-app"><main className="admin-gate admin-card"><p className="admin-eyebrow">Photobooth AI / Operations</p><h1>Admin access</h1><p className="admin-muted">Enter the configured admin token. It is held only in this page session.</p>{error && <div className="admin-error">{error}</div>}<form onSubmit={unlock}><Field label="Admin token"><input type="password" autoFocus required value={token} onChange={(e) => setToken(e.target.value)} /></Field><Button className="primary" disabled={loading} type="submit">{loading ? 'Checking…' : 'Unlock admin'}</Button></form></main></div>
-  const content = { overview: <OverviewPanel onOpen={setSection} />, users: <UsersPanel />, credits: <CreditsPanel />, subscriptions: <><PlansPanel /><SubscriptionList /></>, generations: <GenerationsPanel />, 'provider-ops': <ProviderOpsPanel />, experiences: <ContentPanel kind="experience" />, templates: <BasicTemplatePanel />, 'admin-users': <ActorsPanel />, audit: <AuditPanel />, settings: <SettingsPanel /> }[section]
+  const content = { overview: <OverviewPanel onOpen={setSection} />, users: <UsersPanel />, credits: <CreditsPanel />, subscriptions: <><PlansPanel /><SubscriptionList /></>, generations: <GenerationsPanel />, 'provider-ops': <ProviderOpsPanel />, 'classic-layouts': <ClassicLayoutsPanel />, experiences: <ContentPanel kind="experience" />, 'advanced-presets': <AdvancedPresetsPanel />, templates: <BasicTemplatePanel />, 'admin-users': <ActorsPanel />, audit: <AuditPanel />, settings: <SettingsPanel /> }[section]
   return <div className="app admin-app"><aside className="admin-sidebar"><div><p className="admin-eyebrow">Photobooth AI</p><h1>Operations</h1><p className="admin-muted">Control plane</p></div><nav aria-label="Admin sections">{SECTIONS.map(([id, label]) => <button key={id} className={section === id ? 'active' : ''} onClick={() => setSection(id)}>{label}</button>)}</nav><Button onClick={lock}>Lock session</Button></aside><main className="admin-shell"><header className="admin-topbar"><div><span className="admin-kicker">{SECTIONS.find(([id]) => id === section)?.[1]}</span><h2>{section === 'overview' ? 'Good morning, operator.' : SECTIONS.find(([id]) => id === section)?.[1]}</h2></div><span className="admin-session-status">Secure session</span></header><AdminSectionBoundary key={section}>{content}</AdminSectionBoundary></main></div>
 }

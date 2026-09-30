@@ -213,7 +213,7 @@ def test_production_claim_url_is_canonical(client, uploaded_photo, db_session, m
         "get_settings",
         lambda: SimpleNamespace(
             environment="production",
-            result_claim_public_base_url="https://phobo.zafirz.my.id///",
+            result_claim_public_base_url="https://nxbooth.gennexbyte.com///",
             result_claim_ttl_hours=24,
         ),
     )
@@ -221,7 +221,7 @@ def test_production_claim_url_is_canonical(client, uploaded_photo, db_session, m
     response = client.post(f"/api/results/{result_id}/claim", json={})
     assert response.status_code == 200, response.text
     url = response.json()["claim_url"]
-    assert url.startswith("https://phobo.zafirz.my.id/r/")
+    assert url.startswith("https://nxbooth.gennexbyte.com/r/")
     assert "//r/" not in url
     assert result_id not in url
 
@@ -230,10 +230,11 @@ def test_production_claim_url_is_canonical(client, uploaded_photo, db_session, m
     "base_url",
     [
         "",
-        "http://phobo.zafirz.my.id",
+        "http://nxbooth.gennexbyte.com",
         "https://localhost",
         "https://photobooth-api:8000",
-        "https://phobo.zafirz.my.id/customer",
+        "https://nxbooth.gennexbyte.com/customer",
+        "https://phobo.zafirz.my.id",
     ],
 )
 def test_production_claim_url_rejects_unsafe_configuration_without_creating_claim(

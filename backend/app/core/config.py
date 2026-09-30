@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_days: int = 30
     result_claim_ttl_hours: int = Field(default=24, ge=1, le=168)
+    upload_retention_hours: int = Field(default=24, ge=1, le=168)
+    upload_cleanup_interval_seconds: int = Field(default=3600, ge=60, le=86400)
     result_claim_public_base_url: str = ""
     kiosk_reset_seconds: int = Field(default=90, ge=15, le=3600)
     admin_default_role: str = "superadmin"
@@ -60,6 +62,8 @@ class Settings(BaseSettings):
         "image/jpeg",
         "image/png",
         "image/webp",
+        "image/heic",
+        "image/heif",
     )
 
     # --- AI provider ------------------------------------------------------
