@@ -101,6 +101,19 @@ def create_app() -> FastAPI:
     app.include_router(results.router)
     app.include_router(claims.router)
 
+    @app.middleware("http")
+    async def private_api_responses(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/"):
+            existing = response.headers.get("Cache-Control", "").lower()
+            if "private" not in existing or "no-store" not in existing:
+                response.headers["Cache-Control"] = "private, no-store, no-cache, max-age=0, must-revalidate"
+            response.headers["CDN-Cache-Control"] = "no-store"
+            response.headers["Cloudflare-CDN-Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Vary"] = ", ".join(filter(None, [response.headers.get("Vary"), "Cookie"]))
+        return response
+
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         # Never hide an error behind a fallback success response.

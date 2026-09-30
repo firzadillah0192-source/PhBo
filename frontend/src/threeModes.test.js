@@ -70,6 +70,12 @@ test('customer screens render all three choices and their required steps', async
     assert.match(basic, /Framed Basic Template/); assert.match(basic, /Continue to photo/)
     const advanced = renderToStaticMarkup(React.createElement(AdvancedOptionsStage, { experience: { name: 'Mini Me', max_ornaments: 3 }, frameStyles: [{ id: 'modern', name: 'Modern', description: 'Clean' }], ornaments: [{ id: 'sparkles', name: 'Sparkles' }], frameStyleId: 'modern', ornamentIds: ['sparkles'], onFrameStyle: () => {}, onOrnaments: () => {}, onBack: () => {}, onContinue: () => {} }))
     assert.match(advanced, /Frame style/); assert.match(advanced, /Sparkles/)
+    for (const id of ['natural', 'modern', 'minimal', 'luxury', 'retro', 'film', 'cute', 'editorial', 'futuristic', 'artistic']) {
+      const thumbnail = renderToStaticMarkup(React.createElement(AdvancedOptionsStage, { experience: { name: 'Published world', thumbnail: '/api/experiences/world/thumbnail' }, frameStyles: [{ id, slug: id, name: id }], ornaments: [], frameStyleId: id, ornamentIds: [] }))
+      assert.match(thumbnail, new RegExp(`frame-preview-${id}`))
+      assert.match(thumbnail, /<svg/)
+      assert.match(thumbnail, /src="\/api\/experiences\/world\/thumbnail"/)
+    }
     const review = renderToStaticMarkup(React.createElement(ReviewStage, { mode: 'ADVANCED', upload: { upload_id: 'a' }, selection: { name: 'Mini Me' }, frameStyle: { name: 'Modern' }, ornaments: [{ name: 'Sparkles' }], onCreate: () => {} }))
     assert.match(review, /Experience/); assert.match(review, /Frame style/); assert.match(review, /Ornaments/); assert.match(review, /Photo/)
   } finally { await vite.close() }

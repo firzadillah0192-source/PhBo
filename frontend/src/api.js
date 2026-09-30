@@ -25,7 +25,12 @@ async function parseError(response) {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(BASE + path, { credentials: 'include', ...options })
+  // Dynamic JSON must not reuse an edge-cached status or another session's data.
+  // A unique query also protects clients while an upstream cache rule is fixed.
+  const read = !options.method || options.method === 'GET'
+  const nonce = read ? (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`) : null
+  const url = BASE + path + (read ? `${path.includes('?') ? '&' : '?'}_request=${encodeURIComponent(nonce)}` : '')
+  const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options })
   if (!response.ok) throw await parseError(response)
   const text = await response.text()
   return text ? JSON.parse(text) : null

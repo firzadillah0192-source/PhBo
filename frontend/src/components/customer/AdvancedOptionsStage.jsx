@@ -1,4 +1,5 @@
 import React from 'react'
+import FrameStylePreview from './FrameStylePreview.jsx'
 
 export default function AdvancedOptionsStage({ experience, frameStyles, ornaments, frameStyleId, ornamentIds, onFrameStyle, onOrnaments, onBack, onContinue }) {
   const compatibleFrames = experience?.compatible_frame_style_ids
@@ -13,9 +14,9 @@ export default function AdvancedOptionsStage({ experience, frameStyles, ornament
   }
   return (
     <section className="gallery-page advanced-options customer-stage-enter">
-      <header className="gallery-heading"><button className="customer-inline-button" onClick={onBack}>← Change experience</button><p className="customer-kicker">Art direction for {experience?.name}</p><h1>Choose a frame style.</h1><p>The frame is generated as part of your selected world.</p></header>
+      <header className="gallery-heading"><button className="customer-inline-button" onClick={onBack}>← Change experience</button><p className="customer-kicker">Art direction for {experience?.name}</p><h1>Choose a frame style.</h1><p>Preview the visual direction. Your final frame adapts to the world you choose.</p></header>
       <div className="advanced-style-grid" role="group" aria-label="Frame style">
-        {visibleFrames.map((item) => <button key={item.id} className={`advanced-style-card ${frameStyleId === item.id ? 'is-selected' : ''}`} aria-pressed={frameStyleId === item.id} onClick={() => onFrameStyle(item.id)}><strong>{item.name}</strong><small>{item.description}</small></button>)}
+        {visibleFrames.map((item) => <button key={item.id} className={`advanced-style-card ${frameStyleId === item.id ? 'is-selected' : ''}`} aria-pressed={frameStyleId === item.id} onClick={() => onFrameStyle(item.id)}><FrameStylePreview style={item} experience={experience} /><strong>{item.name}</strong><small>{item.description}</small></button>)}
       </div>
       <section className="advanced-ornaments"><h2>Optional ornaments</h2><p>Choose up to {maximum}.</p><div role="group" aria-label="Ornaments"><button className={ornamentIds.length ? '' : 'is-selected'} aria-pressed={!ornamentIds.length} onClick={() => onOrnaments([])}>None</button>{visibleOrnaments.map((item) => <button key={item.id} className={ornamentIds.includes(item.id) ? 'is-selected' : ''} aria-pressed={ornamentIds.includes(item.id)} onClick={() => toggle(item.id)}>{item.name}</button>)}</div></section>
       <div className="selection-dock"><span><small>Selected frame</small><strong>{visibleFrames.find((item) => item.id === frameStyleId)?.name || 'Choose a style'}</strong></span><button className="customer-solid-button" onClick={onContinue} disabled={!validSelection}>Continue to photo <b>→</b></button></div>

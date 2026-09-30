@@ -56,7 +56,8 @@ test('refresh reads the saved upload id and API restores owner-checked server me
       }
     }
     const upload = await getUpload(flowAfterRefresh.uploadId)
-    assert.equal(requestedUrl, '/api/uploads/upload-123')
+    assert.equal(new URL(requestedUrl, 'https://nxbooth.test').pathname, '/api/uploads/upload-123')
+    assert.ok(new URL(requestedUrl, 'https://nxbooth.test').searchParams.get('_request'))
     assert.equal(upload.preview_url, '/api/uploads/upload-123/preview')
   } finally {
     globalThis.fetch = originalFetch

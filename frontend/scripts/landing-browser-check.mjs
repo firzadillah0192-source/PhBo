@@ -42,10 +42,10 @@ try {
   }
   assert.ok(catalog.experiences.experiences.length, 'At least one actual published Experience is required for this visual check')
   const layouts = [1, 2, 3].map((index) => ({ id: `classic-frame-00${index}`, name: `Classic Frame ${index}`, shot_count: index === 3 ? 3 : 4, canvas_width: 724, canvas_height: 2172, preview_url: `/api/classic/layouts/classic-frame-00${index}/preview` }))
-  const frames = [{ id: 'natural', name: 'Natural', description: 'Organic photographic framing.' }, { id: 'modern', name: 'Modern', description: 'Contemporary photographic framing.' }]
+  const frames = ['Natural', 'Modern', 'Minimal', 'Luxury', 'Retro', 'Film', 'Cute', 'Editorial', 'Futuristic', 'Artistic'].map((name) => ({ id: name.toLowerCase(), slug: name.toLowerCase(), name, description: `${name} photographic framing.` }))
   const savedFlow = { mode: 'ADVANCED', uploadId: 'test-saved-upload', experienceId: catalog.experiences.experiences[0].id, frameStyleId: 'modern', ornamentIds: ['sparkles'], stage: 'review' }
   const engine = process.env.NXBOOTH_BROWSER || 'chromium'
-  browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true, ...(process.env.NXBOOTH_BROWSER_EXECUTABLE ? { executablePath: process.env.NXBOOTH_BROWSER_EXECUTABLE } : {}) })
+  browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true, ...(engine === 'chromium' && process.env.NXBOOTH_GENERATION_CHECK === '1' ? { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } : {}), ...(process.env.NXBOOTH_BROWSER_EXECUTABLE ? { executablePath: process.env.NXBOOTH_BROWSER_EXECUTABLE } : {}) })
   const cases = engine === 'webkit'
     ? [{ name: 'ipad-safari-portrait', options: { ...devices['iPad (gen 7)'] } }, { name: 'ipad-safari-landscape', options: { ...devices['iPad (gen 7) landscape'] } }]
     : [{ name: 'desktop', options: { viewport: { width: 1440, height: 1000 } } }, { name: 'android-chrome', options: { ...devices['Pixel 7'] } }, { name: 'narrow-mobile', options: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true } }, { name: 'ipad-chromium-layout', options: { ...devices['iPad (gen 7)'] } }]
@@ -56,6 +56,9 @@ try {
     const page = await context.newPage()
     const errors = []
     let catalogUnavailable = false
+    const generationFixtures = new Map()
+    let fixtureSequence = 0
+    const pollUrls = []
     page.on('pageerror', (error) => errors.push(error.message))
     await context.route('**/api/**', async (route) => {
       const path = new URL(route.request().url()).pathname
@@ -69,6 +72,31 @@ try {
       if (frame) return route.fulfill({ contentType: 'image/png', body: await readFile(resolve(frontend, `../templates/_classic/classic-frame${frame[1]}.png`)) })
       if (path === '/api/advanced/frame-styles') return json(frames)
       if (path === '/api/advanced/ornaments') return json([{ id: 'sparkles', name: 'Sparkles', description: 'Subtle accents.' }])
+      if (process.env.NXBOOTH_GENERATION_CHECK === '1') {
+        const preview = catalog.images[catalog.experiences.experiences[0].thumbnail]
+        if (path === '/api/uploads' && route.request().method() === 'POST') return json({ upload_id: 'test-fixture-photo', preview_url: catalog.experiences.experiences[0].thumbnail, width: 512, height: 768 }, 201)
+        if (path === '/api/generations' && route.request().method() === 'POST') {
+          const payload = route.request().postDataJSON()
+          const id = `test-fixture-job-${++fixtureSequence}`
+          generationFixtures.set(id, { ...payload, job_id: id, state: 'QUEUED', polls: 0 })
+          return json({ ...payload, job_id: id, state: 'QUEUED' }, 202)
+        }
+        const id = path.split('/').pop()
+        const fixture = generationFixtures.get(id)
+        if (path.startsWith('/api/generations/') && fixture) {
+          pollUrls.push(route.request().url())
+          const poll = ++fixture.polls
+          if (poll === 1) return json({ detail: 'Temporary test disconnection' }, 503)
+          const state = poll === 2 ? 'QUEUED' : poll === 3 ? 'PROCESSING' : 'COMPLETED'
+          return json({ ...fixture, state, result_id: state === 'COMPLETED' ? `result-${id}` : null })
+        }
+        if (path.startsWith('/api/results/result-test-fixture-job-')) {
+          if (path.endsWith('/image')) return route.fulfill({ contentType: preview.type, body: await readFile(resolve(cache, preview.filename)) })
+          return json({ job_id: id.replace(/^result-/, '') })
+        }
+        if (path === '/api/uploads/test-fixture-photo/preview') return route.fulfill({ contentType: preview.type, body: await readFile(resolve(cache, preview.filename)) })
+        if (path === '/api/generations/test-fixture-pending') return json({ job_id: 'test-fixture-pending', mode: 'ADVANCED', state: 'PROCESSING' })
+      }
       if (path === '/api/uploads/test-saved-upload') return json({ upload_id: 'test-saved-upload', preview_url: catalog.experiences.experiences[0].thumbnail, width: 512, height: 512 })
       if (path === '/api/kiosk/session') return json({ reset_after_seconds: 90 })
       if (path.startsWith('/api/admin/')) return json({ detail: 'Admin authentication required' }, 401)
@@ -149,6 +177,48 @@ try {
         await page.getByRole('heading', { name: 'Choose a frame style.' }).waitFor()
       }
     }
+    if (process.env.NXBOOTH_GENERATION_CHECK === '1') {
+      // Leave a running job through SPA navigation: busy must not disable a new photo.
+      await page.goto(base + '/generate/test-fixture-pending', { waitUntil: 'networkidle' })
+      await page.locator('.processing-stage').waitFor()
+      await page.locator('.customer-mode-nav').getByRole('button', { name: 'Advanced', exact: true }).click()
+      await page.locator('.look-card').first().click()
+      await page.getByRole('button', { name: /Choose frame style/ }).click()
+      assert.equal(await page.locator('.frame-style-preview svg').count(), 10)
+      await page.getByRole('button', { name: /^Modern/ }).click()
+      await page.getByRole('button', { name: 'Sparkles', exact: true }).click()
+      await page.screenshot({ path: resolve(output, `${sample.name}-advanced-frames.png`), fullPage: true })
+      await page.getByRole('button', { name: /Continue to photo/ }).click()
+      assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
+      assert.equal(await page.getByRole('button', { name: 'Take photo', exact: true }).isEnabled(), true)
+      const fixtureImage = catalog.images[catalog.experiences.experiences[0].thumbnail]
+      for (const mode of ['ADVANCED', 'BASIC']) {
+        if (mode === 'BASIC') {
+          await page.locator('.customer-mode-nav').getByRole('button', { name: 'Basic', exact: true }).click()
+          await page.getByRole('button', { name: /Continue to photo/ }).click()
+        }
+        if (mode === 'ADVANCED' && engine === 'chromium') {
+          await context.grantPermissions(['camera'])
+          await page.getByRole('button', { name: 'Take photo', exact: true }).click()
+          await page.waitForFunction(() => document.querySelector('.photo-stage video')?.videoWidth > 0)
+          await page.getByRole('button', { name: 'Take photo', exact: true }).click()
+        } else {
+          await page.locator('.photo-stage input[type=file]').setInputFiles({ name: 'test-preview.png', mimeType: fixtureImage.type, buffer: await readFile(resolve(cache, fixtureImage.filename)) })
+        }
+        await page.locator('.review-stage').waitFor()
+        if (mode === 'ADVANCED') {
+          assert.match(await page.locator('.advanced-review-summary').textContent(), /Modern.*Sparkles/)
+        }
+        await page.locator('.review-create .customer-solid-button').click()
+        await page.locator('.result-stage').waitFor({ timeout: 15000 })
+        assert.match(new URL(page.url()).pathname, /^\/result\/result-test-fixture-job-/)
+      }
+      assert.equal(new Set(pollUrls).size, pollUrls.length, 'Every status read uses a fresh URL')
+      const advancedFixture = [...generationFixtures.values()].find((item) => item.mode === 'ADVANCED')
+      assert.equal(advancedFixture.frame_style_id, 'modern')
+      assert.deepEqual(advancedFixture.ornament_ids, ['sparkles'])
+      await page.evaluate(() => sessionStorage.clear())
+    }
     await page.goto(base, { waitUntil: 'networkidle' })
     await page.evaluate((flow) => sessionStorage.setItem('photobooth:active-customer-flow', JSON.stringify(flow)), savedFlow)
     await page.getByRole('link', { name: /^Try NXBooth Free/ }).first().click()
@@ -178,6 +248,7 @@ try {
     assert.deepEqual(errors, [], `${sample.name}: runtime errors`)
     reports.push({ sample: sample.name, browser: engine, dimensions, featuredNames, checks: ['landing', 'CTA chooser', 'three modes', 'sign-in', 'no marketing credits', 'published art', 'mode galleries', 'photo and art-direction entry', 'refresh recovery', 'homepage recovery', 'admin', 'kiosk', 'claim route', 'catalog failure'], passed: true })
     if (motionCheck) reports.at(-1).checks.push('animated preview rotation', 'pause and play', 'reduced motion')
+    if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('ten frame thumbnails', 'ornament photo buttons enabled', 'Basic and Advanced queued to result', 'transient polling recovery', 'cancel previous job navigation')
     if (engine === 'webkit') reports.at(-1).checks = reports.at(-1).checks.filter((check) => check !== 'photo and art-direction entry')
     await writeFile(resolve(output, `${engine}-checks.json`), JSON.stringify(reports, null, 2))
     console.log(JSON.stringify({ sample: sample.name, passed: true }))

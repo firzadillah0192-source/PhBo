@@ -35,9 +35,8 @@ import { accountTabRoute, initialCustomerStage, kioskGenerationRoute, kioskModeR
 import { clearCustomerFlow, readCustomerFlow, updateCustomerFlow } from './customerSession.js'
 import { reconcileSelectedExperienceId } from './components/customer/experienceCatalog.js'
 import { generationFailureAction, generationFailureActionLabel, generationFailureMessage } from './generationMessages.js'
+import { startGenerationPolling } from './generationPolling.js'
 import './customer.css'
-
-const POLL_INTERVAL_MS = 1500
 
 function readRoute() {
   return parseCustomerRoute(window.location.pathname, window.location.search)
@@ -230,6 +229,8 @@ function CustomerApp() {
     const onPopState = () => {
       const next = readRoute()
       const saved = readCustomerFlow()
+      pollRef.current?.()
+      setBusy(false)
       setRoute(next)
       setMode(next.mode || (['generate', 'result'].includes(next.name) ? saved?.mode : null) || null)
       setStage(initialCustomerStage(next, saved))
@@ -238,7 +239,7 @@ function CustomerApp() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  useEffect(() => () => clearInterval(pollRef.current), [])
+  useEffect(() => () => pollRef.current?.(), [])
 
   const showStatus = useCallback((status, redirect = true) => {
     setJob(status)
@@ -257,13 +258,13 @@ function CustomerApp() {
       stage: status.state === 'COMPLETED' ? 'result' : status.state === 'FAILED' ? 'failed' : 'processing',
     })
     if (status.state === 'COMPLETED' && status.result_id) {
-      clearInterval(pollRef.current)
+      pollRef.current?.()
       setBusy(false)
       setStage('result')
       refreshUsage()
       if (redirect) navigate(kioskMode ? kioskResultRoute(status.result_id) : '/result/' + encodeURIComponent(status.result_id), kioskMode)
     } else if (status.state === 'FAILED') {
-      clearInterval(pollRef.current)
+      pollRef.current?.()
       setBusy(false)
       setStage('failed')
       setNotice(generationFailureMessage(status))
@@ -273,49 +274,39 @@ function CustomerApp() {
     }
   }, [kioskMode, refreshUsage])
 
-  const pollOnce = useCallback(async (jobId, redirect = true) => {
-    try {
-      const status = await getGeneration(jobId)
-      showStatus(status, redirect)
-    } catch (error) {
-      console.error('Generation status unavailable', error)
-      clearInterval(pollRef.current)
-      setBusy(false)
-      setNotice('We could not reconnect to your studio session. Try again in a moment.')
-    }
-  }, [showStatus])
-
-  const startPolling = useCallback((jobId) => {
-    clearInterval(pollRef.current)
-    pollOnce(jobId)
-    pollRef.current = window.setInterval(() => pollOnce(jobId), POLL_INTERVAL_MS)
-  }, [pollOnce])
-
   useEffect(() => {
     let alive = true
-    clearInterval(pollRef.current)
+    pollRef.current?.()
     if (route.name === 'generate' && route.id) {
       setBusy(true)
-      getGeneration(route.id).then((status) => {
-        if (!alive) return
-        showStatus(status, false)
-        if (status.state === 'QUEUED' || status.state === 'PROCESSING') startPolling(route.id)
-      }).catch((error) => {
-        console.error('Generation reload failed', error)
-        if (alive) { setBusy(false); setNotice('We could not reopen this studio session.') }
+      pollRef.current = startGenerationPolling({
+        fetchStatus: () => getGeneration(route.id),
+        onStatus: (status) => { if (alive) { setNotice(''); showStatus(status) } },
+        onError: (error) => {
+          if (!alive) return
+          setBusy(false)
+          setNotice([401, 403, 404, 410].includes(error.status)
+            ? 'This studio session is unavailable. Sign in to the same account or start a new creation.'
+            : 'The studio connection was interrupted. We are reconnecting automatically; your generation will not be restarted.')
+        },
       })
     } else if (route.name === 'result' && route.id) {
+      setBusy(false)
       getResult(route.id).then((result) => getGeneration(result.job_id)).then((status) => {
         if (alive) showStatus(status, false)
       }).catch((error) => {
         console.error('Result reload failed', error)
         if (alive) setNotice('We could not reopen this finished portrait.')
       })
+    } else {
+      setBusy(false)
     }
-    return () => { alive = false }
-  }, [route, showStatus, startPolling])
+    return () => { alive = false; pollRef.current?.() }
+  }, [route, showStatus])
 
   const chooseMode = useCallback((nextMode) => {
+    pollRef.current?.()
+    setBusy(false)
     setMode(nextMode)
     setUpload(null)
     setJob(null)
@@ -326,7 +317,7 @@ function CustomerApp() {
   }, [kioskMode])
 
   const home = useCallback(() => {
-    clearInterval(pollRef.current)
+    pollRef.current?.()
     if (job?.result_id) window.sessionStorage.removeItem(`photobooth:result-claim:${job.result_id}`)
     setStage('home')
     setMode(null)
@@ -400,7 +391,6 @@ function CustomerApp() {
       })
       navigate(kioskMode ? kioskGenerationRoute(created.job_id) : '/generate/' + encodeURIComponent(created.job_id), kioskMode)
       refreshUsage()
-      startPolling(created.job_id)
     } catch (error) {
       console.error('Generation could not start', error)
       setBusy(false)
@@ -413,7 +403,7 @@ function CustomerApp() {
       }
       refreshUsage()
     }
-  }, [kioskMode, markUploadUnavailable, mode, refreshUsage, selectedExperienceId, selectedTemplateId, selectedFrameStyleId, selectedOrnamentIds, startPolling, upload])
+  }, [kioskMode, markUploadUnavailable, mode, refreshUsage, selectedExperienceId, selectedTemplateId, selectedFrameStyleId, selectedOrnamentIds, upload])
 
   const completeClassic = async (captures) => {
     setBusy(true)
@@ -428,7 +418,6 @@ function CustomerApp() {
       setStage('processing')
       updateCustomerFlow({ jobId: created.job_id, stage: 'processing' })
       navigate(kioskMode ? kioskGenerationRoute(created.job_id) : '/generate/' + encodeURIComponent(created.job_id), kioskMode)
-      startPolling(created.job_id)
     } catch (error) {
       setBusy(false)
       setNotice(error?.message || 'Could not compose the Classic photo strip.')
