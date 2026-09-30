@@ -4,7 +4,7 @@ import { accountTabRoute, kioskModeRoute, kioskResultRoute, modeRoute, parseCust
 import { experienceSections, reconcileSelectedExperienceId } from './components/customer/experienceCatalog.js'
 
 test('mode links and direct URLs resolve to the same route state', () => {
-  for (const mode of ['BASIC', 'ADVANCED']) {
+  for (const mode of ['CLASSIC', 'BASIC', 'ADVANCED']) {
     const direct = parseCustomerRoute('/create', `?mode=${mode.toLowerCase()}`)
     const clicked = parseCustomerRoute(new URL(modeRoute(mode), 'https://photobooth.test').pathname, `?mode=${mode.toLowerCase()}`)
     assert.deepEqual(clicked, direct)

@@ -19,7 +19,7 @@ function AccountAvatar({ account }) {
     : <span className="customer-avatar customer-avatar-initials" aria-hidden="true">{initials(account)}</span>
 }
 
-export default function CustomerNav({ usage, account, mode, onHome, onMode, onUsageChanged, onAccountNavigate, openRequest }) {
+export default function CustomerNav({ usage, account, mode, onHome, onMode, onUsageChanged, onAccountNavigate, openRequest, marketing = false }) {
   const [open, setOpen] = useState(false)
   const [register, setRegister] = useState(true)
   const [email, setEmail] = useState('')
@@ -65,18 +65,23 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
   }
 
   return (
-    <header className="customer-nav">
-      <button type="button" className="customer-logo" onClick={onHome}><span aria-hidden="true" />Photobooth AI</button>
-      <nav className="customer-mode-nav" aria-label="Studios">
+    <header className={`customer-nav ${marketing ? 'landing-nav' : ''}`}>
+      <button type="button" className="customer-logo" onClick={onHome}>NXBooth</button>
+      {marketing ? <nav className="landing-nav-links" aria-label="Explore NXBooth">
+        <a href="#experiences">Experiences</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#modes">Modes</a>
+      </nav> : <nav className="customer-mode-nav" aria-label="Studios">
         <button className={mode === 'CLASSIC' ? 'is-active' : ''} onClick={() => onMode('CLASSIC')}>Classic</button>
         <button className={mode === 'BASIC' ? 'is-active' : ''} onClick={() => onMode('BASIC')}>Basic</button>
         <button className={mode === 'ADVANCED' ? 'is-active' : ''} onClick={() => onMode('ADVANCED')}>Advanced</button>
-      </nav>
+      </nav>}
       <div className="customer-account">
-        {usage && <span className="customer-credit">{usage.ai_remaining} AI {usage.ai_remaining === 1 ? 'credit' : 'credits'}</span>}
-        <button type="button" className="customer-account-trigger" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        {marketing && <a className="landing-nav-cta" href="/create">Try for Free <span aria-hidden="true">↗</span></a>}
+        {!marketing && usage && <span className="customer-credit">{usage.ai_remaining} AI {usage.ai_remaining === 1 ? 'credit' : 'credits'}</span>}
+        <button type="button" className="customer-account-trigger" aria-expanded={open} onClick={() => { if (!usage?.authenticated) setRegister(false); setOpen((value) => !value) }}>
           {usage?.authenticated && <AccountAvatar account={account} />}
-          <span>{usage?.authenticated ? 'Account' : 'Sign in'}</span>
+          <span>{usage?.authenticated ? 'Account' : 'Sign In'}</span>
           {usage?.authenticated && <b aria-hidden="true">⌄</b>}
         </button>
         {open && (

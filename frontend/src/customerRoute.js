@@ -66,7 +66,18 @@ export function stageForRoute(route) {
   if (route.name === 'account') return 'account'
   if (route.name === 'claim') return 'claim'
   if (route.name === 'create' && route.mode) return 'gallery'
+  if (route.name === 'create') return 'chooser'
   if (route.name === 'generate') return 'processing'
   if (route.name === 'result') return 'result'
   return 'home'
+}
+
+// The mode-free entry is always a chooser. A saved upload belongs to its mode;
+// visiting the landing page or chooser must not restore it into another mode.
+export function initialCustomerStage(route, flow) {
+  if (route.name === 'create' && route.mode && flow?.mode === route.mode) {
+    if (flow.uploadId) return 'restoring'
+    if (flow.stage === 'art-direction') return 'art-direction'
+  }
+  return stageForRoute(route)
 }

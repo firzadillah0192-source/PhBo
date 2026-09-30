@@ -16,6 +16,8 @@ import {
 } from './api.js'
 import AdminPage from './AdminPage.jsx'
 import CinematicHero from './components/home/CinematicHero.jsx'
+import LandingPage from './components/home/LandingPage.jsx'
+import CreationChooser from './components/home/CreationChooser.jsx'
 import CustomerNav from './components/customer/CustomerNav.jsx'
 import AccountCenter from './components/customer/AccountCenter.jsx'
 import ProgressRail from './components/customer/ProgressRail.jsx'
@@ -29,7 +31,7 @@ import ResultStage from './components/customer/ResultStage.jsx'
 import KioskResultStage from './components/customer/KioskResultStage.jsx'
 import PublicResultPage from './components/customer/PublicResultPage.jsx'
 import CelestialWorld from './components/world/CelestialWorld.jsx'
-import { accountTabRoute, kioskGenerationRoute, kioskModeRoute, kioskResultRoute, modeRoute, parseCustomerRoute, stageForRoute } from './customerRoute.js'
+import { accountTabRoute, initialCustomerStage, kioskGenerationRoute, kioskModeRoute, kioskResultRoute, modeRoute, parseCustomerRoute } from './customerRoute.js'
 import { clearCustomerFlow, readCustomerFlow, updateCustomerFlow } from './customerSession.js'
 import { reconcileSelectedExperienceId } from './components/customer/experienceCatalog.js'
 import { generationFailureAction, generationFailureActionLabel, generationFailureMessage } from './generationMessages.js'
@@ -68,8 +70,8 @@ function CustomerApp() {
   const initialRoute = useRef(readRoute()).current
   const initialFlow = useRef(readCustomerFlow()).current
   const [route, setRoute] = useState(initialRoute)
-  const [stage, setStage] = useState(() => initialRoute.name === 'create' && initialFlow?.uploadId ? 'restoring' : initialRoute.name === 'create' && initialFlow?.mode === initialRoute.mode && initialFlow?.stage === 'art-direction' ? 'art-direction' : stageForRoute(initialRoute))
-  const [mode, setMode] = useState(() => initialRoute.mode || initialFlow?.mode || null)
+  const [stage, setStage] = useState(() => initialCustomerStage(initialRoute, initialFlow))
+  const [mode, setMode] = useState(() => initialRoute.mode || (['generate', 'result'].includes(initialRoute.name) ? initialFlow?.mode : null) || null)
   const [templates, setTemplates] = useState([])
   const [experiences, setExperiences] = useState([])
   const [layouts, setLayouts] = useState([])
@@ -91,8 +93,10 @@ function CustomerApp() {
   const [accountRequest, setAccountRequest] = useState(0)
   const [kioskResetSeconds, setKioskResetSeconds] = useState(90)
   const kioskMode = Boolean(route.kiosk)
+  const marketingLanding = route.name === 'home' && !kioskMode
   const [hoverMode, setHoverMode] = useState(null)
   const pollRef = useRef(null)
+  const catalogRequestRef = useRef(0)
 
   const refreshUsage = useCallback(async () => {
     try {
@@ -113,10 +117,12 @@ function CustomerApp() {
   }, [])
 
   const loadCatalog = useCallback(async () => {
+    const requestId = ++catalogRequestRef.current
     setCatalogLoading(true)
     setCatalogError(false)
     try {
       const [templateResponse, experienceResponse, nextLayouts, nextFrames, nextOrnaments] = await Promise.all([getTemplates(), getExperiences(), getClassicLayouts(), getFrameStyles(), getOrnaments()])
+      if (requestId !== catalogRequestRef.current) return
       const nextTemplates = Array.isArray(templateResponse.templates) ? templateResponse.templates : []
       const nextExperiences = Array.isArray(experienceResponse.experiences) ? experienceResponse.experiences : []
       setTemplates(nextTemplates)
@@ -134,11 +140,25 @@ function CustomerApp() {
       ))
       setSelectedExperienceId((current) => reconcileSelectedExperienceId(current, nextExperiences))
     } catch (error) {
+      if (requestId !== catalogRequestRef.current) return
       console.error('Studio catalog unavailable', error)
       setCatalogError(true)
     } finally {
-      setCatalogLoading(false)
+      if (requestId === catalogRequestRef.current) setCatalogLoading(false)
     }
+  }, [])
+
+  const loadLandingCatalog = useCallback(async () => {
+    const requestId = ++catalogRequestRef.current
+    setCatalogLoading(true)
+    const [templateResult, experienceResult, layoutResult] = await Promise.allSettled([getTemplates(), getExperiences(), getClassicLayouts()])
+    if (requestId !== catalogRequestRef.current) return
+    if (templateResult.status === 'fulfilled') setTemplates(templateResult.value?.templates || [])
+    if (experienceResult.status === 'fulfilled') setExperiences(experienceResult.value?.experiences || [])
+    if (layoutResult.status === 'fulfilled') setLayouts(layoutResult.value || [])
+    // One preview source can remain useful while another catalog is unavailable.
+    setCatalogError(templateResult.status === 'rejected' && experienceResult.status === 'rejected')
+    setCatalogLoading(false)
   }, [])
 
   const markUploadUnavailable = useCallback(() => {
@@ -150,7 +170,7 @@ function CustomerApp() {
 
   const restoreUpload = useCallback(async (targetRoute = route) => {
     const saved = readCustomerFlow()
-    if (targetRoute.name !== 'create' || !saved?.uploadId) {
+    if (targetRoute.name !== 'create' || !targetRoute.mode || saved?.mode !== targetRoute.mode || !saved?.uploadId) {
       return
     }
     setStage('restoring')
@@ -178,9 +198,13 @@ function CustomerApp() {
   }, [markUploadUnavailable, route])
 
   useEffect(() => {
-    loadCatalog()
+    if (marketingLanding) loadLandingCatalog()
+    else loadCatalog()
+  }, [loadCatalog, loadLandingCatalog, marketingLanding])
+
+  useEffect(() => {
     refreshUsage()
-  }, [loadCatalog, refreshUsage])
+  }, [refreshUsage])
 
   useEffect(() => {
     if (route.name === 'create') restoreUpload(route)
@@ -198,8 +222,8 @@ function CustomerApp() {
       const next = readRoute()
       const saved = readCustomerFlow()
       setRoute(next)
-      setMode(next.mode || saved?.mode || null)
-      setStage(next.name === 'create' && saved?.uploadId ? 'restoring' : next.name === 'create' && saved?.mode === next.mode && saved?.stage === 'art-direction' ? 'art-direction' : stageForRoute(next))
+      setMode(next.mode || (['generate', 'result'].includes(next.name) ? saved?.mode : null) || null)
+      setStage(initialCustomerStage(next, saved))
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
@@ -452,14 +476,18 @@ function CustomerApp() {
     }
   }
   const retryRestoreUpload = () => restoreUpload(route)
-  const mood = stage === 'home' ? 'home' : stage === 'account' ? 'account' : stage === 'gallery' || stage === 'art-direction' ? 'gallery' : stage === 'photo' ? 'capture' : stage === 'review' ? 'review' : stage === 'processing' || stage === 'failed' || stage === 'restoring' || stage === 'restore-failed' ? 'processing' : 'result'
+  const mood = stage === 'home' ? 'home' : stage === 'account' ? 'account' : stage === 'chooser' || stage === 'gallery' || stage === 'art-direction' ? 'gallery' : stage === 'photo' ? 'capture' : stage === 'review' ? 'review' : stage === 'processing' || stage === 'failed' || stage === 'restoring' || stage === 'restore-failed' ? 'processing' : 'result'
 
   return (
-    <div className={`customer-app ${stage === 'home' ? 'is-home' : ''}`} data-mood={mood}>
-      <CelestialWorld mood={mood} mode={mode} hoverMode={hoverMode} templates={templates} experiences={experiences} />
-      <div className="customer-grain" aria-hidden="true" />
-      <CustomerNav usage={usage} account={account} mode={mode} onHome={home} onMode={chooseMode} onUsageChanged={refreshUsage} onAccountNavigate={openAccount} openRequest={accountRequest} />
-      {stage === 'home' ? (
+    <div className={`customer-app ${stage === 'home' ? 'is-home' : ''} ${marketingLanding ? 'is-marketing' : ''}`} data-mood={mood}>
+      {!marketingLanding && <CelestialWorld mood={mood} mode={mode} hoverMode={hoverMode} templates={templates} experiences={experiences} />}
+      {!marketingLanding && <div className="customer-grain" aria-hidden="true" />}
+      <CustomerNav marketing={marketingLanding} usage={usage} account={account} mode={mode} onHome={kioskMode ? home : () => navigate('/')} onMode={chooseMode} onUsageChanged={refreshUsage} onAccountNavigate={openAccount} openRequest={accountRequest} />
+      {marketingLanding ? (
+        <LandingPage templates={templates} experiences={experiences} layouts={layouts} loading={catalogLoading} error={catalogError} onRetry={loadLandingCatalog} />
+      ) : stage === 'chooser' ? (
+        <CreationChooser templates={templates} experiences={experiences} layouts={layouts} onSelect={chooseMode} savedFlow={readCustomerFlow()} />
+      ) : stage === 'home' ? (
         <CinematicHero onSelect={chooseMode} onHoverMode={setHoverMode} />
       ) : (
         <>
