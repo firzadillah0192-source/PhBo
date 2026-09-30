@@ -3,9 +3,13 @@ import {
   createGeneration,
   getAccountMe,
   getExperiences,
+  getClassicLayouts,
+  getFrameStyles,
+  getOrnaments,
   getGeneration,
   getResult,
   getTemplates,
+  getUpload,
   getUsage,
   startKioskSession,
   uploadPhoto,
@@ -17,6 +21,8 @@ import AccountCenter from './components/customer/AccountCenter.jsx'
 import ProgressRail from './components/customer/ProgressRail.jsx'
 import ExperienceBrowser from './components/customer/ExperienceBrowser.jsx'
 import PhotoStage from './components/customer/PhotoStage.jsx'
+import ClassicCaptureStage from './components/customer/ClassicCaptureStage.jsx'
+import AdvancedOptionsStage from './components/customer/AdvancedOptionsStage.jsx'
 import ReviewStage from './components/customer/ReviewStage.jsx'
 import ProcessingStage from './components/customer/ProcessingStage.jsx'
 import ResultStage from './components/customer/ResultStage.jsx'
@@ -24,7 +30,9 @@ import KioskResultStage from './components/customer/KioskResultStage.jsx'
 import PublicResultPage from './components/customer/PublicResultPage.jsx'
 import CelestialWorld from './components/world/CelestialWorld.jsx'
 import { accountTabRoute, kioskGenerationRoute, kioskModeRoute, kioskResultRoute, modeRoute, parseCustomerRoute, stageForRoute } from './customerRoute.js'
+import { clearCustomerFlow, readCustomerFlow, updateCustomerFlow } from './customerSession.js'
 import { reconcileSelectedExperienceId } from './components/customer/experienceCatalog.js'
+import { generationFailureAction, generationFailureActionLabel, generationFailureMessage } from './generationMessages.js'
 import './customer.css'
 
 const POLL_INTERVAL_MS = 1500
@@ -37,12 +45,6 @@ function navigate(path, replace = false) {
   if (window.location.pathname + window.location.search === path) return
   window.history[replace ? 'replaceState' : 'pushState']({}, '', path)
   window.dispatchEvent(new PopStateEvent('popstate'))
-}
-
-function generationFailureMessage(job) {
-  if (job?.error_code === 'UPLOAD_NOT_FOUND') return 'The uploaded photo is no longer available. Please upload it again.'
-  if (job?.mode === 'BASIC') return 'The Basic studio could not finish this portrait. No AI credit was used.'
-  return 'We could not finish that image. Your reserved AI credit was returned.'
 }
 
 export default function App() {
@@ -64,13 +66,20 @@ function CustomerNotice({ message, onDismiss, onRetry }) {
 
 function CustomerApp() {
   const initialRoute = useRef(readRoute()).current
+  const initialFlow = useRef(readCustomerFlow()).current
   const [route, setRoute] = useState(initialRoute)
-  const [stage, setStage] = useState(() => stageForRoute(initialRoute))
-  const [mode, setMode] = useState(() => initialRoute.mode)
+  const [stage, setStage] = useState(() => initialRoute.name === 'create' && initialFlow?.uploadId ? 'restoring' : initialRoute.name === 'create' && initialFlow?.mode === initialRoute.mode && initialFlow?.stage === 'art-direction' ? 'art-direction' : stageForRoute(initialRoute))
+  const [mode, setMode] = useState(() => initialRoute.mode || initialFlow?.mode || null)
   const [templates, setTemplates] = useState([])
   const [experiences, setExperiences] = useState([])
-  const [selectedTemplateId, setSelectedTemplateId] = useState(null)
-  const [selectedExperienceId, setSelectedExperienceId] = useState(null)
+  const [layouts, setLayouts] = useState([])
+  const [frameStyles, setFrameStyles] = useState([])
+  const [ornaments, setOrnaments] = useState([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState(initialFlow?.templateId || null)
+  const [selectedExperienceId, setSelectedExperienceId] = useState(initialFlow?.experienceId || null)
+  const [selectedLayoutId, setSelectedLayoutId] = useState(initialFlow?.layoutId || null)
+  const [selectedFrameStyleId, setSelectedFrameStyleId] = useState(initialFlow?.frameStyleId || null)
+  const [selectedOrnamentIds, setSelectedOrnamentIds] = useState(initialFlow?.ornamentIds || [])
   const [upload, setUpload] = useState(null)
   const [job, setJob] = useState(null)
   const [usage, setUsage] = useState(null)
@@ -107,11 +116,17 @@ function CustomerApp() {
     setCatalogLoading(true)
     setCatalogError(false)
     try {
-      const [templateResponse, experienceResponse] = await Promise.all([getTemplates(), getExperiences()])
+      const [templateResponse, experienceResponse, nextLayouts, nextFrames, nextOrnaments] = await Promise.all([getTemplates(), getExperiences(), getClassicLayouts(), getFrameStyles(), getOrnaments()])
       const nextTemplates = Array.isArray(templateResponse.templates) ? templateResponse.templates : []
       const nextExperiences = Array.isArray(experienceResponse.experiences) ? experienceResponse.experiences : []
       setTemplates(nextTemplates)
       setExperiences(nextExperiences)
+      setLayouts(nextLayouts)
+      setFrameStyles(nextFrames)
+      setOrnaments(nextOrnaments)
+      setSelectedLayoutId((current) => current && nextLayouts.some((item) => item.id === current) ? current : nextLayouts[0]?.id || null)
+      setSelectedFrameStyleId((current) => current && nextFrames.some((item) => item.id === current) ? current : nextFrames.find((item) => item.id === 'natural')?.id || nextFrames[0]?.id || null)
+      setSelectedOrnamentIds((current) => current.filter((id) => nextOrnaments.some((item) => item.id === id)))
       setSelectedTemplateId((current) => (
         current && nextTemplates.some((item) => item.id === current)
           ? current
@@ -126,10 +141,50 @@ function CustomerApp() {
     }
   }, [])
 
+  const markUploadUnavailable = useCallback(() => {
+    setUpload(null)
+    setStage('photo')
+    setNotice('The uploaded photo is no longer available. Please upload it again.')
+    updateCustomerFlow({ uploadId: null, jobId: null, resultId: null, stage: 'photo' })
+  }, [])
+
+  const restoreUpload = useCallback(async (targetRoute = route) => {
+    const saved = readCustomerFlow()
+    if (targetRoute.name !== 'create' || !saved?.uploadId) {
+      return
+    }
+    setStage('restoring')
+    if (targetRoute.mode || saved.mode) setMode(targetRoute.mode || saved.mode)
+    if (saved.templateId) setSelectedTemplateId(saved.templateId)
+    if (saved.experienceId) setSelectedExperienceId(saved.experienceId)
+    if (saved.layoutId) setSelectedLayoutId(saved.layoutId)
+    if (saved.frameStyleId) setSelectedFrameStyleId(saved.frameStyleId)
+    if (saved.ornamentIds) setSelectedOrnamentIds(saved.ornamentIds)
+    try {
+      const restored = await getUpload(saved.uploadId)
+      setUpload(restored)
+      const restoredStage = ['gallery', 'art-direction', 'photo', 'review'].includes(saved.stage) ? saved.stage : 'review'
+      setStage(restoredStage)
+      setNotice('')
+      updateCustomerFlow({ stage: restoredStage })
+    } catch (error) {
+      if (error?.errorCode === 'UPLOAD_EXPIRED' || error?.errorCode === 'UPLOAD_NOT_FOUND' || error?.status === 404 || error?.status === 410) {
+        markUploadUnavailable()
+      } else {
+        setStage('restore-failed')
+        setNotice('We could not reconnect to your uploaded photo. Please try again.')
+      }
+    }
+  }, [markUploadUnavailable, route])
+
   useEffect(() => {
     loadCatalog()
     refreshUsage()
   }, [loadCatalog, refreshUsage])
+
+  useEffect(() => {
+    if (route.name === 'create') restoreUpload(route)
+  }, [route, restoreUpload])
 
   useEffect(() => {
     if (!kioskMode) return
@@ -141,9 +196,10 @@ function CustomerApp() {
   useEffect(() => {
     const onPopState = () => {
       const next = readRoute()
+      const saved = readCustomerFlow()
       setRoute(next)
-      setMode(next.mode)
-      setStage(stageForRoute(next))
+      setMode(next.mode || saved?.mode || null)
+      setStage(next.name === 'create' && saved?.uploadId ? 'restoring' : next.name === 'create' && saved?.mode === next.mode && saved?.stage === 'art-direction' ? 'art-direction' : stageForRoute(next))
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
@@ -154,6 +210,19 @@ function CustomerApp() {
   const showStatus = useCallback((status, redirect = true) => {
     setJob(status)
     setMode(status.mode)
+    if (status.layout_id) setSelectedLayoutId(status.layout_id)
+    if (status.frame_style_id) setSelectedFrameStyleId(status.frame_style_id)
+    if (status.ornament_ids) setSelectedOrnamentIds(status.ornament_ids)
+    updateCustomerFlow({
+      mode: status.mode,
+      layoutId: status.layout_id || null,
+      frameStyleId: status.frame_style_id || null,
+      ornamentIds: status.ornament_ids || [],
+      uploadId: status.upload_id || null,
+      jobId: status.job_id,
+      resultId: status.result_id || null,
+      stage: status.state === 'COMPLETED' ? 'result' : status.state === 'FAILED' ? 'failed' : 'processing',
+    })
     if (status.state === 'COMPLETED' && status.result_id) {
       clearInterval(pollRef.current)
       setBusy(false)
@@ -217,6 +286,7 @@ function CustomerApp() {
     setMode(nextMode)
     setUpload(null)
     setJob(null)
+    updateCustomerFlow({ mode: nextMode, uploadId: null, jobId: null, resultId: null, stage: 'gallery' })
     setNotice('')
     setStage('gallery')
     navigate(kioskMode ? kioskModeRoute(nextMode) : modeRoute(nextMode), kioskMode)
@@ -231,6 +301,10 @@ function CustomerApp() {
     setJob(null)
     setSelectedTemplateId(null)
     setSelectedExperienceId(null)
+    setSelectedLayoutId(null)
+    setSelectedFrameStyleId(null)
+    setSelectedOrnamentIds([])
+    clearCustomerFlow()
     setBusy(false)
     setNotice('')
     if (kioskMode) startKioskSession(true).catch(() => {})
@@ -248,15 +322,27 @@ function CustomerApp() {
     setBusy(true)
     setNotice('')
     try {
-      setUpload(await uploadPhoto(file))
+      const uploaded = await uploadPhoto(file)
+      setUpload(uploaded)
       setStage('review')
+      updateCustomerFlow({
+        uploadId: uploaded.upload_id,
+        mode,
+        templateId: selectedTemplateId,
+        experienceId: selectedExperienceId,
+        frameStyleId: selectedFrameStyleId,
+        ornamentIds: selectedOrnamentIds,
+        jobId: null,
+        resultId: null,
+        stage: 'review',
+      })
     } catch (error) {
       console.error('Photo upload failed', error)
       setNotice('That photo could not be prepared. Try a JPEG, PNG, or WebP under 12 MB.')
     } finally {
       setBusy(false)
     }
-  }, [])
+  }, [mode, selectedExperienceId, selectedTemplateId, selectedFrameStyleId, selectedOrnamentIds])
 
   const create = useCallback(async () => {
     if (!upload) return
@@ -265,19 +351,28 @@ function CustomerApp() {
     try {
       const created = mode === 'BASIC'
         ? await createGeneration(upload.upload_id, mode, selectedTemplateId)
-        : await createGeneration(upload.upload_id, mode, null, selectedExperienceId)
+        : await createGeneration(upload.upload_id, mode, null, selectedExperienceId, { frameStyleId: selectedFrameStyleId, ornamentIds: selectedOrnamentIds })
       setJob(created)
       setStage('processing')
+      updateCustomerFlow({
+        mode,
+        uploadId: created.upload_id,
+        templateId: selectedTemplateId,
+        experienceId: selectedExperienceId,
+        frameStyleId: selectedFrameStyleId,
+        ornamentIds: selectedOrnamentIds,
+        jobId: created.job_id,
+        resultId: null,
+        stage: 'processing',
+      })
       navigate(kioskMode ? kioskGenerationRoute(created.job_id) : '/generate/' + encodeURIComponent(created.job_id), kioskMode)
       refreshUsage()
       startPolling(created.job_id)
     } catch (error) {
       console.error('Generation could not start', error)
       setBusy(false)
-      if (error?.errorCode === 'UPLOAD_NOT_FOUND') {
-        setUpload(null)
-        setStage('photo')
-        setNotice('The uploaded photo is no longer available. Please upload it again.')
+      if (error?.errorCode === 'UPLOAD_NOT_FOUND' || error?.errorCode === 'UPLOAD_EXPIRED') {
+        markUploadUnavailable()
       } else {
         setNotice(error?.status === 402 || error?.errorCode === 'AI_QUOTA_EXHAUSTED'
           ? 'Your complimentary AI credits have been used.'
@@ -285,22 +380,79 @@ function CustomerApp() {
       }
       refreshUsage()
     }
-  }, [kioskMode, mode, refreshUsage, selectedExperienceId, selectedTemplateId, startPolling, upload])
+  }, [kioskMode, markUploadUnavailable, mode, refreshUsage, selectedExperienceId, selectedTemplateId, selectedFrameStyleId, selectedOrnamentIds, startPolling, upload])
 
-  const selection = mode === 'BASIC'
-    ? templates.find((item) => item.id === selectedTemplateId)
-    : experiences.find((item) => item.id === selectedExperienceId)
-  const selectedId = mode === 'BASIC' ? selectedTemplateId : selectedExperienceId
-  const quotaExhausted = mode === 'ADVANCED' && usage && usage.ai_remaining <= 0
-  const retryFailed = () => {
-    if (job?.error_code === 'UPLOAD_NOT_FOUND') {
-      setUpload(null)
-      setStage('photo')
-    } else {
-      setStage('review')
+  const completeClassic = async (captures) => {
+    setBusy(true)
+    setNotice('')
+    try {
+      const first = captures[0]
+      const ids = captures.map((item) => item.upload_id)
+      setUpload(first)
+      updateCustomerFlow({ mode: 'CLASSIC', layoutId: selectedLayoutId, uploadId: first.upload_id, captureUploadIds: ids, stage: 'processing' })
+      const created = await createGeneration(first.upload_id, 'CLASSIC', null, null, { layoutId: selectedLayoutId, captureUploadIds: ids })
+      setJob(created)
+      setStage('processing')
+      updateCustomerFlow({ jobId: created.job_id, stage: 'processing' })
+      navigate(kioskMode ? kioskGenerationRoute(created.job_id) : '/generate/' + encodeURIComponent(created.job_id), kioskMode)
+      startPolling(created.job_id)
+    } catch (error) {
+      setBusy(false)
+      setNotice(error?.message || 'Could not compose the Classic photo strip.')
+      throw error
     }
   }
-  const mood = stage === 'home' ? 'home' : stage === 'account' ? 'account' : stage === 'gallery' ? 'gallery' : stage === 'photo' ? 'capture' : stage === 'review' ? 'review' : stage === 'processing' || stage === 'failed' ? 'processing' : 'result'
+
+  const selection = mode === 'CLASSIC' ? layouts.find((item) => item.id === selectedLayoutId) : mode === 'BASIC'
+    ? templates.find((item) => item.id === selectedTemplateId)
+    : experiences.find((item) => item.id === selectedExperienceId)
+  const selectedId = mode === 'CLASSIC' ? selectedLayoutId : mode === 'BASIC' ? selectedTemplateId : selectedExperienceId
+  const quotaExhausted = mode === 'ADVANCED' && usage && usage.ai_remaining <= 0
+  const retryFailed = () => {
+    const action = generationFailureAction(job)
+    if (action === 'upload-again') {
+      markUploadUnavailable()
+    } else if (action === 'choose-photo') {
+      setStage('photo')
+      updateCustomerFlow({ stage: 'photo' })
+    } else {
+      setStage('review')
+      updateCustomerFlow({ stage: 'review' })
+    }
+  }
+
+  const selectTemplate = (id) => {
+    setSelectedTemplateId(id)
+    updateCustomerFlow({ templateId: id })
+  }
+  const selectExperience = (id) => {
+    setSelectedExperienceId(id)
+    setSelectedFrameStyleId(null)
+    setSelectedOrnamentIds([])
+    updateCustomerFlow({ experienceId: id, frameStyleId: null, ornamentIds: [] })
+  }
+  const selectLayout = (id) => { setSelectedLayoutId(id); updateCustomerFlow({ layoutId: id }) }
+  const selectFrameStyle = (id) => { setSelectedFrameStyleId(id); updateCustomerFlow({ frameStyleId: id }) }
+  const selectOrnaments = (ids) => { setSelectedOrnamentIds(ids); updateCustomerFlow({ ornamentIds: ids }) }
+  const moveToStage = (nextStage) => {
+    setStage(nextStage)
+    updateCustomerFlow({ stage: nextStage })
+  }
+  const handleUploadPreviewError = async () => {
+    if (!upload?.upload_id) return
+    try {
+      await getUpload(upload.upload_id)
+      setNotice('We could not display your portrait just now. Please try again.')
+    } catch (error) {
+      if (error?.errorCode === 'UPLOAD_EXPIRED' || error?.errorCode === 'UPLOAD_NOT_FOUND' || error?.status === 404 || error?.status === 410) {
+        markUploadUnavailable()
+      } else {
+        setNotice('We could not reconnect to your uploaded photo. Please try again.')
+      }
+    }
+  }
+  const retryRestoreUpload = () => restoreUpload(route)
+  const mood = stage === 'home' ? 'home' : stage === 'account' ? 'account' : stage === 'gallery' || stage === 'art-direction' ? 'gallery' : stage === 'photo' ? 'capture' : stage === 'review' ? 'review' : stage === 'processing' || stage === 'failed' || stage === 'restoring' || stage === 'restore-failed' ? 'processing' : 'result'
 
   return (
     <div className={`customer-app ${stage === 'home' ? 'is-home' : ''}`} data-mood={mood}>
@@ -312,17 +464,21 @@ function CustomerApp() {
       ) : (
         <>
           {stage !== 'account' && <ProgressRail stage={stage} />}
-          <CustomerNotice message={notice} onDismiss={() => setNotice('')} onRetry={stage === 'processing' && job?.job_id ? () => startPolling(job.job_id) : null} />
+          <CustomerNotice message={notice} onDismiss={() => setNotice('')} onRetry={stage === 'processing' && job?.job_id ? () => startPolling(job.job_id) : stage === 'restore-failed' ? retryRestoreUpload : null} />
           <main className="customer-main">
             {stage === 'account' && <AccountCenter usage={usage} tab={route.tab} onTabChange={openAccount} onHome={home} onUsageChanged={refreshUsage} />}
-            {stage === 'gallery' && <ExperienceBrowser mode={mode} templates={templates} experiences={experiences} selectedId={selectedId} onSelect={mode === 'BASIC' ? setSelectedTemplateId : setSelectedExperienceId} onContinue={() => setStage('photo')} catalogError={catalogError} catalogLoading={catalogLoading} onRetry={loadCatalog} />}
-            {stage === 'photo' && <PhotoStage mode={mode} busy={busy} onFile={handleFile} onBack={() => setStage('gallery')} />}
-            {stage === 'review' && upload && selection && <ReviewStage mode={mode} upload={upload} selection={selection} aiRemaining={usage?.ai_remaining} quotaExhausted={quotaExhausted} busy={busy} onReplace={() => setStage('photo')} onBack={() => setStage('gallery')} onCreate={create} onOpenAccount={() => setAccountRequest((value) => value + 1)} />}
+            {stage === 'gallery' && <ExperienceBrowser mode={mode} templates={templates} experiences={experiences} layouts={layouts} selectedId={selectedId} onSelect={mode === 'CLASSIC' ? selectLayout : mode === 'BASIC' ? selectTemplate : selectExperience} onContinue={() => moveToStage(mode === 'ADVANCED' ? 'art-direction' : 'photo')} catalogError={catalogError} catalogLoading={catalogLoading} onRetry={loadCatalog} />}
+            {stage === 'art-direction' && <AdvancedOptionsStage experience={selection} frameStyles={frameStyles} ornaments={ornaments} frameStyleId={selectedFrameStyleId} ornamentIds={selectedOrnamentIds} onFrameStyle={selectFrameStyle} onOrnaments={selectOrnaments} onBack={() => moveToStage('gallery')} onContinue={() => moveToStage(upload ? 'review' : 'photo')} />}
+            {stage === 'photo' && (mode === 'CLASSIC' ? selection && <ClassicCaptureStage layout={selection} onComplete={completeClassic} onBack={() => moveToStage('gallery')} /> : <PhotoStage mode={mode} busy={busy} onFile={handleFile} onBack={() => moveToStage(mode === 'ADVANCED' ? 'art-direction' : 'gallery')} />)}
+            {stage === 'review' && mode === 'CLASSIC' && upload && selection && <section className="customer-empty"><p className="customer-kicker">Classic photo strip</p><h1>Your captures are ready.</h1><p>{readCustomerFlow()?.captureUploadIds?.length || 0} of {selection.shot_count} photographs are saved in this session.</p><button className="customer-solid-button" disabled={busy || readCustomerFlow()?.captureUploadIds?.length !== selection.shot_count} onClick={() => completeClassic(readCustomerFlow().captureUploadIds.map((upload_id) => ({ upload_id })))}>Compose photo strip</button><button className="customer-inline-button" onClick={() => moveToStage('photo')}>Take photos again</button></section>}
+            {stage === 'review' && mode !== 'CLASSIC' && upload && selection && <ReviewStage mode={mode} upload={upload} selection={selection} frameStyle={frameStyles.find((item) => item.id === selectedFrameStyleId)} ornaments={ornaments.filter((item) => selectedOrnamentIds.includes(item.id))} aiRemaining={usage?.ai_remaining} quotaExhausted={quotaExhausted} busy={busy} onReplace={() => moveToStage('photo')} onBack={() => moveToStage(mode === 'ADVANCED' ? 'art-direction' : 'gallery')} onCreate={create} onOpenAccount={() => setAccountRequest((value) => value + 1)} onPreviewError={handleUploadPreviewError} />}
+            {stage === 'restoring' && <section className="customer-empty" role="status"><p className="customer-kicker">Reopening your studio</p><h1>Restoring your portrait…</h1><p>Your uploaded photo is being reconnected to this session.</p></section>}
+            {stage === 'restore-failed' && <section className="customer-empty"><p className="customer-kicker">Studio connection paused</p><h1>Your portrait is still in this session.</h1><p>Reconnect to the saved upload to continue.</p><button className="customer-solid-button" onClick={retryRestoreUpload}>Reconnect portrait</button></section>}
             {stage === 'processing' && <ProcessingStage job={job} upload={upload} />}
-            {stage === 'failed' && <section className="customer-empty"><p className="customer-kicker">Studio interrupted</p><h1>This portrait didn't make it through.</h1><p>{generationFailureMessage(job)}</p><button className="customer-solid-button" onClick={retryFailed}>{job?.error_code === 'UPLOAD_NOT_FOUND' ? 'Upload again' : 'Try again'}</button></section>}
+            {stage === 'failed' && <section className="customer-empty"><p className="customer-kicker">Studio interrupted</p><h1>This portrait didn't make it through.</h1><p>{generationFailureMessage(job)}</p><button className="customer-solid-button" onClick={retryFailed}>{generationFailureActionLabel(job)}</button></section>}
             {stage === 'result' && job?.result_id && (kioskMode
               ? <KioskResultStage resultId={job.result_id} resetSeconds={kioskResetSeconds} onReset={home} />
-              : <ResultStage resultId={job.result_id} uploadId={upload?.upload_id || job?.upload_id} onReset={home} onTryLook={() => { setUpload(null); setStage('gallery'); navigate('/create?mode=' + mode.toLowerCase()) }} />)}
+              : <ResultStage resultId={job.result_id} uploadId={upload?.upload_id || job?.upload_id} mode={mode} onReset={home} onTryLook={() => { setUpload(null); updateCustomerFlow({ mode, uploadId: null, jobId: null, resultId: null, stage: 'gallery' }); setStage('gallery'); navigate('/create?mode=' + mode.toLowerCase()) }} />)}
           </main>
         </>
       )}

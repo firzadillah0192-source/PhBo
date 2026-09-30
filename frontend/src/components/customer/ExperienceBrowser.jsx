@@ -75,10 +75,19 @@ function EmptyCatalog({ onRetry }) {
   )
 }
 
-export default function ExperienceBrowser({ mode, templates, experiences, selectedId, onSelect, onContinue, catalogError, catalogLoading, onRetry }) {
+export default function ExperienceBrowser({ mode, templates, experiences, layouts = [], selectedId, onSelect, onContinue, catalogError, catalogLoading, onRetry }) {
   if (catalogError) return <EmptyCatalog onRetry={onRetry} />
 
   if (catalogLoading) return <LoadingCatalog />
+
+  if (mode === 'CLASSIC') {
+    return <section className="gallery-page classic-browser customer-stage-enter">
+      <header className="gallery-heading"><p className="customer-kicker">Traditional photobooth</p><h1>Choose your frame.</h1><p>Every frame has its own photo sequence.</p></header>
+      <div className="classic-layout-grid">{layouts.map((item) => <button key={item.id} type="button" className={`classic-layout-card ${selectedId === item.id ? 'is-selected' : ''}`} aria-pressed={selectedId === item.id} onClick={() => onSelect(item.id)}><img src={item.preview_url} alt={`${item.name} frame preview`} loading="lazy" /><span><strong>{item.name}</strong><small>{item.shot_count} Photos</small></span></button>)}</div>
+      {!layouts.length && <div className="template-empty">No Classic frames are available.</div>}
+      <SelectionDock label={layouts.find((item) => item.id === selectedId)?.name || 'Choose a frame'} onContinue={onContinue} disabled={!selectedId} continueLabel="Continue to camera" />
+    </section>
+  }
 
   if (mode === 'BASIC') {
     return (
@@ -154,16 +163,16 @@ export default function ExperienceBrowser({ mode, templates, experiences, select
         </section>
       ))}
 
-      <SelectionDock label={experiences.find((item) => item.id === selectedId)?.name || 'Choose a world'} onContinue={onContinue} disabled={!selectedId} />
+      <SelectionDock label={experiences.find((item) => item.id === selectedId)?.name || 'Choose a world'} onContinue={onContinue} disabled={!selectedId} continueLabel="Choose frame style" />
     </section>
   )
 }
 
-function SelectionDock({ label, onContinue, disabled }) {
+function SelectionDock({ label, onContinue, disabled, continueLabel = 'Continue to photo' }) {
   return (
     <div className="selection-dock">
       <span><small>Selected</small><strong>{label}</strong></span>
-      <button className="customer-solid-button" disabled={disabled} onClick={onContinue}>Continue to photo <b>→</b></button>
+      <button className="customer-solid-button" disabled={disabled} onClick={onContinue}>{continueLabel} <b>→</b></button>
     </div>
   )
 }

@@ -6,6 +6,7 @@ export default function ProcessingStage({ job, upload }) {
   const copy = state === 'QUEUED'
     ? ['Preparing your portrait', 'The studio is setting the light and opening your place in the queue.']
     : ['Building your world', 'Atmosphere, character, and photographic detail are coming together.']
+  const classicCopy = state === 'QUEUED' ? ['Preparing your photo strip', 'Your photographs are ready for composition.'] : ['Composing your photo strip', 'The selected frame is being placed over your photographs.']
   const uploadId = upload?.upload_id || job?.upload_id
 
   return (
@@ -21,9 +22,9 @@ export default function ProcessingStage({ job, upload }) {
         </figure>
       </div>
       <div className="processing-copy">
-        <p className="customer-kicker">In the celestial studio</p>
-        <h1>{copy[0]}</h1>
-        <p>{copy[1]}</p>
+        <p className="customer-kicker">{job?.mode === 'CLASSIC' ? 'Classic photobooth' : 'In the celestial studio'}</p>
+        <h1>{(job?.mode === 'CLASSIC' ? classicCopy : copy)[0]}</h1>
+        <p>{(job?.mode === 'CLASSIC' ? classicCopy : copy)[1]}</p>
         <span className="processing-pulse"><i />{state === 'QUEUED' ? 'Waiting for the studio' : 'Creating your image'}</span>
         <small>No need to keep this page open. Your studio route is saved.</small>
       </div>

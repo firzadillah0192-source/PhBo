@@ -1,7 +1,7 @@
 import React from 'react'
 
 const STAGES = ['Studio', 'Photo', 'Create', 'Result']
-const INDEX = { gallery: 0, photo: 1, review: 2, processing: 2, failed: 2, result: 3 }
+const INDEX = { gallery: 0, 'art-direction': 0, photo: 1, review: 2, processing: 2, failed: 2, result: 3 }
 
 export default function ProgressRail({ stage }) {
   const active = INDEX[stage] ?? 0

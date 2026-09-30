@@ -1,6 +1,7 @@
 import React from 'react'
 
 const MODES = [
+  { id: 'CLASSIC', name: 'Classic', detail: 'Photo Strips' },
   { id: 'BASIC', name: 'Basic', detail: 'Curated Studio' },
   { id: 'ADVANCED', name: 'Advanced', detail: 'AI Worlds' },
 ]

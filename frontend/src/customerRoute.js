@@ -49,7 +49,7 @@ export function parseCustomerRoute(pathname = '/', search = '') {
     return {
       name: 'create',
       id: null,
-      mode: requestedMode === 'basic' ? 'BASIC' : requestedMode === 'advanced' ? 'ADVANCED' : null,
+      mode: requestedMode === 'classic' ? 'CLASSIC' : requestedMode === 'basic' ? 'BASIC' : requestedMode === 'advanced' ? 'ADVANCED' : null,
       tab: null,
       kiosk,
     }

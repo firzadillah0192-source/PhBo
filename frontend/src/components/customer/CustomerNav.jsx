@@ -68,6 +68,7 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
     <header className="customer-nav">
       <button type="button" className="customer-logo" onClick={onHome}><span aria-hidden="true" />Photobooth AI</button>
       <nav className="customer-mode-nav" aria-label="Studios">
+        <button className={mode === 'CLASSIC' ? 'is-active' : ''} onClick={() => onMode('CLASSIC')}>Classic</button>
         <button className={mode === 'BASIC' ? 'is-active' : ''} onClick={() => onMode('BASIC')}>Basic</button>
         <button className={mode === 'ADVANCED' ? 'is-active' : ''} onClick={() => onMode('ADVANCED')}>Advanced</button>
       </nav>

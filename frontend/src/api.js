@@ -34,6 +34,9 @@ async function request(path, options = {}) {
 export function getHealth() { return request('/health') }
 export function getTemplates() { return request('/templates') }
 export function getExperiences() { return request('/experiences') }
+export function getClassicLayouts() { return request('/classic/layouts') }
+export function getFrameStyles() { return request('/advanced/frame-styles') }
+export function getOrnaments() { return request('/advanced/ornaments') }
 export function getUsage() { return request('/account/usage') }
 export function getAccountMe() { return request('/account/me') }
 export function getAccountCenter() { return request('/account/center') }
@@ -57,10 +60,22 @@ export function uploadPhoto(file) {
   return request('/uploads', { method: 'POST', body: form })
 }
 
-export function createGeneration(uploadId, mode, templateId = null, experienceId = null) {
+export function getUpload(uploadId) {
+  return request('/uploads/' + encodeURIComponent(uploadId))
+}
+
+export function createGeneration(uploadId, mode, templateId = null, experienceId = null, options = {}) {
   const body = { upload_id: uploadId, mode }
+  if (mode === 'CLASSIC') {
+    body.layout_id = options.layoutId
+    body.capture_upload_ids = options.captureUploadIds
+  }
   if (mode === 'BASIC') body.template_id = templateId
-  if (mode === 'ADVANCED') body.experience_id = experienceId
+  if (mode === 'ADVANCED') {
+    body.experience_id = experienceId
+    body.frame_style_id = options.frameStyleId
+    body.ornament_ids = options.ornamentIds || []
+  }
   return request('/generations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 }
 

@@ -11,7 +11,7 @@ function claimTokenFromUrl(claimUrl) {
   }
 }
 
-export default function ResultStage({ resultId, uploadId, onReset, onTryLook, kiosk = false, resetSeconds = 90 }) {
+export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLook, kiosk = false, resetSeconds = 90 }) {
   const [revealed, setRevealed] = useState(false)
   const [comparing, setComparing] = useState(false)
   const [split, setSplit] = useState(50)
@@ -111,8 +111,30 @@ export default function ResultStage({ resultId, uploadId, onReset, onTryLook, ki
     }).catch(() => setClaimError('We could not create a new QR link. Please try again.')).finally(() => setClaimBusy(false))
   }
 
+  const openOnPhone = async () => {
+    setClaimBusy(true)
+    setClaimError('')
+    const key = `photobooth:result-claim:${resultId}`
+    try {
+      let next
+      try {
+        next = await createResultClaim(resultId, window.sessionStorage.getItem(key))
+      } catch (error) {
+        if (error?.errorCode !== 'CLAIM_REFRESH_REQUIRED' && error?.status !== 409) throw error
+        next = await createResultClaim(resultId, null, true)
+      }
+      const token = claimTokenFromUrl(next.claim_url)
+      if (token) window.sessionStorage.setItem(key, token)
+      setClaim(next)
+    } catch {
+      setClaimError('Could not prepare the QR link. Please try again.')
+    } finally {
+      setClaimBusy(false)
+    }
+  }
+
   const result = claim?.image_url || resultImageUrl(resultId)
-  const original = uploadId ? uploadPreviewUrl(uploadId) : null
+  const original = mode !== 'CLASSIC' && uploadId ? uploadPreviewUrl(uploadId) : null
   const expires = claim?.expires_at ? new Date(claim.expires_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : null
 
   if (kiosk) {
@@ -144,7 +166,7 @@ export default function ResultStage({ resultId, uploadId, onReset, onTryLook, ki
   return (
     <section className={`result-stage customer-stage-enter ${revealed ? 'is-revealed' : ''}`}>
       <header>
-        <div><p className="customer-kicker">Celestial master print</p><h1>Another you.</h1></div>
+        <div><p className="customer-kicker">{mode === 'CLASSIC' ? 'Classic photo strip' : 'Celestial master print'}</p><h1>{mode === 'CLASSIC' ? 'Your moments.' : 'Another you.'}</h1></div>
         {original && <button className={`compare-toggle ${comparing ? 'is-active' : ''}`} onClick={() => setComparing((value) => !value)}>{comparing ? 'Close comparison' : 'Compare before / after'}</button>}
       </header>
       <figure className={`result-frame ${comparing ? 'is-comparing' : ''}`}>
@@ -167,10 +189,14 @@ export default function ResultStage({ resultId, uploadId, onReset, onTryLook, ki
           <button className="customer-inline-button" onClick={onReset}>Create another</button>
           <button className="customer-inline-button" onClick={onTryLook}>Try another look</button>
           <button className="customer-inline-button" onClick={shareResult}>Share</button>
+          <button className="customer-inline-button" onClick={openOnPhone} disabled={claimBusy}>Open on Phone / QR</button>
+          <button className="customer-inline-button" onClick={() => window.print()}>Print</button>
           {shareMessage && <small className="result-share-message" role="status">{shareMessage}</small>}
         </div>
-        <a className="customer-solid-button" href={resultDownloadUrl(resultId)} download>Download portrait <b>v</b></a>
+        <a className="customer-solid-button" href={resultDownloadUrl(resultId)} download>Download photo <b>v</b></a>
       </footer>
+      {claim && <div className="result-phone-panel"><QRCodeSVG value={claim.qr_payload} size={190} level="M" includeMargin bgColor="#ffffff" fgColor="#111216" title="Scan to open your photo" /><div><strong>Open on your phone</strong><p>Scan to download or share your finished photo.</p>{expires && <small>Available until {expires}.</small>}</div></div>}
+      {claimError && <p role="alert">{claimError}</p>}
     </section>
   )
 }
