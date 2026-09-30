@@ -78,6 +78,10 @@ export function initialCustomerStage(route, flow) {
   if (route.name === 'create' && route.mode && flow?.mode === route.mode) {
     if (flow.uploadId) return 'restoring'
     if (flow.stage === 'art-direction') return 'art-direction'
+    if (flow.stage === 'photo' && (
+      route.mode === 'ADVANCED' ? flow.experienceId && flow.frameStyleId
+        : route.mode === 'BASIC' ? flow.templateId : flow.layoutId
+    )) return 'photo'
   }
   return stageForRoute(route)
 }

@@ -458,7 +458,16 @@ function CustomerApp() {
   const selectOrnaments = (ids) => { setSelectedOrnamentIds(ids); updateCustomerFlow({ ornamentIds: ids }) }
   const moveToStage = (nextStage) => {
     setStage(nextStage)
-    updateCustomerFlow({ stage: nextStage })
+    const differentMode = readCustomerFlow()?.mode !== mode
+    updateCustomerFlow({
+      mode, stage: nextStage,
+      templateId: mode === 'BASIC' ? selectedTemplateId : null,
+      experienceId: mode === 'ADVANCED' ? selectedExperienceId : null,
+      layoutId: mode === 'CLASSIC' ? selectedLayoutId : null,
+      frameStyleId: mode === 'ADVANCED' ? selectedFrameStyleId : null,
+      ornamentIds: mode === 'ADVANCED' ? selectedOrnamentIds : [],
+      ...(differentMode ? { uploadId: null, jobId: null, resultId: null, captureUploadIds: [] } : {}),
+    })
   }
   const handleUploadPreviewError = async () => {
     if (!upload?.upload_id) return

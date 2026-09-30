@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { accountTabRoute, kioskModeRoute, kioskResultRoute, modeRoute, parseCustomerRoute, stageForRoute } from './customerRoute.js'
+import { accountTabRoute, initialCustomerStage, kioskModeRoute, kioskResultRoute, modeRoute, parseCustomerRoute, stageForRoute } from './customerRoute.js'
 import { experienceSections, reconcileSelectedExperienceId } from './components/customer/experienceCatalog.js'
 
 test('mode links and direct URLs resolve to the same route state', () => {
@@ -19,6 +19,19 @@ test('home, back, forward and refresh remain URL-derived', () => {
   assert.equal(parseCustomerRoute(history[1].split('?')[0], '?mode=advanced').mode, 'ADVANCED')
   assert.equal(parseCustomerRoute(history[2].split('?')[0], '?mode=basic').mode, 'BASIC')
   assert.equal(stageForRoute(parseCustomerRoute('/create', '?mode=advanced')), 'gallery')
+})
+
+test('photo entry restores each mode before upload and keeps modes isolated', () => {
+  for (const [mode, selection] of [['BASIC', { templateId: 'framed' }], ['ADVANCED', { experienceId: 'world', frameStyleId: 'modern', ornamentIds: ['sparkles'] }], ['CLASSIC', { layoutId: 'strip' }]]) {
+    const route = parseCustomerRoute('/create', `?mode=${mode.toLowerCase()}`)
+    const flow = { mode, stage: 'photo', ...selection }
+    assert.equal(initialCustomerStage(route, flow), 'photo')
+    assert.equal(initialCustomerStage(route, { ...flow, mode: 'another-mode' }), 'gallery')
+    assert.equal(initialCustomerStage(route, { mode, stage: 'photo' }), 'gallery')
+    assert.equal(initialCustomerStage(route, { ...flow, uploadId: 'saved-upload' }), 'restoring')
+    assert.equal(initialCustomerStage(parseCustomerRoute('/'), flow), 'home')
+    assert.equal(initialCustomerStage(parseCustomerRoute('/create'), flow), 'chooser')
+  }
 })
 
 

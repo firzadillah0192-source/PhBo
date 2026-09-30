@@ -191,6 +191,13 @@ try {
       await page.getByRole('button', { name: /Continue to photo/ }).click()
       assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
       assert.equal(await page.getByRole('button', { name: 'Take photo', exact: true }).isEnabled(), true)
+      await page.reload({ waitUntil: 'networkidle' })
+      await page.locator('.photo-stage').waitFor()
+      assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
+      const restoredOptions = await page.evaluate(() => JSON.parse(sessionStorage.getItem('photobooth:active-customer-flow')))
+      assert.equal(restoredOptions.mode, 'ADVANCED')
+      assert.equal(restoredOptions.frameStyleId, 'modern')
+      assert.deepEqual(restoredOptions.ornamentIds, ['sparkles'])
       const fixtureImage = catalog.images[catalog.experiences.experiences[0].thumbnail]
       for (const mode of ['ADVANCED', 'BASIC']) {
         if (mode === 'BASIC') {
