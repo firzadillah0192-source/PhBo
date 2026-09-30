@@ -51,7 +51,8 @@ try {
     : [{ name: 'desktop', options: { viewport: { width: 1440, height: 1000 } } }, { name: 'android-chrome', options: { ...devices['Pixel 7'] } }, { name: 'narrow-mobile', options: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true } }, { name: 'ipad-chromium-layout', options: { ...devices['iPad (gen 7)'] } }]
   const reports = []
   for (const sample of cases) {
-    const context = await browser.newContext({ ...sample.options, reducedMotion: 'reduce' })
+    const motionCheck = process.env.NXBOOTH_MOTION_CHECK === '1'
+    const context = await browser.newContext({ ...sample.options, reducedMotion: motionCheck ? 'no-preference' : 'reduce' })
     const page = await context.newPage()
     const errors = []
     let catalogUnavailable = false
@@ -83,6 +84,25 @@ try {
     assert.ok(featuredNames.every((name) => allowedNames.has(name)))
     assert.equal(await page.locator('.customer-credit').count(), 0)
     assert.equal(await page.locator('.landing-nav .customer-mode-nav').count(), 0)
+    if (motionCheck) {
+      const reel = page.locator('.landing-reel')
+      await reel.scrollIntoViewIfNeeded()
+      const firstPreview = await reel.locator('figcaption').textContent()
+      await page.waitForFunction((initial) => document.querySelector('.landing-reel figcaption')?.textContent !== initial, firstPreview, { timeout: 10000 })
+      await page.getByRole('button', { name: 'Pause experience animation' }).click()
+      assert.equal(await reel.locator('.landing-reel-photo').evaluate((element) => getComputedStyle(element).animationPlayState), 'paused')
+      const pausedPreview = await reel.locator('figcaption').textContent()
+      if (sample.name === 'desktop') {
+        await page.waitForTimeout(6500)
+        assert.equal(await reel.locator('figcaption').textContent(), pausedPreview, 'Pause stops catalog rotation')
+      }
+      await page.getByRole('button', { name: 'Play experience animation' }).click()
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.waitForFunction(() => document.querySelector('.landing-reel')?.classList.contains('is-paused'))
+      assert.equal(await reel.locator('.landing-reel-photo').evaluate((element) => getComputedStyle(element).animationName), 'none')
+      await page.emulateMedia({ reducedMotion: 'no-preference' })
+      await page.waitForFunction(() => document.querySelector('.landing-reel')?.classList.contains('is-playing'))
+    }
     // Load below-the-fold art before capturing the full editorial page.
     await page.evaluate(() => document.querySelectorAll('.nx-landing img').forEach((image) => { image.loading = 'eager' }))
     await page.waitForFunction(() => [...document.querySelectorAll('.nx-landing img')].every((image) => image.complete && image.naturalWidth > 0))
@@ -157,6 +177,7 @@ try {
     assert.equal(await page.getByRole('link', { name: /^Try NXBooth Free/ }).count(), 2)
     assert.deepEqual(errors, [], `${sample.name}: runtime errors`)
     reports.push({ sample: sample.name, browser: engine, dimensions, featuredNames, checks: ['landing', 'CTA chooser', 'three modes', 'sign-in', 'no marketing credits', 'published art', 'mode galleries', 'photo and art-direction entry', 'refresh recovery', 'homepage recovery', 'admin', 'kiosk', 'claim route', 'catalog failure'], passed: true })
+    if (motionCheck) reports.at(-1).checks.push('animated preview rotation', 'pause and play', 'reduced motion')
     if (engine === 'webkit') reports.at(-1).checks = reports.at(-1).checks.filter((check) => check !== 'photo and art-direction entry')
     await writeFile(resolve(output, `${engine}-checks.json`), JSON.stringify(reports, null, 2))
     console.log(JSON.stringify({ sample: sample.name, passed: true }))

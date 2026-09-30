@@ -1,5 +1,6 @@
 import React from 'react'
 import ModeCards, { CatalogImage } from './ModeCards.jsx'
+import LandingReel from './LandingReel.jsx'
 import { featuredPreviews, modePreviews } from './landingCatalog.js'
 import { modeRoute } from '../../customerRoute.js'
 import './landing.css'
@@ -34,10 +35,7 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
         </div>
         <div className="landing-hero-art">
           <div className="landing-scenery" aria-hidden="true" />
-          {hero && <figure className="landing-hero-print print-main">
-            <CatalogImage key={hero.preview} src={hero.preview} alt={`${hero.name} experience preview`} loading="eager" />
-            <figcaption><span>{hero.name}</span><small>NXBooth</small></figcaption>
-          </figure>}
+          {hero && <LandingReel previews={featured} />}
           {second && <figure className="landing-hero-print print-second">
             <CatalogImage key={second.preview} src={second.preview} alt={`${second.name} experience preview`} loading="eager" />
             <figcaption>{second.name}</figcaption>
