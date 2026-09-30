@@ -122,6 +122,12 @@ services:
         condition: service_healthy
       photobooth-redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "worker.healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # --- Frontend: serves the built React app + proxies /api to photobooth-api
   photobooth-web:
