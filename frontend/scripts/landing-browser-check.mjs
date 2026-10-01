@@ -206,11 +206,37 @@ try {
         }
         if (mode === 'ADVANCED' && engine === 'chromium') {
           await context.grantPermissions(['camera'])
+          await page.evaluate(() => {
+            window.originalCameraRequest = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
+            navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Test permission denial', 'NotAllowedError') }
+          })
           await page.getByRole('button', { name: 'Take photo', exact: true }).click()
+          await page.getByRole('status').filter({ hasText: 'Camera permission is blocked' }).waitFor()
+          assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
+          assert.equal(await page.getByRole('button', { name: 'Take or choose a photo', exact: true }).isEnabled(), true)
+          await page.evaluate(() => {
+            navigator.mediaDevices.getUserMedia = window.originalCameraRequest
+            const play = HTMLMediaElement.prototype.play
+            let first = true
+            HTMLMediaElement.prototype.play = function () {
+              if (first) { first = false; return Promise.reject(new DOMException('Test playback denial', 'NotAllowedError')) }
+              return play.call(this)
+            }
+          })
+          await page.getByRole('button', { name: 'Take photo', exact: true }).click()
+          await page.getByRole('button', { name: 'Resume preview', exact: true }).click()
           await page.waitForFunction(() => document.querySelector('.photo-stage video')?.videoWidth > 0)
+          assert.equal(await page.locator('.photo-stage video').evaluate((video) => getComputedStyle(video).objectFit), 'contain', 'Preview shows the full camera image without zoom cropping')
           await page.getByRole('button', { name: 'Take photo', exact: true }).click()
         } else {
-          await page.locator('.photo-stage input[type=file]').setInputFiles({ name: 'test-preview.png', mimeType: fixtureImage.type, buffer: await readFile(resolve(cache, fixtureImage.filename)) })
+          if (mode === 'ADVANCED') {
+            await page.evaluate(() => {
+              navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Test unavailable camera', 'NotReadableError') }
+            })
+            await page.getByRole('button', { name: 'Take photo', exact: true }).click()
+            await page.getByRole('status').filter({ hasText: 'Close other apps' }).waitFor()
+          }
+          await page.locator(mode === 'ADVANCED' ? '.photo-stage input[capture]' : '.photo-stage input[type=file]:not([capture])').setInputFiles({ name: 'test-preview.png', mimeType: fixtureImage.type, buffer: await readFile(resolve(cache, fixtureImage.filename)) })
         }
         await page.locator('.review-stage').waitFor()
         if (mode === 'ADVANCED') {
@@ -256,6 +282,7 @@ try {
     reports.push({ sample: sample.name, browser: engine, dimensions, featuredNames, checks: ['landing', 'CTA chooser', 'three modes', 'sign-in', 'no marketing credits', 'published art', 'mode galleries', 'photo and art-direction entry', 'refresh recovery', 'homepage recovery', 'admin', 'kiosk', 'claim route', 'catalog failure'], passed: true })
     if (motionCheck) reports.at(-1).checks.push('animated preview rotation', 'pause and play', 'reduced motion')
     if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('ten frame thumbnails', 'ornament photo buttons enabled', 'Basic and Advanced queued to result', 'transient polling recovery', 'cancel previous job navigation')
+    if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push(...(engine === 'chromium' ? ['camera permission error and preview resume', 'full camera field without preview crop'] : ['camera hardware error and device photo fallback']))
     if (engine === 'webkit') reports.at(-1).checks = reports.at(-1).checks.filter((check) => check !== 'photo and art-direction entry')
     await writeFile(resolve(output, `${engine}-checks.json`), JSON.stringify(reports, null, 2))
     console.log(JSON.stringify({ sample: sample.name, passed: true }))
