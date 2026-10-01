@@ -1,5 +1,5 @@
 const FLOW_KEY = 'photobooth:active-customer-flow'
-const ALLOWED_FIELDS = new Set(['uploadId', 'mode', 'templateId', 'experienceId', 'layoutId', 'frameStyleId', 'ornamentIds', 'captureUploadIds', 'stage', 'jobId', 'resultId'])
+const ALLOWED_FIELDS = new Set(['uploadId', 'mode', 'templateId', 'experienceId', 'layoutId', 'frameStyleId', 'ornamentIds', 'captureUploadIds', 'classicCaptureLayoutId', 'classicRetakesRemaining', 'stage', 'jobId', 'resultId'])
 const ALLOWED_STAGES = new Set(['gallery', 'art-direction', 'photo', 'review', 'processing', 'failed', 'result'])
 
 function sessionStorageOrNull(storage) {
@@ -16,11 +16,13 @@ function normalizeFlow(value) {
       flow[key] = null
     } else if (key === 'mode' && (item === 'CLASSIC' || item === 'BASIC' || item === 'ADVANCED')) {
       flow[key] = item
+    } else if (key === 'classicRetakesRemaining' && Number.isInteger(item) && item >= 0 && item <= 3) {
+      flow[key] = item
     } else if ((key === 'ornamentIds' || key === 'captureUploadIds') && Array.isArray(item) && item.length <= 20 && item.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 256)) {
       flow[key] = item
     } else if (key === 'stage' && ALLOWED_STAGES.has(item)) {
       flow[key] = item
-    } else if (key !== 'mode' && key !== 'stage' && typeof item === 'string' && item.length > 0 && item.length <= 256) {
+    } else if (key !== 'mode' && key !== 'stage' && key !== 'classicRetakesRemaining' && typeof item === 'string' && item.length > 0 && item.length <= 256) {
       flow[key] = item
     }
   }

@@ -691,6 +691,10 @@
 .classic-layout-card span{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px}
 .classic-layout-card small{white-space:nowrap}
 .classic-countdown{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:clamp(110px,22vw,260px);text-shadow:0 6px 40px #000;z-index:5}
+.classic-shot-preview{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--night)}
+.classic-shot-review{text-align:center;margin:22px auto;max-width:740px}
+.classic-shot-review h2{font-family:var(--font-display);font-weight:400;font-size:28px;margin:0 0 8px}
+.classic-shot-review p,.classic-retake-allowance,.classic-review-guidance{font-size:13px;color:var(--muted)}
 .advanced-style-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:13px;max-width:1180px;margin:30px auto}
 .advanced-style-card{min-height:135px;text-align:left;border:1px solid rgba(20,26,35,.17);border-radius:14px;padding:19px;background:rgba(255,255,255,.74);color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:12px}
 .advanced-style-card.is-selected,.advanced-style-card:hover{border-color:var(--ink);background:#fff}

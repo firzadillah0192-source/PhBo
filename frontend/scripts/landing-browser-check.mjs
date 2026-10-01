@@ -45,7 +45,8 @@ try {
   const frames = ['Natural', 'Modern', 'Minimal', 'Luxury', 'Retro', 'Film', 'Cute', 'Editorial', 'Futuristic', 'Artistic'].map((name) => ({ id: name.toLowerCase(), slug: name.toLowerCase(), name, description: `${name} photographic framing.` }))
   const savedFlow = { mode: 'ADVANCED', uploadId: 'test-saved-upload', experienceId: catalog.experiences.experiences[0].id, frameStyleId: 'modern', ornamentIds: ['sparkles'], stage: 'review' }
   const engine = process.env.NXBOOTH_BROWSER || 'chromium'
-  browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true, ...(engine === 'chromium' && process.env.NXBOOTH_GENERATION_CHECK === '1' ? { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } : {}), ...(process.env.NXBOOTH_BROWSER_EXECUTABLE ? { executablePath: process.env.NXBOOTH_BROWSER_EXECUTABLE } : {}) })
+  const classicCheck = process.env.NXBOOTH_CLASSIC_REVIEW_CHECK === '1'
+  browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true, ...(engine === 'chromium' && (classicCheck || process.env.NXBOOTH_GENERATION_CHECK === '1') ? { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } : {}), ...(process.env.NXBOOTH_BROWSER_EXECUTABLE ? { executablePath: process.env.NXBOOTH_BROWSER_EXECUTABLE } : {}) })
   const cases = engine === 'webkit'
     ? [{ name: 'ipad-safari-portrait', options: { ...devices['iPad (gen 7)'] } }, { name: 'ipad-safari-landscape', options: { ...devices['iPad (gen 7) landscape'] } }]
     : [{ name: 'desktop', options: { viewport: { width: 1440, height: 1000 } } }, { name: 'android-chrome', options: { ...devices['Pixel 7'] } }, { name: 'narrow-mobile', options: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true } }, { name: 'ipad-chromium-layout', options: { ...devices['iPad (gen 7)'] } }]
@@ -58,6 +59,7 @@ try {
     let catalogUnavailable = false
     const generationFixtures = new Map()
     let fixtureSequence = 0
+    let uploadSequence = 0
     const pollUrls = []
     page.on('pageerror', (error) => errors.push(error.message))
     await context.route('**/api/**', async (route) => {
@@ -72,9 +74,9 @@ try {
       if (frame) return route.fulfill({ contentType: 'image/png', body: await readFile(resolve(frontend, `../templates/_classic/classic-frame${frame[1]}.png`)) })
       if (path === '/api/advanced/frame-styles') return json(frames)
       if (path === '/api/advanced/ornaments') return json([{ id: 'sparkles', name: 'Sparkles', description: 'Subtle accents.' }])
-      if (process.env.NXBOOTH_GENERATION_CHECK === '1') {
+      if (classicCheck || process.env.NXBOOTH_GENERATION_CHECK === '1') {
         const preview = catalog.images[catalog.experiences.experiences[0].thumbnail]
-        if (path === '/api/uploads' && route.request().method() === 'POST') return json({ upload_id: 'test-fixture-photo', preview_url: catalog.experiences.experiences[0].thumbnail, width: 512, height: 768 }, 201)
+        if (path === '/api/uploads' && route.request().method() === 'POST') return json({ upload_id: `test-fixture-photo-${++uploadSequence}`, preview_url: catalog.experiences.experiences[0].thumbnail, width: 512, height: 768 }, 201)
         if (path === '/api/generations' && route.request().method() === 'POST') {
           const payload = route.request().postDataJSON()
           const id = `test-fixture-job-${++fixtureSequence}`
@@ -94,7 +96,7 @@ try {
           if (path.endsWith('/image')) return route.fulfill({ contentType: preview.type, body: await readFile(resolve(cache, preview.filename)) })
           return json({ job_id: id.replace(/^result-/, '') })
         }
-        if (path === '/api/uploads/test-fixture-photo/preview') return route.fulfill({ contentType: preview.type, body: await readFile(resolve(cache, preview.filename)) })
+        if (/^\/api\/uploads\/test-fixture-photo-\d+\/preview$/.test(path)) return route.fulfill({ contentType: preview.type, body: await readFile(resolve(cache, preview.filename)) })
         if (path === '/api/generations/test-fixture-pending') return json({ job_id: 'test-fixture-pending', mode: 'ADVANCED', state: 'PROCESSING' })
       }
       if (path === '/api/uploads/test-saved-upload') return json({ upload_id: 'test-saved-upload', preview_url: catalog.experiences.experiences[0].thumbnail, width: 512, height: 512 })
@@ -176,6 +178,54 @@ try {
         await page.getByRole('button', { name: /Choose frame style/ }).click()
         await page.getByRole('heading', { name: 'Choose a frame style.' }).waitFor()
       }
+    }
+    if (classicCheck && engine === 'chromium' && ['desktop', 'android-chrome'].includes(sample.name)) {
+      await context.grantPermissions(['camera'])
+      for (const index of sample.name === 'desktop' ? [0, 2] : [2]) {
+        await page.evaluate(() => sessionStorage.clear())
+        await page.goto(base + '/create?mode=classic', { waitUntil: 'networkidle' })
+        await page.locator('.classic-layout-card').nth(index).click()
+        await page.getByRole('button', { name: /Continue to camera/ }).click()
+        await page.locator('.camera-actions').getByRole('button', { name: 'Open camera', exact: true }).click()
+        await page.getByRole('button', { name: 'Start photo 1 countdown', exact: true }).click()
+        await page.locator('.classic-shot-review').waitFor()
+        const shots = layouts[index].shot_count
+        const uploadsBefore = uploadSequence
+        assert.match(await page.locator('.classic-shot-review').textContent(), /in 10s/)
+        for (let retake = 0; retake < 3; retake++) {
+          await page.getByRole('button', { name: /^Retake photo/ }).click()
+          await page.locator('.classic-shot-review').waitFor()
+          assert.equal(uploadSequence, uploadsBefore, 'Rejected shots are never uploaded')
+          assert.match(await page.locator('.classic-retake-allowance').textContent(), new RegExp(`${2 - retake} of 3`))
+        }
+        assert.equal(await page.getByRole('button', { name: /^Retake photo/ }).isDisabled(), true)
+        await page.screenshot({ path: resolve(output, `${sample.name}-classic-${shots}-photo-review.png`), fullPage: true })
+        await page.getByRole('button', { name: /^Next photo/ }).click()
+        await page.getByRole('heading', { name: `Photo 2 of ${shots}`, exact: true }).waitFor()
+        // Refresh midway: accepted upload IDs and the exhausted allowance survive.
+        await page.reload({ waitUntil: 'networkidle' })
+        await page.locator('.classic-capture').waitFor()
+        assert.match(await page.locator('.classic-retake-allowance').textContent(), /0 of 3/)
+        assert.match(await page.locator('.stage-heading').textContent(), new RegExp(`1 of ${shots} photographs accepted`))
+        await page.locator('.camera-actions').getByRole('button', { name: 'Open camera', exact: true }).click()
+        await page.getByRole('button', { name: 'Start photo 2 countdown', exact: true }).click()
+        await page.getByRole('heading', { name: `Photo 2 of ${shots}`, exact: true }).waitFor()
+        assert.equal(await page.getByRole('button', { name: /^Retake photo/ }).isDisabled(), true)
+        // Let the real 10-second timer accept this photo automatically.
+        await page.getByRole('heading', { name: `Photo 3 of ${shots}`, exact: true }).waitFor({ timeout: 16000 })
+        if (shots === 4) {
+          await page.getByRole('button', { name: /^Next photo/ }).click()
+          await page.getByRole('heading', { name: 'Photo 4 of 4', exact: true }).waitFor()
+        }
+        // Last-photo timeout automatically composes through the shared Result route.
+        await page.locator('.result-stage').waitFor({ timeout: 22000 })
+        const payload = [...generationFixtures.values()].filter((item) => item.mode === 'CLASSIC').at(-1)
+        assert.equal(payload.layout_id, layouts[index].id)
+        assert.equal(payload.capture_upload_ids.length, shots)
+        assert.equal(new Set(payload.capture_upload_ids).size, shots)
+        assert.equal(uploadSequence - uploadsBefore, shots)
+      }
+      await page.evaluate(() => sessionStorage.clear())
     }
     if (process.env.NXBOOTH_GENERATION_CHECK === '1') {
       // Leave a running job through SPA navigation: busy must not disable a new photo.
@@ -281,6 +331,7 @@ try {
     assert.deepEqual(errors, [], `${sample.name}: runtime errors`)
     reports.push({ sample: sample.name, browser: engine, dimensions, featuredNames, checks: ['landing', 'CTA chooser', 'three modes', 'sign-in', 'no marketing credits', 'published art', 'mode galleries', 'photo and art-direction entry', 'refresh recovery', 'homepage recovery', 'admin', 'kiosk', 'claim route', 'catalog failure'], passed: true })
     if (motionCheck) reports.at(-1).checks.push('animated preview rotation', 'pause and play', 'reduced motion')
+    if (classicCheck && engine === 'chromium' && ['desktop', 'android-chrome'].includes(sample.name)) reports.at(-1).checks.push('Classic shot review', 'three shared retakes', 'manual Next', 'ten second automatic Next', 'accepted-shot and quota refresh recovery', 'Classic shared Result')
     if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('ten frame thumbnails', 'ornament photo buttons enabled', 'Basic and Advanced queued to result', 'transient polling recovery', 'cancel previous job navigation')
     if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push(...(engine === 'chromium' ? ['camera permission error and preview resume', 'full camera field without preview crop'] : ['camera hardware error and device photo fallback']))
     if (engine === 'webkit') reports.at(-1).checks = reports.at(-1).checks.filter((check) => check !== 'photo and art-direction entry')
