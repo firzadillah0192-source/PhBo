@@ -54,6 +54,16 @@ test('landing, chooser, sign-in and mobile component structure render through th
     const App = (await vite.ssrLoadModule('/src/App.jsx')).default
     const LandingPage = (await vite.ssrLoadModule('/src/components/home/LandingPage.jsx')).default
     const CustomerNav = (await vite.ssrLoadModule('/src/components/customer/CustomerNav.jsx')).default
+    const PhotoStage = (await vite.ssrLoadModule('/src/components/customer/PhotoStage.jsx')).default
+    for (const mode of ['BASIC', 'ADVANCED']) {
+      const photo = renderToStaticMarkup(React.createElement(PhotoStage, { mode, busy: false, onFile: () => {}, onBack: () => {} }))
+      assert.match(photo, />Use phone camera</)
+      assert.match(photo, /capture="user"/)
+      assert.match(photo, /accept="image\/\*,\.heic,\.heif"/)
+      assert.match(photo, /Photo from phone camera/)
+      const blockedPhoto = renderToStaticMarkup(React.createElement(PhotoStage, { mode, busy: true, onFile: () => {}, onBack: () => {} }))
+      assert.match(blockedPhoto, /disabled=""[^>]*>Use phone camera</)
+    }
     globalThis.window = { location: { pathname: '/', search: '' }, innerWidth: 390, sessionStorage: storage }
     const root = renderToStaticMarkup(React.createElement(App))
     assert.match(root, /Moments, made/)

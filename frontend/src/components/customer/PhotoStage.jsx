@@ -55,7 +55,7 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
       if (!mountedRef.current || request !== requestRef.current) return
       setReady(false)
       setPreviewBlocked(true)
-      setMessage('Camera preview paused. Tap Resume preview, or take or choose a photo below.')
+      setMessage('Camera preview paused. Tap Resume preview, or use Phone camera below.')
     }
   }
 
@@ -104,7 +104,7 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
     canvas.height = video.videoHeight
     const context = canvas.getContext('2d')
     if (!context) {
-      setMessage('Photo capture is unavailable. Take or choose a photo below.')
+      setMessage('Photo capture is unavailable. Use Phone camera or upload a photo below.')
       return
     }
     context.translate(canvas.width, 0)
@@ -125,6 +125,13 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
     if (!file || busy) return
     stopCamera()
     sendFile(file)
+  }
+
+  const openDeviceCamera = () => {
+    if (busy) return
+    stopCamera()
+    setMessage('')
+    deviceCameraRef.current?.click()
   }
 
   return (
@@ -163,15 +170,16 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
       {message && <p className="camera-message" role="status">{message}</p>}
       {opening && <p className="camera-message" role="status">Allow camera access when your browser asks. You can upload a photo instead.</p>}
       <div className="camera-actions">
+        <button type="button" className="customer-solid-button" disabled={busy} onClick={openDeviceCamera}>Use phone camera</button>
         {previewBlocked && <button className="customer-solid-button" onClick={playPreview} disabled={busy}>Resume preview</button>}
         {camera
-          ? <button className="customer-solid-button shutter-button" onClick={capture} disabled={busy || !ready}><span aria-hidden="true" />Take photo</button>
-          : <button className="customer-solid-button" onClick={openCamera} disabled={busy || opening}>{opening ? 'Opening camera…' : 'Take photo'}</button>}
+          ? <button className="customer-outline-button shutter-button" onClick={capture} disabled={busy || !ready}><span aria-hidden="true" />Take photo</button>
+          : <button className="customer-outline-button" onClick={openCamera} disabled={busy || opening}>{opening ? 'Opening camera…' : 'Take photo'}</button>}
         <button className="customer-outline-button" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? 'Preparing photo…' : 'Upload photo'}</button>
-        {message && <button className="customer-outline-button" disabled={busy} onClick={() => deviceCameraRef.current?.click()}>Take or choose a photo</button>}
       </div>
+      <p className="camera-message">Phone camera opens your device’s camera or photo picker.</p>
       <input ref={inputRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; upload(file) }} />
-      <input ref={deviceCameraRef} type="file" accept="image/*,.heic,.heif" capture="user" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; upload(file) }} />
+      <input ref={deviceCameraRef} type="file" aria-label="Photo from phone camera" accept="image/*,.heic,.heif" capture="user" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; upload(file) }} />
       <ul className="photo-guidance"><li>Face visible</li><li>Good lighting</li><li>Look toward camera</li></ul>
     </section>
   )

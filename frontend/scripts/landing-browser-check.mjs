@@ -249,6 +249,14 @@ try {
       assert.equal(restoredOptions.frameStyleId, 'modern')
       assert.deepEqual(restoredOptions.ornamentIds, ['sparkles'])
       const fixtureImage = catalog.images[catalog.experiences.experiences[0].thumbnail]
+      // Native camera is available before any preview error; canceling it is harmless.
+      const cancelChooserPromise = page.waitForEvent('filechooser')
+      await page.getByRole('button', { name: 'Use phone camera', exact: true }).click()
+      const cancelChooser = await cancelChooserPromise
+      assert.equal(await cancelChooser.element().getAttribute('capture'), 'user')
+      await cancelChooser.setFiles([])
+      assert.equal(await page.locator('.review-stage').count(), 0)
+      assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
       for (const mode of ['ADVANCED', 'BASIC']) {
         if (mode === 'BASIC') {
           await page.locator('.customer-mode-nav').getByRole('button', { name: 'Basic', exact: true }).click()
@@ -263,7 +271,7 @@ try {
           await page.getByRole('button', { name: 'Take photo', exact: true }).click()
           await page.getByRole('status').filter({ hasText: 'Camera permission is blocked' }).waitFor()
           assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
-          assert.equal(await page.getByRole('button', { name: 'Take or choose a photo', exact: true }).isEnabled(), true)
+          assert.equal(await page.getByRole('button', { name: 'Use phone camera', exact: true }).isEnabled(), true)
           await page.evaluate(() => {
             navigator.mediaDevices.getUserMedia = window.originalCameraRequest
             const play = HTMLMediaElement.prototype.play
@@ -286,7 +294,18 @@ try {
             await page.getByRole('button', { name: 'Take photo', exact: true }).click()
             await page.getByRole('status').filter({ hasText: 'Close other apps' }).waitFor()
           }
-          await page.locator(mode === 'ADVANCED' ? '.photo-stage input[capture]' : '.photo-stage input[type=file]:not([capture])').setInputFiles({ name: 'test-preview.png', mimeType: fixtureImage.type, buffer: await readFile(resolve(cache, fixtureImage.filename)) })
+          if (mode === 'BASIC' && engine === 'chromium') {
+            await page.getByRole('button', { name: 'Take photo', exact: true }).click()
+            await page.waitForFunction(() => document.querySelector('.photo-stage video')?.videoWidth > 0)
+            await page.evaluate(() => { window.testCameraStream = document.querySelector('.photo-stage video').srcObject })
+          }
+          const chooserPromise = page.waitForEvent('filechooser')
+          await page.getByRole('button', { name: 'Use phone camera', exact: true }).click()
+          const chooser = await chooserPromise
+          assert.equal(await chooser.element().getAttribute('capture'), 'user')
+          assert.equal(await chooser.element().getAttribute('accept'), 'image/*,.heic,.heif')
+          if (mode === 'BASIC' && engine === 'chromium') assert.equal(await page.evaluate(() => window.testCameraStream.getTracks().every((track) => track.readyState === 'ended')), true)
+          await chooser.setFiles({ name: 'phone-camera-test.png', mimeType: fixtureImage.type, buffer: await readFile(resolve(cache, fixtureImage.filename)) })
         }
         await page.locator('.review-stage').waitFor()
         if (mode === 'ADVANCED') {
@@ -334,6 +353,7 @@ try {
     if (classicCheck && engine === 'chromium' && ['desktop', 'android-chrome'].includes(sample.name)) reports.at(-1).checks.push('Classic shot review', 'three shared retakes', 'manual Next', 'ten second automatic Next', 'accepted-shot and quota refresh recovery', 'Classic shared Result')
     if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('ten frame thumbnails', 'ornament photo buttons enabled', 'Basic and Advanced queued to result', 'transient polling recovery', 'cancel previous job navigation')
     if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push(...(engine === 'chromium' ? ['camera permission error and preview resume', 'full camera field without preview crop'] : ['camera hardware error and device photo fallback']))
+    if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('phone camera entry before errors', 'cancel phone photo safely', 'phone capture input uses existing upload and Result')
     if (engine === 'webkit') reports.at(-1).checks = reports.at(-1).checks.filter((check) => check !== 'photo and art-direction entry')
     await writeFile(resolve(output, `${engine}-checks.json`), JSON.stringify(reports, null, 2))
     console.log(JSON.stringify({ sample: sample.name, passed: true }))
