@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { experienceCopy, experiencePreview, experienceSections, templatePreview } from './experienceCatalog.js'
+import ClassicFrameBrowser from './ClassicFrameBrowser.jsx'
 
 function useRevealOnIntersect() {
   const cardRef = useRef(null)
@@ -81,12 +82,7 @@ export default function ExperienceBrowser({ mode, templates, experiences, layout
   if (catalogLoading) return <LoadingCatalog />
 
   if (mode === 'CLASSIC') {
-    return <section className="gallery-page classic-browser customer-stage-enter">
-      <header className="gallery-heading"><p className="customer-kicker">Traditional photobooth</p><h1>Choose your frame.</h1><p>Every frame has its own photo sequence.</p></header>
-      <div className="classic-layout-grid">{layouts.map((item) => <button key={item.id} type="button" className={`classic-layout-card ${selectedId === item.id ? 'is-selected' : ''}`} aria-pressed={selectedId === item.id} onClick={() => onSelect(item.id)}><img src={item.preview_url} alt={`${item.name} frame preview`} loading="lazy" /><span><strong>{item.name}</strong><small>{item.shot_count} Photos</small></span></button>)}</div>
-      {!layouts.length && <div className="template-empty">No Classic frames are available.</div>}
-      <SelectionDock label={layouts.find((item) => item.id === selectedId)?.name || 'Choose a frame'} onContinue={onContinue} disabled={!selectedId} continueLabel="Continue to camera" />
-    </section>
+    return <ClassicFrameBrowser layouts={layouts} selectedId={selectedId} onSelect={onSelect} onContinue={onContinue} />
   }
 
   if (mode === 'BASIC') {

@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import AdvancedFrameStyle, AdvancedOrnament, ClassicLayout
 from app.schemas import ClassicLayoutResponse, FrameStyleResponse, OrnamentResponse
-from app.services.classic import ClassicLayoutError, slots_for, validated_frame
+from app.services.classic import ClassicLayoutError, slots_for
+from app.services.classic_events import layout_theme, validate_catalog_frame
 
 router = APIRouter(tags=["product-options"])
 
@@ -21,6 +22,7 @@ def layout_response(row: ClassicLayout) -> ClassicLayoutResponse:
         shot_count=row.shot_count, slots=slots_for(row),
         preview_url=f"/api/classic/layouts/{row.id}/preview",
         enabled=row.active, sort_order=row.sort_order,
+        **layout_theme(row.layout_config_json),
     )
 
 
@@ -30,7 +32,7 @@ def list_classic_layouts(db: Session = Depends(get_db)):
     result = []
     for row in rows:
         try:
-            validated_frame(row)
+            validate_catalog_frame(row)
             result.append(layout_response(row))
         except ClassicLayoutError:
             continue
@@ -43,10 +45,13 @@ def classic_layout_preview(layout_id: str, db: Session = Depends(get_db)):
     if row is None or not row.active:
         raise HTTPException(status_code=404, detail="Classic layout unavailable")
     try:
-        validated_frame(row)
+        validate_catalog_frame(row)
     except ClassicLayoutError as exc:
         raise HTTPException(status_code=404, detail="Classic frame unavailable") from exc
-    return FileResponse(Path(row.frame_asset_path), media_type="image/png")
+    master = Path(row.frame_asset_path)
+    preview = master.parent / "previews" / master.name
+    asset = preview if preview.is_file() and preview.stat().st_mtime_ns >= master.stat().st_mtime_ns else master
+    return FileResponse(asset, media_type="image/png")
 
 
 @router.get("/api/advanced/frame-styles", response_model=list[FrameStyleResponse])

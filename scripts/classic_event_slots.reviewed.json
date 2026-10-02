@@ -1,0 +1,1046 @@
+{
+  "reviewed": true,
+  "review_notes": "Measured white openings visually checked against all 32 generated artworks. Layout metadata follows actual artwork, not requested coordinates.",
+  "frames": [
+    {
+      "id": "classic-eid-fitri-001",
+      "artwork_sha256": "d9e6737a16be74cbdd6edc85ec465071383d5b5fe67290aca701a59b402cdb76",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 157,
+          "y": 246,
+          "width": 321,
+          "height": 438,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 246,
+          "width": 320,
+          "height": 438,
+          "fit": "cover"
+        },
+        {
+          "x": 157,
+          "y": 749,
+          "width": 321,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 749,
+          "width": 321,
+          "height": 431,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-eid-fitri-002",
+      "artwork_sha256": "64b7613e7033f78ed419362010425231dbd906a9c7f3de66955ab233cb6c67b4",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 189,
+          "y": 254,
+          "width": 646,
+          "height": 287,
+          "fit": "cover"
+        },
+        {
+          "x": 189,
+          "y": 597,
+          "width": 646,
+          "height": 287,
+          "fit": "cover"
+        },
+        {
+          "x": 189,
+          "y": 940,
+          "width": 646,
+          "height": 287,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-eid-fitri-003",
+      "artwork_sha256": "6ad117312a9112e8df1dda566e7fa63e4ee177a469425282808f4771476a1c9b",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 166,
+          "y": 277,
+          "width": 309,
+          "height": 408,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 277,
+          "width": 310,
+          "height": 408,
+          "fit": "cover"
+        },
+        {
+          "x": 166,
+          "y": 760,
+          "width": 309,
+          "height": 410,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 760,
+          "width": 310,
+          "height": 410,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-eid-fitri-004",
+      "artwork_sha256": "edecf38bd500b406f520071126c57f160525efc985a69394446c6820f86dd0a2",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 172,
+          "y": 226,
+          "width": 680,
+          "height": 282,
+          "fit": "cover"
+        },
+        {
+          "x": 172,
+          "y": 581,
+          "width": 680,
+          "height": 282,
+          "fit": "cover"
+        },
+        {
+          "x": 172,
+          "y": 938,
+          "width": 680,
+          "height": 282,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-eid-adha-001",
+      "artwork_sha256": "4ea8aafacdecc727f7ec513e71935d1633bc13fd54f66c1e82f345db76d4886e",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 155,
+          "y": 228,
+          "width": 311,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 558,
+          "y": 228,
+          "width": 311,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 155,
+          "y": 742,
+          "width": 311,
+          "height": 434,
+          "fit": "cover"
+        },
+        {
+          "x": 558,
+          "y": 742,
+          "width": 311,
+          "height": 434,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-eid-adha-002",
+      "artwork_sha256": "404cbffcdb6c47fe77e27d94dd08f876fbc5937de93d9cf61f98843a261d18d9",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 150,
+          "y": 179,
+          "width": 725,
+          "height": 329,
+          "fit": "cover"
+        },
+        {
+          "x": 150,
+          "y": 562,
+          "width": 725,
+          "height": 327,
+          "fit": "cover"
+        },
+        {
+          "x": 150,
+          "y": 943,
+          "width": 725,
+          "height": 331,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-eid-adha-003",
+      "artwork_sha256": "208bb032afafa3fa5318d88dd840d068cfda685e2d341cc4018e3fded7f5508f",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 169,
+          "y": 240,
+          "width": 300,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 240,
+          "width": 300,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 169,
+          "y": 752,
+          "width": 300,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 752,
+          "width": 300,
+          "height": 432,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-eid-adha-004",
+      "artwork_sha256": "e4359327ff0f469a22359457a2fc93b7bcc89ef21a327a240058a4407a072479",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 145,
+          "y": 185,
+          "width": 734,
+          "height": 305,
+          "fit": "cover"
+        },
+        {
+          "x": 145,
+          "y": 576,
+          "width": 734,
+          "height": 301,
+          "fit": "cover"
+        },
+        {
+          "x": 145,
+          "y": 962,
+          "width": 734,
+          "height": 296,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-khitan-001",
+      "artwork_sha256": "6d6243d7b2cff2e6c57da0b22e81c4d436aef1f40134d12124881fb3e5269b02",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 150,
+          "y": 253,
+          "width": 321,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 553,
+          "y": 253,
+          "width": 322,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 150,
+          "y": 779,
+          "width": 321,
+          "height": 424,
+          "fit": "cover"
+        },
+        {
+          "x": 553,
+          "y": 779,
+          "width": 322,
+          "height": 424,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-khitan-002",
+      "artwork_sha256": "09556fd03379b31545d68843efb0a08034a584579f45020e17893318cb391c56",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 134,
+          "y": 168,
+          "width": 756,
+          "height": 302,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 546,
+          "width": 756,
+          "height": 307,
+          "fit": "cover"
+        },
+        {
+          "x": 135,
+          "y": 929,
+          "width": 755,
+          "height": 299,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-khitan-003",
+      "artwork_sha256": "3198afe9b4494040c3e8c8f81455116129df3ef8f99e2cd7a531ded43c7e1c35",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 129,
+          "y": 193,
+          "width": 349,
+          "height": 476,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 193,
+          "width": 349,
+          "height": 476,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 740,
+          "width": 349,
+          "height": 460,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 740,
+          "width": 349,
+          "height": 460,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-khitan-004",
+      "artwork_sha256": "eaca1e56c023c6c95d5c6906de429985076e1c171dd468700f53ea83b45a0d31",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 163,
+          "y": 144,
+          "width": 698,
+          "height": 297,
+          "fit": "cover"
+        },
+        {
+          "x": 163,
+          "y": 527,
+          "width": 698,
+          "height": 297,
+          "fit": "cover"
+        },
+        {
+          "x": 163,
+          "y": 909,
+          "width": 698,
+          "height": 298,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-sunda-001",
+      "artwork_sha256": "311eb7a14d0b9460d70f010c665e842649f2da4663ef699d4ea35d0f9c5116c6",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 138,
+          "y": 201,
+          "width": 316,
+          "height": 461,
+          "fit": "cover"
+        },
+        {
+          "x": 571,
+          "y": 201,
+          "width": 316,
+          "height": 461,
+          "fit": "cover"
+        },
+        {
+          "x": 138,
+          "y": 761,
+          "width": 316,
+          "height": 455,
+          "fit": "cover"
+        },
+        {
+          "x": 571,
+          "y": 761,
+          "width": 316,
+          "height": 455,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-sunda-002",
+      "artwork_sha256": "2fddca8cdd4aa4b5b3272eac6992a6d13ed9c44082d6359ee2bf1b7509494d89",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 132,
+          "y": 293,
+          "width": 761,
+          "height": 314,
+          "fit": "cover"
+        },
+        {
+          "x": 132,
+          "y": 655,
+          "width": 761,
+          "height": 326,
+          "fit": "cover"
+        },
+        {
+          "x": 133,
+          "y": 1029,
+          "width": 760,
+          "height": 281,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-sunda-003",
+      "artwork_sha256": "8e0154ef002fff656cf85fb12e653a5a522e213cfe348fdbf694f87a42d8c91e",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 133,
+          "y": 198,
+          "width": 344,
+          "height": 497,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 198,
+          "width": 344,
+          "height": 497,
+          "fit": "cover"
+        },
+        {
+          "x": 133,
+          "y": 766,
+          "width": 344,
+          "height": 474,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 766,
+          "width": 344,
+          "height": 474,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-sunda-004",
+      "artwork_sha256": "51522cadfff5ae9cde7ed469fc5be0482a010ef3a07b6af9bc1ee46547eecead",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 168,
+          "y": 221,
+          "width": 688,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 168,
+          "y": 613,
+          "width": 688,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 168,
+          "y": 1004,
+          "width": 688,
+          "height": 320,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-jawa-001",
+      "artwork_sha256": "998c8dd538727bc2c07fcdf3736a53d865cb558bcd0442cd50679ce7b2724024",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 135,
+          "y": 241,
+          "width": 343,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 241,
+          "width": 342,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 135,
+          "y": 760,
+          "width": 343,
+          "height": 457,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 760,
+          "width": 342,
+          "height": 457,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-jawa-002",
+      "artwork_sha256": "4dae078513c2960ed6a0b8266a47ab669ff6f503b75abdd0969f086fd33c78eb",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 136,
+          "y": 141,
+          "width": 753,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 136,
+          "y": 543,
+          "width": 753,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 136,
+          "y": 946,
+          "width": 753,
+          "height": 321,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-jawa-003",
+      "artwork_sha256": "7562bd7b8ad00127e81b05869e170890a1b189be3be76474cb3477708f02c863",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 113,
+          "y": 229,
+          "width": 346,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 565,
+          "y": 229,
+          "width": 347,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 113,
+          "y": 785,
+          "width": 346,
+          "height": 475,
+          "fit": "cover"
+        },
+        {
+          "x": 565,
+          "y": 785,
+          "width": 346,
+          "height": 475,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-jawa-004",
+      "artwork_sha256": "acae4cce7380aaed3a4ac5b60d1c818ff3113109b6eff8544653e0332ea0c274",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 134,
+          "y": 146,
+          "width": 757,
+          "height": 319,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 547,
+          "width": 757,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 949,
+          "width": 757,
+          "height": 320,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-betawi-001",
+      "artwork_sha256": "6d9cbc65c09a4e36f85e5890e6cfc799d2cc5f1ca308020ebf5765ea44b56243",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 113,
+          "y": 214,
+          "width": 359,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 552,
+          "y": 214,
+          "width": 360,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 113,
+          "y": 768,
+          "width": 359,
+          "height": 475,
+          "fit": "cover"
+        },
+        {
+          "x": 553,
+          "y": 768,
+          "width": 359,
+          "height": 475,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-betawi-002",
+      "artwork_sha256": "7e5992255b906abba82be8a3312506abe2f67af2e761ab7d00c8e27a66bbd1c3",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 116,
+          "y": 157,
+          "width": 792,
+          "height": 337,
+          "fit": "cover"
+        },
+        {
+          "x": 116,
+          "y": 560,
+          "width": 792,
+          "height": 336,
+          "fit": "cover"
+        },
+        {
+          "x": 116,
+          "y": 963,
+          "width": 792,
+          "height": 335,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-betawi-003",
+      "artwork_sha256": "76de9a2151054a0c787cc6ecf4c81ff63a9fa4b5faebae6bf9cf768c4111854b",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 132,
+          "y": 186,
+          "width": 330,
+          "height": 471,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 186,
+          "width": 330,
+          "height": 471,
+          "fit": "cover"
+        },
+        {
+          "x": 132,
+          "y": 758,
+          "width": 330,
+          "height": 473,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 758,
+          "width": 330,
+          "height": 473,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-betawi-004",
+      "artwork_sha256": "e824a5bd4522010259b98bf7251f93e98f3f374f7e4993e193570975ee939d67",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 171,
+          "y": 162,
+          "width": 682,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 171,
+          "y": 556,
+          "width": 682,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 171,
+          "y": 952,
+          "width": 682,
+          "height": 321,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-minang-001",
+      "artwork_sha256": "57523b0b048628d52c87e8894b6c15c0c15219c9f3a0cb621b3fe3d756e5ad87",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 107,
+          "y": 216,
+          "width": 356,
+          "height": 480,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 216,
+          "width": 355,
+          "height": 480,
+          "fit": "cover"
+        },
+        {
+          "x": 107,
+          "y": 787,
+          "width": 356,
+          "height": 480,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 787,
+          "width": 355,
+          "height": 480,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-minang-002",
+      "artwork_sha256": "a5d44c59a0b1977f890f6c222af1c5ba37b8b5d2c362bf8e17e6f83fea9cfae9",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 153,
+          "y": 265,
+          "width": 718,
+          "height": 302,
+          "fit": "cover"
+        },
+        {
+          "x": 153,
+          "y": 637,
+          "width": 718,
+          "height": 303,
+          "fit": "cover"
+        },
+        {
+          "x": 153,
+          "y": 1010,
+          "width": 718,
+          "height": 303,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-minang-003",
+      "artwork_sha256": "81a00dc41aa72a8c5e8444d8117be3a546cc9512635e5f1bf2ff234e68c36d84",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 140,
+          "y": 333,
+          "width": 329,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 556,
+          "y": 333,
+          "width": 328,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 140,
+          "y": 856,
+          "width": 329,
+          "height": 435,
+          "fit": "cover"
+        },
+        {
+          "x": 556,
+          "y": 856,
+          "width": 328,
+          "height": 435,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-wedding-minang-004",
+      "artwork_sha256": "935cc2a7cff28606a6d0f399f7a1f267dab1ed4b3c5df5d93916da4387b30c22",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 156,
+          "y": 249,
+          "width": 713,
+          "height": 303,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 631,
+          "width": 713,
+          "height": 303,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 1014,
+          "width": 712,
+          "height": 300,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-birthday-001",
+      "artwork_sha256": "ded31f9827d8efb002297366fb06a8fecc8afa961f234cac95ab5175e829fa88",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 131,
+          "y": 271,
+          "width": 343,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 271,
+          "width": 344,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 131,
+          "y": 817,
+          "width": 343,
+          "height": 457,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 817,
+          "width": 344,
+          "height": 457,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-birthday-002",
+      "artwork_sha256": "02852cb9acba26589f114b173d04797c41e436f2924ca4864a7e8d6caa50ca21",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 160,
+          "y": 190,
+          "width": 704,
+          "height": 311,
+          "fit": "cover"
+        },
+        {
+          "x": 149,
+          "y": 559,
+          "width": 726,
+          "height": 333,
+          "fit": "cover"
+        },
+        {
+          "x": 160,
+          "y": 959,
+          "width": 704,
+          "height": 313,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-birthday-003",
+      "artwork_sha256": "d1652e0d95db377d57b01aa0c8fc17fab6dec7db2042dc5d0380697ef6b72465",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 128,
+          "y": 231,
+          "width": 342,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 231,
+          "width": 341,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 128,
+          "y": 768,
+          "width": 342,
+          "height": 446,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 768,
+          "width": 341,
+          "height": 446,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "id": "classic-birthday-004",
+      "artwork_sha256": "38e6111b12c520c3b568815875a6a0f2d3ce3caf81612c32c28d4eee2c1eaf41",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "slots": [
+        {
+          "x": 142,
+          "y": 135,
+          "width": 741,
+          "height": 353,
+          "fit": "cover"
+        },
+        {
+          "x": 142,
+          "y": 536,
+          "width": 741,
+          "height": 356,
+          "fit": "cover"
+        },
+        {
+          "x": 142,
+          "y": 940,
+          "width": 741,
+          "height": 353,
+          "fit": "cover"
+        }
+      ]
+    }
+  ]
+}

@@ -121,7 +121,9 @@ def patch_classic_layout(layout_id: str, payload: ClassicLayoutPatch, db: Sessio
         raise HTTPException(status_code=404, detail="Classic layout unavailable")
     for key, value in payload.model_dump(exclude_unset=True).items():
         if key == "slots":
-            row.layout_config_json = json.dumps({"slots": value})
+            config = json.loads(row.layout_config_json)
+            config["slots"] = value
+            row.layout_config_json = json.dumps(config)
         else:
             setattr(row, "active" if key == "enabled" else key, value)
     _check_layout(row)

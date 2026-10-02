@@ -1,0 +1,292 @@
+{
+  "frames": [
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-001",
+      "name": "Ketupat Anyaman",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "emerald green and warm ivory, woven palm-leaf ketupat diamonds, palm fronds and champagne-gold accents"
+    },
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-002",
+      "name": "Bulan Sabit",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "deep midnight teal with a refined luminous crescent moon, tiny gold stars and pearl arches"
+    },
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-003",
+      "name": "Floral Silaturahmi",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "sage green and ivory, delicate white jasmine blooms and lush tropical botanical borders"
+    },
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-004",
+      "name": "Silaturahmi Gold",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "warm champagne gold on ivory, embossed star geometry and elegant architectural arches"
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-001",
+      "name": "Geometri Islami",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "warm sand and turquoise interlocking star geometry, tactile ceramic-like patterned bezel"
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-002",
+      "name": "Lentera Malam",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "indigo and old gold, decorative lanterns with warm light and luxurious jewel-toned edges"
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-003",
+      "name": "Lengkung Harmoni",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "stone ivory and olive, graceful carved ornamental arches and restrained linework"
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-004",
+      "name": "Earth Tone",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "terracotta, cream and soft moss, linen-like texture and crafted botanical sprigs"
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-001",
+      "name": "Ceria Anak",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "premium playful sky blue and soft lemon, cheerful rounded stars and friendly geometric confetti"
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-002",
+      "name": "Royal Blue",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "royal blue and champagne gold, dimensional ornamental scrolls and elegant celebratory medallions"
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-003",
+      "name": "Petualangan",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "sky blue and grass green, charming paper-cut clouds, a tiny compass and colorful celebratory bunting"
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-004",
+      "name": "Tradisional",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "warm copper and cream, tasteful Indonesian batik-inspired ornamental geometry and celebratory botanical accents"
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-001",
+      "name": "Melati Putih",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Sundanese-wedding-inspired white jasmine garlands, delicate green leaves, luminous ivory botanical stationery"
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-002",
+      "name": "Siger Elegance",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Sundanese-wedding-inspired silver filigree based on the arched silhouette of a bridal siger, pearl ivory and pale gold"
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-003",
+      "name": "Floral Hijau",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Sundanese-wedding-inspired deep leafy green, lush refined white garden blooms and layered botanical edges"
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-004",
+      "name": "Sunda Gold",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Sundanese-wedding-inspired antique gold and ivory, delicate filigree and tasteful jasmine border accents"
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-001",
+      "name": "Batik Klasik",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Javanese-wedding-inspired abstract diagonal batik cloth pattern, rich walnut and cream with antique gold"
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-002",
+      "name": "Janur Harmoni",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Javanese-wedding-inspired folded young palm leaves and woven botanical ribbons, soft yellow-green and ivory"
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-003",
+      "name": "Pendopo",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Javanese-wedding-inspired pavilion roof silhouettes and carved teak details, warm wood, charcoal and ivory"
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-004",
+      "name": "Jawa Cream",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Javanese-wedding-inspired cream and chocolate brown, restrained textile pattern and fine jasmine garlands"
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-001",
+      "name": "Kembang Kelapa",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Betawi-wedding-inspired colorful kembang kelapa ornaments, finely cut paper decorations, ivory and bright celebratory accents"
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-002",
+      "name": "Gigi Balang",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Betawi-wedding-inspired repeating triangular gigi balang architectural cutwork, warm green and cream"
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-003",
+      "name": "Betawi Cerah",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Betawi-wedding-inspired fuchsia, emerald and gold floral celebration border with premium festive materials"
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-004",
+      "name": "Floral Betawi",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Betawi-wedding-inspired elegant jasmine and tropical floral border, coral pink and pearl ivory"
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-001",
+      "name": "Songket Merah",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Minangkabau-wedding-inspired rich red songket textile with refined geometric gold weaving"
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-002",
+      "name": "Suntiang Gold",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Minangkabau-wedding-inspired tiered floral gold suntiang silhouette as symmetrical fine filigree, warm gold and ivory"
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-003",
+      "name": "Gonjong",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Minangkabau-wedding-inspired pointed gonjong roof silhouettes and refined textile ornament, burgundy, ivory and gold"
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-004",
+      "name": "Minang Red Gold",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Minangkabau-wedding-inspired ceremonial red and warm gold, luxurious woven texture and graceful botanical ornaments"
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-001",
+      "name": "Balon Confetti",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "premium joyful balloons and elegant confetti, bright coral, sky blue and butter yellow on ivory"
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-002",
+      "name": "Pastel Anak",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "soft lavender, mint and peach, charming rounded stars and gentle dimensional celebratory ribbons"
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-003",
+      "name": "Colorful Pop",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "bold refined graphic celebration with cobalt, coral, lemon and lilac, playful abstract forms and dimensional confetti"
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-004",
+      "name": "Birthday Elegance",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "warm black and champagne gold, tasteful balloon silhouettes and elegant foil confetti for an adult celebration"
+    }
+  ]
+}

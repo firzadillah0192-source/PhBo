@@ -1,0 +1,1301 @@
+{
+  "version": 1,
+  "frames": [
+    {
+      "id": "classic-eid-fitri-001",
+      "name": "Ketupat Anyaman",
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "filename": "classic-eid-fitri-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 157,
+          "y": 246,
+          "width": 321,
+          "height": 438,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 246,
+          "width": 320,
+          "height": 438,
+          "fit": "cover"
+        },
+        {
+          "x": 157,
+          "y": 749,
+          "width": 321,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 749,
+          "width": 321,
+          "height": 431,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 100,
+      "sha256": "e69b11762cd73152a248e5a65f91e9f764140822a86c278d0cdd0e77061af17e",
+      "bytes": 2138413,
+      "artwork_sha256": "d9e6737a16be74cbdd6edc85ec465071383d5b5fe67290aca701a59b402cdb76"
+    },
+    {
+      "id": "classic-eid-fitri-002",
+      "name": "Bulan Sabit",
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "filename": "classic-eid-fitri-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 189,
+          "y": 254,
+          "width": 646,
+          "height": 287,
+          "fit": "cover"
+        },
+        {
+          "x": 189,
+          "y": 597,
+          "width": 646,
+          "height": 287,
+          "fit": "cover"
+        },
+        {
+          "x": 189,
+          "y": 940,
+          "width": 646,
+          "height": 287,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 101,
+      "sha256": "d6dc69ee54b85637aeb70005d5548d2666c641ceb09cd3f9c63c489be155e1b4",
+      "bytes": 2050429,
+      "artwork_sha256": "64b7613e7033f78ed419362010425231dbd906a9c7f3de66955ab233cb6c67b4"
+    },
+    {
+      "id": "classic-eid-fitri-003",
+      "name": "Floral Silaturahmi",
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "filename": "classic-eid-fitri-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 166,
+          "y": 277,
+          "width": 309,
+          "height": 408,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 277,
+          "width": 310,
+          "height": 408,
+          "fit": "cover"
+        },
+        {
+          "x": 166,
+          "y": 760,
+          "width": 309,
+          "height": 410,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 760,
+          "width": 310,
+          "height": 410,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 102,
+      "sha256": "8b891dbec4e3b67a84e6644a50793e5cf51922b4c954be2b78716ce1f54cdab0",
+      "bytes": 2415035,
+      "artwork_sha256": "6ad117312a9112e8df1dda566e7fa63e4ee177a469425282808f4771476a1c9b"
+    },
+    {
+      "id": "classic-eid-fitri-004",
+      "name": "Silaturahmi Gold",
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "filename": "classic-eid-fitri-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 172,
+          "y": 226,
+          "width": 680,
+          "height": 282,
+          "fit": "cover"
+        },
+        {
+          "x": 172,
+          "y": 581,
+          "width": 680,
+          "height": 282,
+          "fit": "cover"
+        },
+        {
+          "x": 172,
+          "y": 938,
+          "width": 680,
+          "height": 282,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 103,
+      "sha256": "ae2d096ad15e7913742c911d67c7fa244ba1c54c9c4744858f1dc67beebedb69",
+      "bytes": 2134090,
+      "artwork_sha256": "edecf38bd500b406f520071126c57f160525efc985a69394446c6820f86dd0a2"
+    },
+    {
+      "id": "classic-eid-adha-001",
+      "name": "Geometri Islami",
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "filename": "classic-eid-adha-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 155,
+          "y": 228,
+          "width": 311,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 558,
+          "y": 228,
+          "width": 311,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 155,
+          "y": 742,
+          "width": 311,
+          "height": 434,
+          "fit": "cover"
+        },
+        {
+          "x": 558,
+          "y": 742,
+          "width": 311,
+          "height": 434,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 104,
+      "sha256": "ccde849010735c017ed89c5441cb8f747118056191a79110dc09c47b1e658bfd",
+      "bytes": 2449730,
+      "artwork_sha256": "4ea8aafacdecc727f7ec513e71935d1633bc13fd54f66c1e82f345db76d4886e"
+    },
+    {
+      "id": "classic-eid-adha-002",
+      "name": "Lentera Malam",
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "filename": "classic-eid-adha-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 150,
+          "y": 179,
+          "width": 725,
+          "height": 329,
+          "fit": "cover"
+        },
+        {
+          "x": 150,
+          "y": 562,
+          "width": 725,
+          "height": 327,
+          "fit": "cover"
+        },
+        {
+          "x": 150,
+          "y": 943,
+          "width": 725,
+          "height": 331,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 105,
+      "sha256": "07f8f1c59221fa7c86fa18dcc9f7da8fa89b0d9cd16c6f6aafe9af5688361552",
+      "bytes": 1873966,
+      "artwork_sha256": "404cbffcdb6c47fe77e27d94dd08f876fbc5937de93d9cf61f98843a261d18d9"
+    },
+    {
+      "id": "classic-eid-adha-003",
+      "name": "Lengkung Harmoni",
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "filename": "classic-eid-adha-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 169,
+          "y": 240,
+          "width": 300,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 240,
+          "width": 300,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 169,
+          "y": 752,
+          "width": 300,
+          "height": 432,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 752,
+          "width": 300,
+          "height": 432,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 106,
+      "sha256": "b666c799e8f241083a5afa66672d5d6895283e80c096e2c160f4b388100a677e",
+      "bytes": 2367414,
+      "artwork_sha256": "208bb032afafa3fa5318d88dd840d068cfda685e2d341cc4018e3fded7f5508f"
+    },
+    {
+      "id": "classic-eid-adha-004",
+      "name": "Earth Tone",
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "filename": "classic-eid-adha-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 145,
+          "y": 185,
+          "width": 734,
+          "height": 305,
+          "fit": "cover"
+        },
+        {
+          "x": 145,
+          "y": 576,
+          "width": 734,
+          "height": 301,
+          "fit": "cover"
+        },
+        {
+          "x": 145,
+          "y": 962,
+          "width": 734,
+          "height": 296,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 107,
+      "sha256": "6cbb6b0be9e3135bacfa4cc32a5808281605f7d242f7baaa643ef313b31071bc",
+      "bytes": 1979908,
+      "artwork_sha256": "e4359327ff0f469a22359457a2fc93b7bcc89ef21a327a240058a4407a072479"
+    },
+    {
+      "id": "classic-khitan-001",
+      "name": "Ceria Anak",
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "filename": "classic-khitan-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 150,
+          "y": 253,
+          "width": 321,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 553,
+          "y": 253,
+          "width": 322,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 150,
+          "y": 779,
+          "width": 321,
+          "height": 424,
+          "fit": "cover"
+        },
+        {
+          "x": 553,
+          "y": 779,
+          "width": 322,
+          "height": 424,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 108,
+      "sha256": "a3c04c8a0283a7c6d0e9db287e5203741cd90db83049b77be2bccf92a5006443",
+      "bytes": 1662033,
+      "artwork_sha256": "6d6243d7b2cff2e6c57da0b22e81c4d436aef1f40134d12124881fb3e5269b02"
+    },
+    {
+      "id": "classic-khitan-002",
+      "name": "Royal Blue",
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "filename": "classic-khitan-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 134,
+          "y": 168,
+          "width": 756,
+          "height": 302,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 546,
+          "width": 756,
+          "height": 307,
+          "fit": "cover"
+        },
+        {
+          "x": 135,
+          "y": 929,
+          "width": 755,
+          "height": 299,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 109,
+      "sha256": "d4b7f8daef1b0426a972717cb159f639b2aa10edd2ed0043e8c3c1067ea14c53",
+      "bytes": 1862154,
+      "artwork_sha256": "09556fd03379b31545d68843efb0a08034a584579f45020e17893318cb391c56"
+    },
+    {
+      "id": "classic-khitan-003",
+      "name": "Petualangan",
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "filename": "classic-khitan-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 129,
+          "y": 193,
+          "width": 349,
+          "height": 476,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 193,
+          "width": 349,
+          "height": 476,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 740,
+          "width": 349,
+          "height": 460,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 740,
+          "width": 349,
+          "height": 460,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 110,
+      "sha256": "d43e71e55f921296d07139eea45f528a5fcb1d007d953938798860aaf22387e4",
+      "bytes": 1937981,
+      "artwork_sha256": "3198afe9b4494040c3e8c8f81455116129df3ef8f99e2cd7a531ded43c7e1c35"
+    },
+    {
+      "id": "classic-khitan-004",
+      "name": "Tradisional",
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "filename": "classic-khitan-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 163,
+          "y": 144,
+          "width": 698,
+          "height": 297,
+          "fit": "cover"
+        },
+        {
+          "x": 163,
+          "y": 527,
+          "width": 698,
+          "height": 297,
+          "fit": "cover"
+        },
+        {
+          "x": 163,
+          "y": 909,
+          "width": 698,
+          "height": 298,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 111,
+      "sha256": "750f31467c438cf41b2c565509cd9fe92d2366ff1c33a99e1c702a81058993a5",
+      "bytes": 2373258,
+      "artwork_sha256": "eaca1e56c023c6c95d5c6906de429985076e1c171dd468700f53ea83b45a0d31"
+    },
+    {
+      "id": "classic-wedding-sunda-001",
+      "name": "Melati Putih",
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "filename": "classic-wedding-sunda-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 138,
+          "y": 201,
+          "width": 316,
+          "height": 461,
+          "fit": "cover"
+        },
+        {
+          "x": 571,
+          "y": 201,
+          "width": 316,
+          "height": 461,
+          "fit": "cover"
+        },
+        {
+          "x": 138,
+          "y": 761,
+          "width": 316,
+          "height": 455,
+          "fit": "cover"
+        },
+        {
+          "x": 571,
+          "y": 761,
+          "width": 316,
+          "height": 455,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 112,
+      "sha256": "62995c4c1f11ec6b09b4c390fa2c24376f1c0966fc7282eb6811529f5cf8a448",
+      "bytes": 2197873,
+      "artwork_sha256": "311eb7a14d0b9460d70f010c665e842649f2da4663ef699d4ea35d0f9c5116c6"
+    },
+    {
+      "id": "classic-wedding-sunda-002",
+      "name": "Siger Elegance",
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "filename": "classic-wedding-sunda-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 132,
+          "y": 293,
+          "width": 761,
+          "height": 314,
+          "fit": "cover"
+        },
+        {
+          "x": 132,
+          "y": 655,
+          "width": 761,
+          "height": 326,
+          "fit": "cover"
+        },
+        {
+          "x": 133,
+          "y": 1029,
+          "width": 760,
+          "height": 281,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 113,
+      "sha256": "72b5242a29a4d77934b0c46310296534d56ee18f4864f87d152ec004cf41ae15",
+      "bytes": 2268642,
+      "artwork_sha256": "2fddca8cdd4aa4b5b3272eac6992a6d13ed9c44082d6359ee2bf1b7509494d89"
+    },
+    {
+      "id": "classic-wedding-sunda-003",
+      "name": "Floral Hijau",
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "filename": "classic-wedding-sunda-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 133,
+          "y": 198,
+          "width": 344,
+          "height": 497,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 198,
+          "width": 344,
+          "height": 497,
+          "fit": "cover"
+        },
+        {
+          "x": 133,
+          "y": 766,
+          "width": 344,
+          "height": 474,
+          "fit": "cover"
+        },
+        {
+          "x": 548,
+          "y": 766,
+          "width": 344,
+          "height": 474,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 114,
+      "sha256": "72d61d22486bebe4cd310ff70bd4bc29024e9e8adcdd69947db2d8b9c2b0ebc6",
+      "bytes": 2195124,
+      "artwork_sha256": "8e0154ef002fff656cf85fb12e653a5a522e213cfe348fdbf694f87a42d8c91e"
+    },
+    {
+      "id": "classic-wedding-sunda-004",
+      "name": "Sunda Gold",
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "filename": "classic-wedding-sunda-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 168,
+          "y": 221,
+          "width": 688,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 168,
+          "y": 613,
+          "width": 688,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 168,
+          "y": 1004,
+          "width": 688,
+          "height": 320,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 115,
+      "sha256": "11c1644becd39ea17decbc43f83d225dbc71c190ca5bf8a520390ec16d7961b4",
+      "bytes": 2354251,
+      "artwork_sha256": "51522cadfff5ae9cde7ed469fc5be0482a010ef3a07b6af9bc1ee46547eecead"
+    },
+    {
+      "id": "classic-wedding-jawa-001",
+      "name": "Batik Klasik",
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "filename": "classic-wedding-jawa-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 135,
+          "y": 241,
+          "width": 343,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 241,
+          "width": 342,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 135,
+          "y": 760,
+          "width": 343,
+          "height": 457,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 760,
+          "width": 342,
+          "height": 457,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 116,
+      "sha256": "319ac24f3f3e05c7e56db29e7eec68a76f365dff2abe84a4953492ad9429f5b0",
+      "bytes": 2330263,
+      "artwork_sha256": "998c8dd538727bc2c07fcdf3736a53d865cb558bcd0442cd50679ce7b2724024"
+    },
+    {
+      "id": "classic-wedding-jawa-002",
+      "name": "Janur Harmoni",
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "filename": "classic-wedding-jawa-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 136,
+          "y": 141,
+          "width": 753,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 136,
+          "y": 543,
+          "width": 753,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 136,
+          "y": 946,
+          "width": 753,
+          "height": 321,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 117,
+      "sha256": "934ba659380a9624b96e6ff82e7f4ea0fe9693fada1caca1120dc458ca670fd4",
+      "bytes": 1847508,
+      "artwork_sha256": "4dae078513c2960ed6a0b8266a47ab669ff6f503b75abdd0969f086fd33c78eb"
+    },
+    {
+      "id": "classic-wedding-jawa-003",
+      "name": "Pendopo",
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "filename": "classic-wedding-jawa-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 113,
+          "y": 229,
+          "width": 346,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 565,
+          "y": 229,
+          "width": 347,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 113,
+          "y": 785,
+          "width": 346,
+          "height": 475,
+          "fit": "cover"
+        },
+        {
+          "x": 565,
+          "y": 785,
+          "width": 346,
+          "height": 475,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 118,
+      "sha256": "6cbe90aab0824453148dc9ed5a129caa084699f8cfed2240ff6cad93aac888b2",
+      "bytes": 2052856,
+      "artwork_sha256": "7562bd7b8ad00127e81b05869e170890a1b189be3be76474cb3477708f02c863"
+    },
+    {
+      "id": "classic-wedding-jawa-004",
+      "name": "Jawa Cream",
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "filename": "classic-wedding-jawa-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 134,
+          "y": 146,
+          "width": 757,
+          "height": 319,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 547,
+          "width": 757,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 949,
+          "width": 757,
+          "height": 320,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 119,
+      "sha256": "4338909c6c509169c1fb92c176acabe2f4dd5fb0416d216dd4f273639e2a6951",
+      "bytes": 2167110,
+      "artwork_sha256": "acae4cce7380aaed3a4ac5b60d1c818ff3113109b6eff8544653e0332ea0c274"
+    },
+    {
+      "id": "classic-wedding-betawi-001",
+      "name": "Kembang Kelapa",
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "filename": "classic-wedding-betawi-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 113,
+          "y": 214,
+          "width": 359,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 552,
+          "y": 214,
+          "width": 360,
+          "height": 477,
+          "fit": "cover"
+        },
+        {
+          "x": 113,
+          "y": 768,
+          "width": 359,
+          "height": 475,
+          "fit": "cover"
+        },
+        {
+          "x": 553,
+          "y": 768,
+          "width": 359,
+          "height": 475,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 120,
+      "sha256": "da1bd9bd5bb053d96577adb8c1f8cd8a1f132a34a7d26e1f4f0a1794470c9a66",
+      "bytes": 2037254,
+      "artwork_sha256": "6d9cbc65c09a4e36f85e5890e6cfc799d2cc5f1ca308020ebf5765ea44b56243"
+    },
+    {
+      "id": "classic-wedding-betawi-002",
+      "name": "Gigi Balang",
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "filename": "classic-wedding-betawi-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 116,
+          "y": 157,
+          "width": 792,
+          "height": 337,
+          "fit": "cover"
+        },
+        {
+          "x": 116,
+          "y": 560,
+          "width": 792,
+          "height": 336,
+          "fit": "cover"
+        },
+        {
+          "x": 116,
+          "y": 963,
+          "width": 792,
+          "height": 335,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 121,
+      "sha256": "cc95f6c0df84ad39d63c5561e5399eef8c5f297725ff15688728d2e363812c6b",
+      "bytes": 1693591,
+      "artwork_sha256": "7e5992255b906abba82be8a3312506abe2f67af2e761ab7d00c8e27a66bbd1c3"
+    },
+    {
+      "id": "classic-wedding-betawi-003",
+      "name": "Betawi Cerah",
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "filename": "classic-wedding-betawi-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 132,
+          "y": 186,
+          "width": 330,
+          "height": 471,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 186,
+          "width": 330,
+          "height": 471,
+          "fit": "cover"
+        },
+        {
+          "x": 132,
+          "y": 758,
+          "width": 330,
+          "height": 473,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 758,
+          "width": 330,
+          "height": 473,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 122,
+      "sha256": "355e21aaa28820762f90221ad3d7d83366f96fe65084e995717bcfbaf4f60a0d",
+      "bytes": 2373920,
+      "artwork_sha256": "76de9a2151054a0c787cc6ecf4c81ff63a9fa4b5faebae6bf9cf768c4111854b"
+    },
+    {
+      "id": "classic-wedding-betawi-004",
+      "name": "Floral Betawi",
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "filename": "classic-wedding-betawi-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 171,
+          "y": 162,
+          "width": 682,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 171,
+          "y": 556,
+          "width": 682,
+          "height": 321,
+          "fit": "cover"
+        },
+        {
+          "x": 171,
+          "y": 952,
+          "width": 682,
+          "height": 321,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 123,
+      "sha256": "2f4428bb2fcdfe514f90d4453d78356cd5030b9575051c216e99fd847d3e40cb",
+      "bytes": 2223629,
+      "artwork_sha256": "e824a5bd4522010259b98bf7251f93e98f3f374f7e4993e193570975ee939d67"
+    },
+    {
+      "id": "classic-wedding-minang-001",
+      "name": "Songket Merah",
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "filename": "classic-wedding-minang-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 107,
+          "y": 216,
+          "width": 356,
+          "height": 480,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 216,
+          "width": 355,
+          "height": 480,
+          "fit": "cover"
+        },
+        {
+          "x": 107,
+          "y": 787,
+          "width": 356,
+          "height": 480,
+          "fit": "cover"
+        },
+        {
+          "x": 562,
+          "y": 787,
+          "width": 355,
+          "height": 480,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 124,
+      "sha256": "d82fad3675c494d09225f91919fcebf84a62f2fb417c1402f324bafddfa62d6b",
+      "bytes": 2382080,
+      "artwork_sha256": "57523b0b048628d52c87e8894b6c15c0c15219c9f3a0cb621b3fe3d756e5ad87"
+    },
+    {
+      "id": "classic-wedding-minang-002",
+      "name": "Suntiang Gold",
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "filename": "classic-wedding-minang-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 153,
+          "y": 265,
+          "width": 718,
+          "height": 302,
+          "fit": "cover"
+        },
+        {
+          "x": 153,
+          "y": 637,
+          "width": 718,
+          "height": 303,
+          "fit": "cover"
+        },
+        {
+          "x": 153,
+          "y": 1010,
+          "width": 718,
+          "height": 303,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 125,
+      "sha256": "adc06bfc39ce73283495dc6989325fa92aa3293de99cf1c449637eeca6249c9b",
+      "bytes": 2434523,
+      "artwork_sha256": "a5d44c59a0b1977f890f6c222af1c5ba37b8b5d2c362bf8e17e6f83fea9cfae9"
+    },
+    {
+      "id": "classic-wedding-minang-003",
+      "name": "Gonjong",
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "filename": "classic-wedding-minang-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 140,
+          "y": 333,
+          "width": 329,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 556,
+          "y": 333,
+          "width": 328,
+          "height": 433,
+          "fit": "cover"
+        },
+        {
+          "x": 140,
+          "y": 856,
+          "width": 329,
+          "height": 435,
+          "fit": "cover"
+        },
+        {
+          "x": 556,
+          "y": 856,
+          "width": 328,
+          "height": 435,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 126,
+      "sha256": "df421f451e20f79ab80420f7ebab0ac9a1466e370012e017ba12b06bc90272f0",
+      "bytes": 2446100,
+      "artwork_sha256": "81a00dc41aa72a8c5e8444d8117be3a546cc9512635e5f1bf2ff234e68c36d84"
+    },
+    {
+      "id": "classic-wedding-minang-004",
+      "name": "Minang Red Gold",
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "filename": "classic-wedding-minang-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 156,
+          "y": 249,
+          "width": 713,
+          "height": 303,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 631,
+          "width": 713,
+          "height": 303,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 1014,
+          "width": 712,
+          "height": 300,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 127,
+      "sha256": "a5ed143b7b9abd4d9637d073293d8425d94304721df35d35c7723514f7356068",
+      "bytes": 2328205,
+      "artwork_sha256": "935cc2a7cff28606a6d0f399f7a1f267dab1ed4b3c5df5d93916da4387b30c22"
+    },
+    {
+      "id": "classic-birthday-001",
+      "name": "Balon Confetti",
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "filename": "classic-birthday-001.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 131,
+          "y": 271,
+          "width": 343,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 271,
+          "width": 344,
+          "height": 459,
+          "fit": "cover"
+        },
+        {
+          "x": 131,
+          "y": 817,
+          "width": 343,
+          "height": 457,
+          "fit": "cover"
+        },
+        {
+          "x": 549,
+          "y": 817,
+          "width": 344,
+          "height": 457,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 128,
+      "sha256": "a12348ec44b54f1abbd4cc95e92ecb41eb9b51cc9d23389d24828b6ae1bbe739",
+      "bytes": 1745939,
+      "artwork_sha256": "ded31f9827d8efb002297366fb06a8fecc8afa961f234cac95ab5175e829fa88"
+    },
+    {
+      "id": "classic-birthday-002",
+      "name": "Pastel Anak",
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "filename": "classic-birthday-002.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 160,
+          "y": 190,
+          "width": 704,
+          "height": 311,
+          "fit": "cover"
+        },
+        {
+          "x": 149,
+          "y": 559,
+          "width": 726,
+          "height": 333,
+          "fit": "cover"
+        },
+        {
+          "x": 160,
+          "y": 959,
+          "width": 704,
+          "height": 313,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 129,
+      "sha256": "b83bcd292bc59adf7247eb0605b05167600fbad12db9d0e70c85328389098c3d",
+      "bytes": 1552169,
+      "artwork_sha256": "02852cb9acba26589f114b173d04797c41e436f2924ca4864a7e8d6caa50ca21"
+    },
+    {
+      "id": "classic-birthday-003",
+      "name": "Colorful Pop",
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "filename": "classic-birthday-003.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 128,
+          "y": 231,
+          "width": 342,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 231,
+          "width": 341,
+          "height": 448,
+          "fit": "cover"
+        },
+        {
+          "x": 128,
+          "y": 768,
+          "width": 342,
+          "height": 446,
+          "fit": "cover"
+        },
+        {
+          "x": 555,
+          "y": 768,
+          "width": 341,
+          "height": 446,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 130,
+      "sha256": "a965b0c1a060297a28a7a4010cbfeec95f290564b664083b95168e584dfe8591",
+      "bytes": 1505945,
+      "artwork_sha256": "d1652e0d95db377d57b01aa0c8fc17fab6dec7db2042dc5d0380697ef6b72465"
+    },
+    {
+      "id": "classic-birthday-004",
+      "name": "Birthday Elegance",
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "filename": "classic-birthday-004.png",
+      "canvas_width": 1024,
+      "canvas_height": 1536,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 142,
+          "y": 135,
+          "width": 741,
+          "height": 353,
+          "fit": "cover"
+        },
+        {
+          "x": 142,
+          "y": 536,
+          "width": 741,
+          "height": 356,
+          "fit": "cover"
+        },
+        {
+          "x": 142,
+          "y": 940,
+          "width": 741,
+          "height": 353,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 131,
+      "sha256": "ce02a7333699b394b95ac6713501a9712b2d317b75f19eb2aab9b72f789c5a27",
+      "bytes": 1481234,
+      "artwork_sha256": "38e6111b12c520c3b568815875a6a0f2d3ce3caf81612c32c28d4eee2c1eaf41"
+    }
+  ]
+}

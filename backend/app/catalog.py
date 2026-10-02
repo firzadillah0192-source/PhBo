@@ -11,6 +11,8 @@ from app.core.config import get_settings
 from app.experiences import ExperienceDefinition, list_experiences
 from app.models import ExperienceStatus, ManagedExperience, ManagedTemplate, ClassicLayout, AdvancedFrameStyle, AdvancedOrnament
 from app.services.classic import CLASSIC_SEEDS
+from app.services.classic import validated_frame
+from app.services.classic_events import event_frame_definitions
 from app.services.advanced_prompt import FRAME_STYLE_SEEDS, ORNAMENT_SEEDS
 from app.templates_registry import TemplateDefinition, get_registry
 
@@ -64,6 +66,21 @@ def seed_catalog(session: Session) -> None:
                 frame_asset_path=str(settings.templates_dir / "_classic" / filename),
                 active=True, sort_order=order,
             ))
+    for item in event_frame_definitions():
+        if session.get(ClassicLayout, item["id"]) is not None:
+            continue
+        frame_path = settings.templates_dir / "_classic" / "events" / item["filename"]
+        if not frame_path.is_file():
+            continue
+        row = ClassicLayout(
+            id=item["id"], slug=item["id"], name=item["name"],
+            canvas_width=item["canvas_width"], canvas_height=item["canvas_height"],
+            shot_count=item["shot_count"], frame_asset_path=str(frame_path),
+            layout_config_json=json.dumps({"slots": item["slots"], "theme_slug": item["theme_slug"], "theme_name": item["theme_name"]}),
+            active=True, sort_order=item["sort_order"],
+        )
+        validated_frame(row).close()
+        session.add(row)
     for order, (slug, name, description, prompt) in enumerate(FRAME_STYLE_SEEDS):
         if session.get(AdvancedFrameStyle, slug) is None:
             session.add(AdvancedFrameStyle(id=slug, slug=slug, name=name, description=description, prompt_fragment=prompt, enabled=True, sort_order=order))

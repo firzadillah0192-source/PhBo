@@ -86,6 +86,8 @@ class ClassicLayoutResponse(BaseModel):
     preview_url: str
     enabled: bool
     sort_order: int
+    theme_slug: str = "classic-originals"
+    theme_name: str = "Classic Originals"
 
 
 class FrameStyleResponse(BaseModel):
