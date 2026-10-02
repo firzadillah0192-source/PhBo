@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image
 
 from app.templates_registry import TemplateDefinition
+from app.core.config import get_settings
 
 from .blending import (
     composite,
@@ -30,7 +31,6 @@ from .blending import (
     restore_local_face_contrast,
     soft_face_mask,
     transform_points,
-    warp_face,
 )
 from .dense import (
     DenseLandmarks,
@@ -46,6 +46,7 @@ from .errors import (
     BasicLandmarksUnavailableError,
     BasicTemplateMetadataMissingError,
 )
+from .identity_providers import get_basic_identity_provider
 from .landmarks import FaceBox, detect_exactly_one_face, estimate_landmarks
 from .profiles import BasicIdentityProfile, get_identity_profile
 from .real_landmarks import detect_real_dense_landmarks
@@ -255,21 +256,23 @@ class BasicGenerationEngine:
         )
         geometry_base = composite(target, morphed_template, geometry_mask)
 
-        aligned_user = warp_face(
-            source, registration.matrix, (target_width, target_height)
+        identity_backend = str(
+            options.get("identity_backend", get_settings().basic_identity_backend)
         )
-        warped_user = aligned_user
-        if identity_profile.warp_user_texture:
-            registered_source_control = transform_points(
-                np.asarray([source_dense.points[name] for name in labels], dtype=np.float32),
-                registration.matrix,
-            )
-            warped_user, _ = piecewise_affine_warp(
-                aligned_user,
-                registered_source_control,
-                target_control,
-                (target_width, target_height),
-            )
+        identity_provider = get_basic_identity_provider(identity_backend)
+        warped_user = identity_provider.transfer_identity(
+            source,
+            target,
+            target_points,
+            source_dense.points,
+            {
+                "registration_matrix": registration.matrix,
+                "control_labels": labels,
+                "warp_user_texture": identity_profile.warp_user_texture,
+                "user_face_box": (source_box.x, source_box.y, source_box.width, source_box.height),
+                "template_face_region": template.face_region,
+            },
+        )
         texture_mask = identity_texture_mask(
             (target_width, target_height),
             target_points,
@@ -282,6 +285,7 @@ class BasicGenerationEngine:
                 else template.mask_polygon
             ),
             inward_only=identity_profile.warp_user_texture,
+            clip_to_polygon=identity_profile.texture_pipeline == "frequency_authority",
         )
         photometric_debug_images = {}
         pre_contrast_result = None
@@ -296,6 +300,7 @@ class BasicGenerationEngine:
                     "18_f_multiband_pyramid_layers.png": _pyramid_trace_preview(pyramid_trace),
                     "19_f_warped_user.png": warped_user,
                     "20_f_harmonized_user.png": adjusted_user,
+                    "21_f_reconstructed_multiband.png": result,
                 }
             else:
                 result = multiband_composite(geometry_base, adjusted_user, texture_mask)
@@ -351,6 +356,7 @@ class BasicGenerationEngine:
             landmark_metadata,
             template_landmark_metadata,
             identity_profile,
+            identity_backend,
             morphed_dense,
             source_normalized,
             template_normalized,
@@ -616,6 +622,7 @@ def _diagnostics(
     landmark_metadata,
     template_landmark_metadata,
     identity_profile: BasicIdentityProfile,
+    identity_backend: str,
     morphed_dense,
     source_normalized,
     template_normalized,
@@ -684,6 +691,7 @@ def _diagnostics(
         "coordinate_system": "pixel_xy; canonical=(eye_midpoint, eye_axis, inter_eye_distance)",
         "identity_profile": {
             "name": identity_profile.name,
+            "backend": identity_backend,
             "mesh_profile": identity_profile.mesh_profile,
             "morphology_strength": dict(identity_profile.morphology_strength),
             "identity_texture_strength": dict(identity_profile.identity_texture_strength),

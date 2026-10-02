@@ -158,23 +158,36 @@ def _run_item(run: GenerationProviderRun) -> ProviderRunResponse:
         generation_job_id=run.generation_job_id,
         provider_name=run.provider_name,
         provider_model=run.provider_model,
+        requested_model=run.requested_model,
+        provider_reported_model=run.provider_reported_model,
         provider_request_id=run.provider_request_id,
+        router_request_id=run.router_request_id,
+        upstream_request_id=run.upstream_request_id,
         provider_account_label=run.provider_account_label,
         provider_account_id=run.provider_account_id,
         provider_strategy_hint=run.provider_strategy_hint,
+        routing_strategy=run.routing_strategy,
         provider_usage=_json(run.provider_usage_raw_json),
+        usage_available=run.usage_available,
+        input_tokens=run.input_tokens,
+        output_tokens=run.output_tokens,
         input_text_tokens=run.input_text_tokens,
         input_image_tokens=run.input_image_tokens,
         output_image_tokens=run.output_image_tokens,
         total_tokens=run.total_tokens,
         billable_units=run.billable_units,
+        provider_reported_cost=run.provider_reported_cost,
         upstream_status=run.upstream_status,
         upstream_error_code=run.upstream_error_code,
         upstream_error_message=run.upstream_error_message,
         retry_count=run.retry_count,
+        attempt_count=run.attempt_count,
+        failover_count=run.failover_count,
         request_started_at=run.request_started_at,
         request_completed_at=run.request_completed_at,
         total_duration_ms=run.total_duration_ms,
+        router_duration_ms=run.router_duration_ms,
+        application_duration_ms=run.application_duration_ms,
         created_at=run.created_at,
     )
 
@@ -201,6 +214,17 @@ def _generation_item(db: Session, job: GenerationJob) -> GenerationUsageItem:
         provider=run.provider_name if run else job.provider,
         model=run.provider_model if run else job.model,
         upstream_account=upstream_account,
+        requested_model=run.requested_model if run else job.model,
+        provider_reported_model=run.provider_reported_model if run else run.provider_model if run else None,
+        router_request_id=run.router_request_id if run else None,
+        upstream_request_id=run.upstream_request_id if run else run.provider_request_id if run else None,
+        routing_strategy=run.routing_strategy if run else None,
+        attempt_count=run.attempt_count if run else None,
+        retry_count=run.retry_count if run else None,
+        failover_count=run.failover_count if run else None,
+        total_tokens=run.total_tokens if run else None,
+        router_duration_ms=run.router_duration_ms if run else None,
+        application_duration_ms=run.application_duration_ms if run else None,
         usage_available=bool(run and run.provider_usage_raw_json),
         duration_ms=duration_ms,
         created_at=job.created_at,
@@ -398,6 +422,8 @@ def usage_generations(
     status: str | None = None,
     provider: str | None = None,
     model: str | None = None,
+    provider_account_ref: str | None = None,
+    routing_strategy: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     page: int = Query(default=1, ge=1),
@@ -426,6 +452,13 @@ def usage_generations(
             run_jobs = run_jobs.filter(GenerationProviderRun.provider_name == provider)
         if model:
             run_jobs = run_jobs.filter(GenerationProviderRun.provider_model == model)
+        query = query.filter(GenerationJob.id.in_(run_jobs))
+    if provider_account_ref or routing_strategy:
+        run_jobs = db.query(GenerationProviderRun.generation_job_id)
+        if provider_account_ref:
+            run_jobs = run_jobs.filter(GenerationProviderRun.provider_account_id == provider_account_ref)
+        if routing_strategy:
+            run_jobs = run_jobs.filter(GenerationProviderRun.routing_strategy == routing_strategy)
         query = query.filter(GenerationJob.id.in_(run_jobs))
     query = query.order_by(GenerationJob.created_at.desc())
     total = query.count()
@@ -495,7 +528,11 @@ def providers_overview(db: Session = Depends(get_db), _principal: AdminPrincipal
         evidence = "single_upstream_account_observed"
     else:
         evidence = "upstream_account_unavailable"
-    durations = [row.total_duration_ms for row in runs if row.total_duration_ms is not None]
+    durations = [row.router_duration_ms for row in runs if row.router_duration_ms is not None]
+    input_tokens = [row.input_tokens for row in runs if row.input_tokens is not None]
+    output_tokens = [row.output_tokens for row in runs if row.output_tokens is not None]
+    total_tokens = [row.total_tokens for row in runs if row.total_tokens is not None]
+    attempts = [row.attempt_count for row in runs if row.attempt_count is not None]
     return ProviderOverviewResponse(
         total_advanced_jobs=advanced.count(),
         completed=advanced.filter(GenerationJob.state == JobState.COMPLETED).count(),
@@ -518,6 +555,11 @@ def providers_overview(db: Session = Depends(get_db), _principal: AdminPrincipal
         can_prove_round_robin=False,
         account_distribution_evidence=evidence,
         strategy_message=STRATEGY_MESSAGE,
+        total_input_tokens=sum(input_tokens) if input_tokens else None,
+        total_output_tokens=sum(output_tokens) if output_tokens else None,
+        total_tokens=sum(total_tokens) if total_tokens else None,
+        average_attempts=round(sum(attempts) / len(attempts), 2) if attempts else None,
+        provider_cost_available=any(row.provider_reported_cost is not None for row in runs),
     )
 
 
@@ -539,5 +581,10 @@ def provider_accounts(db: Session = Depends(get_db), _principal: AdminPrincipal 
             success_count=sum(row.upstream_status == "SUCCEEDED" for row in runs),
             failed_count=sum(row.upstream_status != "SUCCEEDED" for row in runs),
             last_used_at=max(row.created_at for row in runs),
+            total_tokens=(sum(row.total_tokens for row in runs if row.total_tokens is not None)
+                          if any(row.total_tokens is not None for row in runs) else None),
+            average_duration_ms=(round(sum(row.total_duration_ms for row in runs if row.total_duration_ms is not None)
+                                      / len([row for row in runs if row.total_duration_ms is not None]), 1)
+                                 if any(row.total_duration_ms is not None for row in runs) else None),
         ))
     return sorted(result, key=lambda item: item.jobs_count, reverse=True)

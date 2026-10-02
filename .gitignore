@@ -64,3 +64,7 @@ dist/
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# Generated reviews and biometric research outputs stay local.
+/test/output/
+/experiments/basic-face-detection/outputs/

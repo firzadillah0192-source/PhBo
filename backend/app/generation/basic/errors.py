@@ -28,3 +28,7 @@ class BasicTemplateMetadataMissingError(BasicGenerationError):
 
 class BasicGeometryError(BasicGenerationError):
     code = "BASIC_GEOMETRY_INVALID"
+
+
+class BasicIdentityProviderNotConfiguredError(BasicGenerationError):
+    code = "BASIC_IDENTITY_PROVIDER_NOT_CONFIGURED"

@@ -53,23 +53,36 @@ class ProviderRunResponse(BaseModel):
     generation_job_id: str
     provider_name: str
     provider_model: str | None
+    requested_model: str | None
+    provider_reported_model: str | None
     provider_request_id: str | None
+    router_request_id: str | None
+    upstream_request_id: str | None
     provider_account_label: str | None
     provider_account_id: str | None
     provider_strategy_hint: str | None
+    routing_strategy: str | None
     provider_usage: dict[str, Any] | None
+    usage_available: bool | None
+    input_tokens: int | None
+    output_tokens: int | None
     input_text_tokens: int | None
     input_image_tokens: int | None
     output_image_tokens: int | None
     total_tokens: int | None
     billable_units: int | None
+    provider_reported_cost: float | None
     upstream_status: str
     upstream_error_code: str | None
     upstream_error_message: str | None
     retry_count: int
+    attempt_count: int | None
+    failover_count: int | None
     request_started_at: datetime
     request_completed_at: datetime | None
     total_duration_ms: int | None
+    router_duration_ms: int | None
+    application_duration_ms: int | None
     created_at: datetime
 
 
@@ -86,6 +99,17 @@ class GenerationUsageItem(BaseModel):
     provider: str | None
     model: str | None
     upstream_account: str | None
+    requested_model: str | None = None
+    provider_reported_model: str | None = None
+    router_request_id: str | None = None
+    upstream_request_id: str | None = None
+    routing_strategy: str | None = None
+    attempt_count: int | None = None
+    retry_count: int | None = None
+    failover_count: int | None = None
+    total_tokens: int | None = None
+    router_duration_ms: int | None = None
+    application_duration_ms: int | None = None
     usage_available: bool
     duration_ms: int | None
     created_at: datetime
@@ -115,6 +139,11 @@ class ProviderOverviewResponse(BaseModel):
     can_prove_round_robin: bool
     account_distribution_evidence: str
     strategy_message: str
+    total_input_tokens: int | None = None
+    total_output_tokens: int | None = None
+    total_tokens: int | None = None
+    average_attempts: float | None = None
+    provider_cost_available: bool = False
 
 
 class ProviderAccountDistributionItem(BaseModel):
@@ -124,3 +153,5 @@ class ProviderAccountDistributionItem(BaseModel):
     success_count: int
     failed_count: int
     last_used_at: datetime
+    total_tokens: int | None = None
+    average_duration_ms: float | None = None

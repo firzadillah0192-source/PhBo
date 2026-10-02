@@ -28,6 +28,17 @@ class MetadataProvider(AIProvider):
             model="upstream/image-v2",
             prompt_used=experience.prompt,
             raw_meta={
+                "requested_model": "cx/gpt-image-2.5",
+                "router_request_id": "rtr_test-123",
+                "upstream_request_id": "resp_test-123",
+                "provider_account_ref": "acct_004e13ad8adc",
+                "routing_strategy": "round-robin",
+                "provider_name": "codex",
+                "provider_reported_model": "gpt-image-2.5",
+                "attempt_count": 1,
+                "failover_count": 0,
+                "router_duration_ms": 1200,
+                "usage_available": "true",
                 "provider_request_id": "req-real-123",
                 "upstream_provider": "upstream-vendor",
                 "response_model": "upstream/image-v2",
@@ -36,6 +47,8 @@ class MetadataProvider(AIProvider):
                 "provider_strategy_hint": "failover",
                 "retry_count": 1,
                 "usage": {
+                    "input_tokens": 2243,
+                    "output_tokens": 71,
                     "input_text_tokens": 11,
                     "input_image_tokens": 22,
                     "output_image_tokens": 33,
@@ -106,8 +119,18 @@ def test_provider_metadata_persists_and_admin_usage_is_aggregated(
     ).one()
     assert run.provider_name == "upstream-vendor"
     assert run.provider_model == "upstream/image-v2"
-    assert run.provider_request_id == "req-real-123"
-    assert run.provider_account_id == "acct-01"
+    assert run.requested_model == "cx/gpt-image-2.5"
+    assert run.provider_reported_model == "upstream/image-v2"
+    assert run.router_request_id == "rtr_test-123"
+    assert run.upstream_request_id == "resp_test-123"
+    assert run.routing_strategy == "round-robin"
+    assert run.attempt_count == 1
+    assert run.failover_count == 0
+    assert run.router_duration_ms == 1200
+    assert run.input_tokens == 2243
+    assert run.output_tokens == 71
+    assert run.provider_request_id == "resp_test-123"
+    assert run.provider_account_id == "acct_004e13ad8adc"
     assert run.total_tokens == 66
     assert run.billable_units == 2
     assert run.retry_count == 1
@@ -148,10 +171,17 @@ def test_provider_metadata_persists_and_admin_usage_is_aggregated(
     provider_run = detail.json()["provider_runs"][0]
     assert provider_run["provider_usage"]["total_tokens"] == 66
     assert provider_run["provider_account_label"] == "oauth-primary"
+    assert provider_run["router_request_id"] == "rtr_test-123"
+    assert provider_run["upstream_request_id"] == "resp_test-123"
+    assert provider_run["requested_model"] == "cx/gpt-image-2.5"
+    assert provider_run["provider_reported_model"] == "upstream/image-v2"
+    assert provider_run["routing_strategy"] == "round-robin"
+    assert provider_run["input_tokens"] == 2243
+    assert provider_run["output_tokens"] == 71
 
     accounts = client.get("/api/admin/usage/providers/accounts", headers=ADMIN_HEADERS)
     assert accounts.status_code == 200
-    assert any(row["provider_account_id"] == "acct-01" for row in accounts.json())
+    assert any(row["provider_account_id"] == "acct_004e13ad8adc" for row in accounts.json())
 
     routing = client.get("/api/admin/usage/providers/overview", headers=ADMIN_HEADERS).json()
     assert routing["can_prove_round_robin"] is False

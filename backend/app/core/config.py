@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     # Provider is selected by name so the app is never hard-wired to a vendor.
     ai_provider: str = Field(default="none")
 
+    # Basic identity-transfer is deliberately V1 unless an operator opts in.
+    # v2_experimental fails explicitly until a licensed provider is configured.
+    basic_identity_backend: str = Field(default="v1")
+
     # 9router is an OpenAI-compatible gateway. Base URL must be reachable from
     # inside the container: host.docker.internal is mapped via extra_hosts in
     # docker-compose.yml.

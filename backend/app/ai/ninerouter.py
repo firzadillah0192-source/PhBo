@@ -135,6 +135,7 @@ class NineRouterProvider(AIProvider):
                 detail=response.text[:2000],
                 operational_meta={
                     **_response_operational_metadata(response, error_body),
+                    "requested_model": model,
                     "http_status": response.status_code,
                     "upstream_status": "FAILED",
                 },
@@ -148,22 +149,24 @@ class NineRouterProvider(AIProvider):
                 f"Raw response keys: {sorted(body.keys()) if isinstance(body, dict) else type(body)}",
                 operational_meta={
                     **_response_operational_metadata(response, body),
+                    "requested_model": model,
                     "upstream_status": "EMPTY_RESULT",
                 },
             )
 
         image_bytes = _as_png(image_bytes)
         operational_meta = _response_operational_metadata(response, body)
-        response_model = operational_meta.get("response_model")
+        response_model = operational_meta.get("provider_reported_model")
         return AIResult(
             image_bytes=image_bytes,
             content_type="image/png",
             provider=self.name,
             model=response_model if isinstance(response_model, str) else model,
             prompt_used=prompt,
-            raw_meta={
+        raw_meta={
                 "size": f"{width}x{height}",
                 "created": meta.get("created"),
+                "requested_model": model,
                 **meta,
                 **operational_meta,
             },
@@ -211,50 +214,74 @@ def _first_value(*values: object) -> str | None:
 
 
 def _response_operational_metadata(response: httpx.Response, body: object) -> dict:
-    """Return only explicit, non-secret routing/usage evidence from 9Router."""
+    """Return only explicit, non-secret telemetry from the live 9Router contract."""
 
-    payload = body if isinstance(body, dict) else {}
-    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
-    router = payload.get("router") if isinstance(payload.get("router"), dict) else {}
-    account = payload.get("account") if isinstance(payload.get("account"), dict) else {}
-    usage = _safe_usage(payload.get("usage"))
-    retry_value = _first_value(
-        payload.get("retry_count"), metadata.get("retry_count"), response.headers.get("x-retry-count")
-    )
-    try:
-        retry_count = max(0, int(retry_value)) if retry_value is not None else 0
-    except ValueError:
-        retry_count = 0
+    def header(name: str) -> str | None:
+        value = response.headers.get(name)
+        return value.strip()[:255] if isinstance(value, str) and value.strip() else None
 
+    def integer_header(name: str) -> int | None:
+        value = header(name)
+        if value is None:
+            return None
+        try:
+            number = int(value)
+        except ValueError:
+            return None
+        return number if number >= 0 else None
+
+    def decimal_header(name: str) -> float | None:
+        value = header(name)
+        if value is None:
+            return None
+        try:
+            number = float(value)
+        except ValueError:
+            return None
+        return number if number >= 0 else None
+
+    # These names are the headers emitted by 9Router's routing telemetry.
+    # Header lookup is case-insensitive through httpx.Headers.
     result = {
-        "provider_request_id": _first_value(
-            payload.get("request_id"), payload.get("id"), metadata.get("request_id"),
-            response.headers.get("x-request-id"), response.headers.get("request-id"),
-            response.headers.get("x-provider-request-id"),
-        ),
-        "upstream_provider": _first_value(
-            payload.get("provider"), metadata.get("provider"), router.get("provider"),
-            response.headers.get("x-upstream-provider"),
-        ),
-        "response_model": _first_value(payload.get("model"), metadata.get("model")),
-        "provider_account_id": _first_value(
-            payload.get("account_id"), account.get("id"), metadata.get("account_id"),
-            router.get("account_id"), response.headers.get("x-upstream-account-id"),
-            response.headers.get("x-account-id"),
-        ),
-        "provider_account_label": _first_value(
-            payload.get("account_label"), account.get("label"), account.get("name"),
-            metadata.get("account_label"), router.get("account_label"),
-            response.headers.get("x-upstream-account-label"), response.headers.get("x-account-label"),
-        ),
-        "provider_strategy_hint": _first_value(
-            payload.get("routing_strategy"), metadata.get("routing_strategy"),
-            router.get("strategy"), response.headers.get("x-routing-strategy"),
-            response.headers.get("x-router-strategy"),
-        ),
-        "usage": usage,
-        "retry_count": retry_count,
+        "router_request_id": header("x-9router-request-id"),
+        "provider_account_ref": header("x-9router-account-ref"),
+        "routing_strategy": header("x-9router-routing-strategy"),
+        "provider_name": header("x-9router-provider"),
+        "provider_reported_model": header("x-9router-model"),
+        "upstream_request_id": header("x-9router-upstream-request-id"),
+        "attempt_count": integer_header("x-9router-attempt-count"),
+        "retry_count": integer_header("x-9router-retry-count"),
+        "failover_count": integer_header("x-9router-failover-count"),
+        "router_duration_ms": integer_header("x-9router-duration-ms"),
+        "usage_available": header("x-9router-usage-available"),
+        "input_tokens": integer_header("x-9router-input-tokens"),
+        "output_tokens": integer_header("x-9router-output-tokens"),
+        "total_tokens": integer_header("x-9router-total-tokens"),
+        "input_text_tokens": integer_header("x-9router-input-text-tokens"),
+        "input_image_tokens": integer_header("x-9router-input-image-tokens"),
+        "output_image_tokens": integer_header("x-9router-output-image-tokens"),
+        "billable_units": integer_header("x-9router-billable-units"),
+        "provider_reported_cost": decimal_header("x-9router-reported-cost"),
     }
+
+    usage = {}
+    usage_names = {
+        "input_tokens": "input_tokens",
+        "output_tokens": "output_tokens",
+        "total_tokens": "total_tokens",
+        "input_text_tokens": "input_text_tokens",
+        "input_image_tokens": "input_image_tokens",
+        "output_image_tokens": "output_image_tokens",
+        "billable_units": "billable_units",
+    }
+    for field, key in usage_names.items():
+        if result[field] is not None:
+            usage[key] = result[field]
+    if usage:
+        result["usage"] = usage
+
+    # Keep only explicit values. The body is intentionally not mined for
+    # routing metadata because the live contract exposes it through headers.
     return {key: value for key, value in result.items() if value is not None}
 
 

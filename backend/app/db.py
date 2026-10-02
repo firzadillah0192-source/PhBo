@@ -96,6 +96,22 @@ def init_db() -> None:
             conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS account_id VARCHAR(32)"))
             conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS guest_id VARCHAR(64)"))
             conn.execute(text("ALTER TABLE admin_templates ADD COLUMN IF NOT EXISTS marketing_preview_path VARCHAR(512)"))
+            for statement in (
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS requested_model VARCHAR(128)",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS provider_reported_model VARCHAR(128)",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS router_request_id VARCHAR(255)",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS upstream_request_id VARCHAR(255)",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS routing_strategy VARCHAR(255)",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS usage_available BOOLEAN",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS input_tokens INTEGER",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS output_tokens INTEGER",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS provider_reported_cost DOUBLE PRECISION",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS attempt_count INTEGER",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS failover_count INTEGER",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS router_duration_ms INTEGER",
+                "ALTER TABLE generation_provider_runs ADD COLUMN IF NOT EXISTS application_duration_ms INTEGER",
+            ):
+                conn.execute(text(statement))
     elif engine.dialect.name == "sqlite":
         columns = {column["name"] for column in inspect(engine).get_columns("generation_jobs")}
         with engine.begin() as conn:
@@ -145,6 +161,28 @@ def init_db() -> None:
                 conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN account_id VARCHAR(32)"))
             if "guest_id" not in columns:
                 conn.execute(text("ALTER TABLE generation_jobs ADD COLUMN guest_id VARCHAR(64)"))
+        provider_columns = {column["name"] for column in inspect(engine).get_columns("generation_provider_runs")}
+        provider_additions = {
+            "requested_model": "VARCHAR(128)",
+            "provider_reported_model": "VARCHAR(128)",
+            "router_request_id": "VARCHAR(255)",
+            "upstream_request_id": "VARCHAR(255)",
+            "routing_strategy": "VARCHAR(255)",
+            "usage_available": "BOOLEAN",
+            "input_tokens": "INTEGER",
+            "output_tokens": "INTEGER",
+            "provider_reported_cost": "FLOAT",
+            "attempt_count": "INTEGER",
+            "failover_count": "INTEGER",
+            "router_duration_ms": "INTEGER",
+            "application_duration_ms": "INTEGER",
+        }
+        with engine.begin() as conn:
+            for name, column_type in provider_additions.items():
+                if name not in provider_columns:
+                    conn.execute(text(
+                        f"ALTER TABLE generation_provider_runs ADD COLUMN {name} {column_type}"
+                    ))
     from app.catalog import seed_catalog
     with SessionLocal() as session:
         seed_catalog(session)

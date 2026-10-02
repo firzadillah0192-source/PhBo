@@ -22,6 +22,7 @@ for applying the migration sequence.
 | 007 | `007_publish_initial_experience.sql` | Conditional `mini-me` starter publication |
 | 008 | `008_provider_usage_operations.sql` | Provider execution telemetry |
 | 009 | `009_result_claims.sql` | Secure expiring QR-result claims |
+| 010 | `010_provider_router_telemetry.sql` | Additive 9Router request/account/usage telemetry |
 
 The duplicate `008` was the QR migration filename. It has been safely
 renumbered to `009_result_claims.sql`; `008_provider_usage_operations.sql` is

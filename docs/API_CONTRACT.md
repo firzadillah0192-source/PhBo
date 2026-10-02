@@ -8,7 +8,9 @@ job queue, polling, result and download endpoints. Client code lives in
 | --- | --- | --- |
 | `GET /api/health` | `200` with dependency checks | Service readiness. `ai_provider_connected` only checks credentials/configuration, not live generation. |
 | `GET /api/templates` | `200 {templates, count}` | Customer-safe Basic catalog. `preview_url` points only to an Admin-managed marketing preview; a missing preview returns `null` and never falls back to the processing asset. |
-| `POST /api/uploads` (multipart `file`) | `201 {upload_id, validation_status, preview_url, ...}` | Validate and temporarily store user image. |
+| `POST /api/uploads` (multipart `file`) | `201 {upload_id, normalized_content_type, validation_status, preview_url, expires_at, ...}` | Decode JPEG/PNG/WebP/HEIC/HEIF from bytes, apply orientation, normalize to temporary JPEG/sRGB, then store under the current guest/account owner. |
+| `GET /api/uploads/{upload_id}` | `200 {upload_id, preview_url, expires_at, ...}` | Restore metadata for the current owner; `404` means unavailable and `410 UPLOAD_EXPIRED` means temporary retention elapsed. |
+| `GET /api/uploads/{upload_id}/preview` | image bytes | Owner-checked private preview with `Cache-Control: no-store`. |
 | `POST /api/generations` JSON `{upload_id, template_id, mode}` | `202 {job_id, state, upload_id, template_id, mode, created_at}` | Queue a job. `mode` is `BASIC` or `ADVANCED`; omitted means `ADVANCED` for older clients. Other values return `422`. |
 | `GET /api/generations/{job_id}` | `200 {job_id, state, mode, upload_id, template_id, error_code, error_message, result_id, ...}` | Poll `QUEUED → PROCESSING → COMPLETED` or `FAILED`. |
 | `GET /api/results/{result_id}` | `200` metadata | Only exists for completed jobs. |

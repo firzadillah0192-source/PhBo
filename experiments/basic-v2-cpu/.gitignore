@@ -1,0 +1,7 @@
+# All POC biometric inputs, results, model checkpoints, and the local venv stay local.
+.venv/
+__pycache__/
+cache/
+models/
+inputs/
+outputs/

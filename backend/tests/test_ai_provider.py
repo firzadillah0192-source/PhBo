@@ -310,21 +310,24 @@ def test_9router_captures_explicit_operational_metadata_only(monkeypatch):
         return httpx.Response(
             200,
             json={
-                "id": "body-request-id",
-                "model": "vendor/image-v3",
-                "provider": "vendor-a",
-                "account": {"id": "acct-real", "label": "oauth-a"},
-                "routing_strategy": "failover",
-                "usage": {
-                    "input_text_tokens": 3,
-                    "input_image_tokens": 4,
-                    "output_image_tokens": 5,
-                    "total_tokens": 12,
-                    "api_key": "must-not-persist",
-                },
                 "data": [{"b64_json": base64.b64encode(fake_png).decode("ascii")}],
             },
-            headers={"x-request-id": "header-request-id"},
+            headers={
+                "X-9Router-Request-ID": "rtr_test-123",
+                "X-9Router-Account-Ref": "acct_004e13ad8adc",
+                "X-9Router-Routing-Strategy": "round-robin",
+                "X-9Router-Provider": "codex",
+                "X-9Router-Model": "gpt-image-2.5",
+                "X-9Router-Upstream-Request-ID": "resp_test-123",
+                "X-9Router-Attempt-Count": "1",
+                "X-9Router-Retry-Count": "0",
+                "X-9Router-Failover-Count": "0",
+                "X-9Router-Duration-Ms": "1234",
+                "X-9Router-Usage-Available": "true",
+                "X-9Router-Input-Tokens": "2243",
+                "X-9Router-Output-Tokens": "71",
+                "X-9Router-Total-Tokens": "2314",
+            },
             request=httpx.Request("POST", url),
         )
 
@@ -333,12 +336,46 @@ def test_9router_captures_explicit_operational_metadata_only(monkeypatch):
     result = _provider().generate(
         make_jpeg(), None, GenerationOptions(extra={"experience": experience})
     )
-    assert result.model == "vendor/image-v3"
-    assert result.raw_meta["provider_request_id"] == "body-request-id"
-    assert result.raw_meta["upstream_provider"] == "vendor-a"
-    assert result.raw_meta["provider_account_id"] == "acct-real"
-    assert result.raw_meta["provider_account_label"] == "oauth-a"
-    assert result.raw_meta["provider_strategy_hint"] == "failover"
-    assert result.raw_meta["usage"]["total_tokens"] == 12
-    assert "api_key" not in result.raw_meta["usage"]
+    assert result.model == "gpt-image-2.5"
+    assert result.raw_meta["router_request_id"] == "rtr_test-123"
+    assert result.raw_meta["upstream_request_id"] == "resp_test-123"
+    assert result.raw_meta["provider_account_ref"] == "acct_004e13ad8adc"
+    assert result.raw_meta["routing_strategy"] == "round-robin"
+    assert result.raw_meta["provider_name"] == "codex"
+    assert result.raw_meta["provider_reported_model"] == "gpt-image-2.5"
+    assert result.raw_meta["attempt_count"] == 1
+    assert result.raw_meta["retry_count"] == 0
+    assert result.raw_meta["failover_count"] == 0
+    assert result.raw_meta["router_duration_ms"] == 1234
+    assert result.raw_meta["usage"]["input_tokens"] == 2243
+    assert result.raw_meta["usage"]["output_tokens"] == 71
+    assert result.raw_meta["usage"]["total_tokens"] == 2314
+    assert "api_key" not in result.raw_meta
 
+
+def test_9router_telemetry_is_nullable_safe_for_missing_or_invalid_headers(monkeypatch):
+    fake_png = make_png(32, 32)
+
+    def fake_post(url, *, json, headers, timeout):
+        return httpx.Response(
+            200,
+            json={"data": [{"b64_json": base64.b64encode(fake_png).decode("ascii")}]},
+            headers={
+                "X-9Router-Request-ID": "rtr_partial",
+                "X-9Router-Attempt-Count": "not-a-number",
+                "X-9Router-Retry-Count": "-1",
+                "X-9Router-Total-Tokens": "2314x",
+                "X-9Router-Usage-Available": "false",
+            },
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    result = _provider().generate(
+        make_jpeg(), None, GenerationOptions(extra={"experience": get_experience("mini-me")})
+    )
+    assert result.raw_meta["router_request_id"] == "rtr_partial"
+    assert "attempt_count" not in result.raw_meta
+    assert "retry_count" not in result.raw_meta
+    assert "total_tokens" not in result.raw_meta
+    assert result.raw_meta["usage_available"] == "false"

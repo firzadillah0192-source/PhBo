@@ -148,10 +148,14 @@ def frequency_separated_identity(
     *,
     low_sigma: float = 14.0,
     mid_sigma: float = 3.5,
-    mid_luminance_authority: float = 0.76,
-    high_luminance_authority: float = 0.88,
-    mid_chroma_authority: float = 0.58,
-    high_chroma_authority: float = 0.42,
+    mid_luminance_authority: float = 0.84,
+    high_luminance_authority: float = 0.90,
+    template_mid_luminance_authority: float = 0.16,
+    template_high_luminance_authority: float = 0.10,
+    mid_chroma_authority: float = 0.75,
+    high_chroma_authority: float = 0.65,
+    template_mid_chroma_authority: float = 0.25,
+    template_high_chroma_authority: float = 0.35,
     user_intrinsic_chroma_authority: float = 0.68,
     user_intrinsic_luminance_authority: float = 0.25,
 ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
@@ -170,8 +174,12 @@ def frequency_separated_identity(
     authorities = (
         mid_luminance_authority,
         high_luminance_authority,
+        template_mid_luminance_authority,
+        template_high_luminance_authority,
         mid_chroma_authority,
         high_chroma_authority,
+        template_mid_chroma_authority,
+        template_high_chroma_authority,
         user_intrinsic_chroma_authority,
         user_intrinsic_luminance_authority,
     )
@@ -181,6 +189,9 @@ def frequency_separated_identity(
     template_lab = cv2.cvtColor(template, cv2.COLOR_BGR2LAB).astype(np.float32)
     identity_lab = cv2.cvtColor(identity, cv2.COLOR_BGR2LAB).astype(np.float32)
     template_low = cv2.GaussianBlur(template_lab, (0, 0), low_sigma, low_sigma)
+    template_mid_base = cv2.GaussianBlur(template_lab, (0, 0), mid_sigma, mid_sigma)
+    template_mid = template_mid_base - template_low
+    template_high = template_lab - template_mid_base
     identity_low = cv2.GaussianBlur(identity_lab, (0, 0), low_sigma, low_sigma)
     identity_mid_base = cv2.GaussianBlur(identity_lab, (0, 0), mid_sigma, mid_sigma)
     identity_mid = identity_mid_base - identity_low
@@ -201,7 +212,9 @@ def frequency_separated_identity(
         template_low[..., 0]
         + intrinsic_luminance_delta * user_intrinsic_luminance_authority
         + identity_mid[..., 0] * mid_luminance_authority
+        + template_mid[..., 0] * template_mid_luminance_authority
         + identity_high[..., 0] * high_luminance_authority
+        + template_high[..., 0] * template_high_luminance_authority
     )
     low_chroma = (
         template_low[..., 1:] * (1.0 - user_intrinsic_chroma_authority)
@@ -210,7 +223,9 @@ def frequency_separated_identity(
     reconstructed[..., 1:] = (
         low_chroma
         + identity_mid[..., 1:] * mid_chroma_authority
+        + template_mid[..., 1:] * template_mid_chroma_authority
         + identity_high[..., 1:] * high_chroma_authority
+        + template_high[..., 1:] * template_high_chroma_authority
     )
     reconstructed_bgr = cv2.cvtColor(
         np.clip(reconstructed, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR
@@ -258,7 +273,9 @@ def restore_local_face_contrast(
     mask = np.clip(np.asarray(regional_mask, dtype=np.float32), 0.0, 1.0)
     lab[..., 0] = luminance + detail * (strength * mask)
     restored = np.clip(lab, 0, 255).astype(np.uint8)
-    return cv2.cvtColor(restored, cv2.COLOR_LAB2BGR)
+    output = cv2.cvtColor(restored, cv2.COLOR_LAB2BGR)
+    output[mask <= 0.0] = image[mask <= 0.0]
+    return output
 
 
 def composite(template: np.ndarray, aligned_face: np.ndarray, mask: np.ndarray) -> np.ndarray:
@@ -473,6 +490,7 @@ def identity_texture_mask(
     strengths: Mapping[str, float],
     polygon: tuple[tuple[float, float], ...] | None = None,
     inward_only: bool = False,
+    clip_to_polygon: bool = False,
 ) -> np.ndarray:
     """Regional user-detail mask, independent from morphology strength."""
     required = {"eyes", "eyebrows", "nose", "mouth", "cheeks"}
@@ -502,4 +520,15 @@ def identity_texture_mask(
     inner = soft_face_mask(size, region, polygon, inward_only=inward_only)
     mask = np.minimum(mask, inner * 0.96)
     maximum = max(float(value) for value in strengths.values())
-    return np.clip(cv2.GaussianBlur(mask, (0, 0), 3.0), 0.0, maximum)
+    mask = np.clip(cv2.GaussianBlur(mask, (0, 0), 3.0), 0.0, maximum)
+    if clip_to_polygon:
+        if polygon is None or not inward_only:
+            raise ValueError("strict texture-mask clipping requires an inward-only polygon")
+        inside = np.zeros((height, width), dtype=np.uint8)
+        cv2.fillPoly(inside, [np.rint(np.asarray(polygon, dtype=np.float32)).astype(np.int32)], 1)
+        distance = cv2.distanceTransform(inside, cv2.DIST_L2, 5)
+        feather_distance = max(3.0, min(region[2], region[3]) * 0.035)
+        inward_feather = np.clip((distance - 1.0) / feather_distance, 0.0, 1.0)
+        mask *= inward_feather
+        mask[inside == 0] = 0.0
+    return mask

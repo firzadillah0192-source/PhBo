@@ -1,0 +1,8 @@
+# Isolated CPU POC environment. Do not install into the running worker/API.
+numpy==1.26.4
+opencv-contrib-python==4.10.0.84
+mediapipe==0.10.21
+Pillow==12.3.0
+onnxruntime==1.30.0
+insightface==0.7.3
+pydantic-settings>=2.7.0,<3

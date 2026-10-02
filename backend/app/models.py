@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -101,6 +101,7 @@ class ErrorCode:
     BASIC_TEMPLATE_METADATA_MISSING = "BASIC_TEMPLATE_METADATA_MISSING"
     EXPERIENCE_NOT_FOUND = "EXPERIENCE_NOT_FOUND"
     BASIC_ENGINE_ERROR = "BASIC_ENGINE_ERROR"
+    BASIC_IDENTITY_PROVIDER_NOT_CONFIGURED = "BASIC_IDENTITY_PROVIDER_NOT_CONFIGURED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
     AI_QUOTA_EXHAUSTED = "AI_QUOTA_EXHAUSTED"
     QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
@@ -235,24 +236,38 @@ class GenerationProviderRun(Base):
     generation_job_id: Mapped[str] = mapped_column(ForeignKey("generation_jobs.id"), index=True)
     account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
     provider_name: Mapped[str] = mapped_column(String(64), index=True)
+    # provider_model is retained as the backwards-compatible displayed model.
     provider_model: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    requested_model: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    provider_reported_model: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     provider_request_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    router_request_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    upstream_request_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     provider_account_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
     provider_account_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     provider_strategy_hint: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    routing_strategy: Mapped[str | None] = mapped_column(String(255), nullable=True)
     provider_usage_raw_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    usage_available: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     input_text_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     input_image_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_image_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     billable_units: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_reported_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
     upstream_status: Mapped[str] = mapped_column(String(32), index=True)
     upstream_error_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     upstream_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    attempt_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    failover_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     request_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     request_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     total_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    router_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    application_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
 
 
