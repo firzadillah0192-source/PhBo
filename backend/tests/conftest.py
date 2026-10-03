@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import io
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -27,12 +28,16 @@ if str(BACKEND_DIR) not in sys.path:
 
 # --- test environment (must precede app imports) ---------------------------
 _TMP_ROOT = Path(tempfile.mkdtemp(prefix="photobooth-tests-"))
+_TEST_TEMPLATES = _TMP_ROOT / "templates"
+_TEMPLATE_SOURCE = Path(os.environ.get("PHOTOBOOTH_TEST_TEMPLATES_DIR", BACKEND_DIR.parent / "templates"))
+if _TEMPLATE_SOURCE.is_dir():
+    shutil.copytree(_TEMPLATE_SOURCE, _TEST_TEMPLATES, dirs_exist_ok=True)
 
 os.environ["ENVIRONMENT"] = "test"
 os.environ["COOKIE_SECURE"] = "false"
 os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["RUNTIME_DIR"] = str(_TMP_ROOT / "runtime")
-os.environ["TEMPLATES_DIR"] = str(_TMP_ROOT / "templates")
+os.environ["TEMPLATES_DIR"] = str(_TEST_TEMPLATES)
 os.environ["AI_PROVIDER"] = "none"
 os.environ["NINEROUTER_API_KEY"] = ""
 os.environ["ADMIN_TOKEN"] = "test-admin-token"

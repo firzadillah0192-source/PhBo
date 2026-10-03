@@ -15,6 +15,7 @@ from app.catalog import template_definition
 from app.models import AdvancedFrameStyle, ClassicLayout, GenerationJob, JobState, ManagedExperience, ManagedTemplate
 from app.services.advanced_prompt import BRANDING_RULES, COMPOSITION_RULES, FRAME_STYLE_SEEDS, STYLE_PRINCIPLE, compose_advanced_prompt
 from app.services.classic import ClassicLayoutError, compose_classic, slots_for, validated_frame
+from app.services.classic_events import event_frame_definitions, original_frame_definitions
 from app.services.generation import process_job
 from conftest import make_jpeg, make_png
 
@@ -27,10 +28,11 @@ def _upload(client, color=(160, 100, 70)):
 
 def test_classic_layouts_match_reviewed_assets(client, db_session):
     layouts = client.get("/api/classic/layouts").json()
+    definitions = original_frame_definitions() + event_frame_definitions()
+    expected = sorted(definitions, key=lambda item: (item["sort_order"], item["id"]))
     assert [(item["id"], item["shot_count"], item["canvas_width"], item["canvas_height"]) for item in layouts] == [
-        ("classic-frame-001", 4, 1200, 3600),
-        ("classic-frame-002", 4, 1200, 3600),
-        ("classic-frame-003", 3, 1200, 3600),
+        (item["id"], item["shot_count"], item["canvas_width"], item["canvas_height"])
+        for item in expected
     ]
     for item in layouts:
         assert len(item["slots"]) == item["shot_count"]

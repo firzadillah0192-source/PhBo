@@ -43,6 +43,7 @@ function LookCard({ item, index, selected, onSelect }) {
         {preview ? <img src={preview} alt={`${item.name} creative preview`} loading={index < 6 ? 'eager' : 'lazy'} decoding="async" /> : <span className="look-card-placeholder" aria-label={`${item.name} preview unavailable`}><small>Approved preview</small><strong>{item.name}</strong><em>Preview coming soon</em></span>}
         <i aria-hidden="true" />
         <small>{group}</small>
+        {selected && <span className="look-card-selection" aria-hidden="true">Selected</span>}
         <b aria-hidden="true">{selected ? '✓' : '↗'}</b>
       </span>
       <span className="look-card-caption"><span><strong>{item.name}</strong><em>{group} · {line}</em></span><i aria-hidden="true">{selected ? 'Selected' : 'Enter world'}</i></span>
@@ -159,15 +160,15 @@ export default function ExperienceBrowser({ mode, templates, experiences, layout
         </section>
       ))}
 
-      <SelectionDock label={experiences.find((item) => item.id === selectedId)?.name || 'Choose a world'} onContinue={onContinue} disabled={!selectedId} continueLabel="Choose frame style" />
+      <SelectionDock label={experiences.find((item) => item.id === selectedId)?.name || 'Choose a world'} selectionLabel="Selected world" onContinue={onContinue} disabled={!selectedId} continueLabel="Choose frame style" />
     </section>
   )
 }
 
-function SelectionDock({ label, onContinue, disabled, continueLabel = 'Continue to photo' }) {
+function SelectionDock({ label, selectionLabel = 'Selected', onContinue, disabled, continueLabel = 'Continue to photo' }) {
   return (
     <div className="selection-dock">
-      <span><small>Selected</small><strong>{label}</strong></span>
+      <span aria-live="polite"><small>{disabled ? 'Next step' : selectionLabel}</small><strong>{label}</strong></span>
       <button className="customer-solid-button" disabled={disabled} onClick={onContinue}>{continueLabel} <b>→</b></button>
     </div>
   )

@@ -6,10 +6,10 @@ import { modeRoute } from '../../customerRoute.js'
 import './landing.css'
 
 const STEPS = [
-  ['Capture', 'Take a photo or upload one.'],
-  ['Choose', 'Pick a photobooth experience.'],
-  ['Create', 'NXBooth creates the final portrait.'],
-  ['Take it home', 'Download, share, or scan the QR. Save it for printing.'],
+  ['Choose', 'Pick Classic, Basic, or Advanced.'],
+  ['Add your photo', 'Upload a photo or use your phone camera.'],
+  ['Create', 'Choose a layout or experience and make your portrait.'],
+  ['Download', 'Preview and save your finished portrait.'],
 ]
 
 function Actions() {
@@ -71,12 +71,10 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
 
       <section className="landing-output landing-section" aria-labelledby="output-title">
         <div className="landing-container landing-output-inner">
-          <div><p className="landing-eyebrow">More than a portrait</p><h2 id="output-title">Made to leave<br /><em>the screen.</em></h2><p>Download your creation instantly, share it with someone, or open it on your phone with QR. Keep a print-ready file for your own printer.</p></div>
+          <div><p className="landing-eyebrow">More than a portrait</p><h2 id="output-title">Made to leave<br /><em>the screen.</em></h2><p>Preview your finished creation, then download it to keep on your device.</p></div>
           <ul className="landing-output-list">
-            <li><span>01</span><strong>Print</strong><p>A keepsake for your connected printer.</p></li>
-            <li><span>02</span><strong>Download</strong><p>Your creation, ready to save.</p></li>
-            <li><span>03</span><strong>QR</strong><p>Scan and open on your phone.</p></li>
-            <li><span>04</span><strong>Share</strong><p>Send a moment worth talking about.</p></li>
+            <li><span>01</span><strong>Preview</strong><p>See your finished portrait before saving it.</p></li>
+            <li><span>02</span><strong>Download</strong><p>Your creation, ready to keep.</p></li>
           </ul>
         </div>
       </section>

@@ -69,6 +69,11 @@ test('landing, chooser, sign-in and mobile component structure render through th
     assert.match(root, /Moments, made/)
     assert.match(root, /href="\/create"[^>]*>Try NXBooth Free/)
     for (const section of ['How it works', 'Three ways to create', 'Featured Experiences', 'Made to leave', 'Ready for your']) assert.ok(root.includes(section), section)
+    const journey = ['Pick Classic, Basic, or Advanced.', 'Upload a photo or use your phone camera.', 'Choose a layout or experience and make your portrait.', 'Preview and save your finished portrait.']
+    const journeyPositions = journey.map((step) => root.indexOf(step))
+    assert.ok(journeyPositions.every((position) => position >= 0))
+    assert.deepEqual(journeyPositions, [...journeyPositions].sort((a, b) => a - b))
+    assert.doesNotMatch(root, /scan the QR|print-ready|<strong>Print<\/strong>|<strong>QR<\/strong>/i)
     assert.match(root, />Sign In</)
     assert.doesNotMatch(root, /customer-credit|AI credits|Photobooth AI|9Router|face swap|prompt composer/)
     assert.ok(root.indexOf('Moments, made') < root.indexOf('Classic Photobooth'))
