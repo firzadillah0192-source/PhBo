@@ -1,0 +1,27 @@
+.public-photo-viewer {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: #050505;
+}
+
+.public-photo-viewer img {
+  display: block;
+  max-width: 100vw;
+  max-height: 100vh;
+  max-height: 100dvh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.public-photo-viewer-error {
+  color: #fff;
+  font: 14px/1.5 system-ui, sans-serif;
+  text-align: center;
+}

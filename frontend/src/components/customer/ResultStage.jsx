@@ -16,7 +16,7 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
   const [comparing, setComparing] = useState(false)
   const [split, setSplit] = useState(50)
   const [claim, setClaim] = useState(null)
-  const [claimBusy, setClaimBusy] = useState(false)
+  const [claimBusy, setClaimBusy] = useState(true)
   const [claimError, setClaimError] = useState('')
   const [shareMessage, setShareMessage] = useState('')
   const [remaining, setRemaining] = useState(resetSeconds)
@@ -35,13 +35,23 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
   }, [resultId])
 
   useEffect(() => {
-    if (!kiosk) return undefined
     const key = `photobooth:result-claim:${resultId}`
     let alive = true
+    setClaim(null)
     setClaimBusy(true)
     setClaimError('')
     const reuseToken = window.sessionStorage.getItem(key)
-    createResultClaim(resultId, reuseToken, false, true).then((next) => {
+
+    const prepareClaim = async () => {
+      try {
+        return await createResultClaim(resultId, reuseToken, false, kiosk)
+      } catch (error) {
+        if (error?.errorCode !== 'CLAIM_REFRESH_REQUIRED') throw error
+        return createResultClaim(resultId, null, true, kiosk)
+      }
+    }
+
+    prepareClaim().then((next) => {
       if (!alive) return
       setClaim(next)
       const token = claimTokenFromUrl(next.claim_url)
@@ -72,37 +82,17 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
 
   const shareResult = async () => {
     setShareMessage('')
-    const key = `photobooth:result-claim:${resultId}`
-    const reuseToken = window.sessionStorage.getItem(key)
-    let next
-    try {
-      next = await createResultClaim(resultId, reuseToken)
-    } catch (error) {
-      if (error?.errorCode === 'CLAIM_REFRESH_REQUIRED') {
-        try {
-          next = await createResultClaim(resultId, null, true)
-        } catch {
-          setShareMessage('We could not prepare a new share link. Please try again.')
-          return
-        }
-      } else {
-        setShareMessage(error?.status === 409 ? 'A secure share link already exists. Reload this result to reuse it.' : 'We could not prepare a share link.')
-        return
-      }
-    }
-    const token = claimTokenFromUrl(next.claim_url)
-    if (token) window.sessionStorage.setItem(key, token)
-    setClaim(next)
+    if (!claim?.claim_url) return
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Photobooth AI photo', url: next.claim_url })
+        await navigator.share({ title: 'Photobooth AI photo', url: claim.claim_url })
         return
       } catch (error) {
         if (error?.name === 'AbortError') return
       }
     }
     try {
-      await navigator.clipboard.writeText(next.claim_url)
+      await navigator.clipboard.writeText(claim.claim_url)
       setShareMessage('Secure share link copied.')
     } catch {
       setShareMessage('Use your browser share menu to share this photo.')
@@ -112,33 +102,11 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
   const refreshClaim = () => {
     setClaimBusy(true)
     setClaimError('')
-    createResultClaim(resultId, null, true, true).then((next) => {
+    createResultClaim(resultId, null, true, kiosk).then((next) => {
       setClaim(next)
       const token = claimTokenFromUrl(next.claim_url)
       if (token) window.sessionStorage.setItem(`photobooth:result-claim:${resultId}`, token)
     }).catch(() => setClaimError('We could not create a new QR link. Please try again.')).finally(() => setClaimBusy(false))
-  }
-
-  const openOnPhone = async () => {
-    setClaimBusy(true)
-    setClaimError('')
-    const key = `photobooth:result-claim:${resultId}`
-    try {
-      let next
-      try {
-        next = await createResultClaim(resultId, window.sessionStorage.getItem(key))
-      } catch (error) {
-        if (error?.errorCode !== 'CLAIM_REFRESH_REQUIRED' && error?.status !== 409) throw error
-        next = await createResultClaim(resultId, null, true)
-      }
-      const token = claimTokenFromUrl(next.claim_url)
-      if (token) window.sessionStorage.setItem(key, token)
-      setClaim(next)
-    } catch {
-      setClaimError('Could not prepare the QR link. Please try again.')
-    } finally {
-      setClaimBusy(false)
-    }
   }
 
   const result = claim?.image_url || resultImageUrl(resultId)
@@ -196,16 +164,23 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
         <div>
           <button className="customer-inline-button" onClick={onReset}>Create another</button>
           <button className="customer-inline-button" onClick={onTryLook}>Try another look</button>
-          <button className="customer-inline-button" onClick={shareResult}>Share</button>
-          <button className="customer-inline-button" onClick={openOnPhone} disabled={claimBusy}>Open on Phone / QR</button>
+          <button className="customer-inline-button" onClick={shareResult} disabled={claimBusy || !claim}>Share</button>
           <button className="customer-inline-button" onClick={() => window.print()}>Print</button>
           {printDownload && <a className="customer-inline-button" href={printDownload} download>Download print · 2 × 6 in</a>}
           {shareMessage && <small className="result-share-message" role="status">{shareMessage}</small>}
         </div>
         <a className="customer-solid-button" href={resultDownloadUrl(resultId)} download>Download photo <b>v</b></a>
       </footer>
-      {claim && <div className="result-phone-panel"><QRCodeSVG value={claim.qr_payload} size={190} level="M" includeMargin bgColor="#ffffff" fgColor="#111216" title="Scan to open your photo" /><div><strong>Open on your phone</strong><p>Scan to download or share your finished photo.</p>{expires && <small>Available until {expires}.</small>}</div></div>}
-      {claimError && <p role="alert">{claimError}</p>}
+      <div className="result-phone-panel">
+        {claim ? <QRCodeSVG value={claim.qr_payload} size={238} level="M" includeMargin bgColor="#ffffff" fgColor="#111216" title="Scan to view your photo" /> : <div className="kiosk-qr-placeholder">{claimBusy ? 'Preparing secure QR...' : 'QR unavailable'}</div>}
+        <div>
+          <strong>Scan to view your photo</strong>
+          <p>The link opens a page with the photo only.</p>
+          {expires && <small>Available until {expires}.</small>}
+          {claimError && <p role="alert">{claimError}</p>}
+          {claimError && <button className="customer-inline-button" disabled={claimBusy} onClick={refreshClaim}>{claimBusy ? 'Creating...' : 'Try QR again'}</button>}
+        </div>
+      </div>
     </section>
   )
 }
