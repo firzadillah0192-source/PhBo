@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { login, logout, signup } from '../../api.js'
+import { login, logout, signInWithGoogle, signup } from '../../api.js'
+import GoogleSignInButton from './GoogleSignInButton.jsx'
 
 const ACCOUNT_MENU = [
   ['overview', 'Profile'],
@@ -49,6 +50,33 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
       setMessage(register ? 'We could not create that account.' : 'Those sign-in details did not work.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const googleSignIn = async (credential) => {
+    if (busy) return
+    setBusy(true)
+    setMessage('')
+    try {
+      await signInWithGoogle(credential)
+    } catch (error) {
+      const errors = {
+        GOOGLE_AUTH_UNAVAILABLE: 'Google sign-in is not configured yet.',
+        GOOGLE_TOKEN_INVALID: 'Google could not verify this sign-in. Please try again.',
+        ACCOUNT_SUSPENDED: 'This account is currently unavailable.',
+        AUTH_IDENTITY_ORPHANED: 'This Google account is not linked to an active NXBooth account.',
+      }
+      setMessage(errors[error?.errorCode] || 'Google sign-in failed. Please try again or use email and password.')
+      setBusy(false)
+      return
+    }
+    setBusy(false)
+    setPassword('')
+    setOpen(false)
+    try {
+      await onUsageChanged()
+    } catch {
+      window.location.reload()
     }
   }
 
@@ -106,6 +134,12 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
                 <label>Password<input type="password" minLength="8" value={password} required onChange={(event) => setPassword(event.target.value)} /></label>
                 {message && <p className="customer-form-error">{message}</p>}
                 <button className="customer-solid-button" disabled={busy} type="submit">{busy ? 'One moment…' : register ? 'Create account' : 'Sign in'}</button>
+                <div className="customer-auth-divider" aria-hidden="true"><span>or</span></div>
+                <GoogleSignInButton
+                  text={register ? 'signup_with' : 'signin_with'}
+                  disabled={busy}
+                  onCredential={googleSignIn}
+                />
                 <button className="customer-inline-button" type="button" onClick={() => { setRegister((value) => !value); setMessage('') }}>{register ? 'Already have an account?' : 'Create an account'}</button>
               </form>
             )}

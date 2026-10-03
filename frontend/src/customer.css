@@ -157,6 +157,12 @@
 .customer-account-popover input { min-height:43px;padding:0 12px;border:1px solid rgba(17,18,22,.16);background:#fff; }
 .customer-account-popover>button { margin-top:16px;padding:8px 0;border:0;background:transparent; }
 .customer-form-error { color:#9b3442!important; }
+.customer-auth-divider { display:flex;align-items:center;gap:10px;color:var(--muted);font-size:9px;letter-spacing:.12em;text-transform:uppercase; }
+.customer-auth-divider::before,.customer-auth-divider::after { content:'';flex:1;height:1px;background:rgba(17,18,22,.1); }
+.google-signin-wrap { min-width:0; }
+.google-signin-button { display:flex;min-height:40px;justify-content:center; }
+.google-signin-button.is-disabled { opacity:.48;pointer-events:none; }
+.google-signin-status { margin:0;text-align:center; }
 .customer-app[data-mood='result'] .customer-nav { color:#fff;border-color:rgba(255,255,255,.1);background:rgba(17,19,24,.46); }
 .customer-app[data-mood='result'] .customer-mode-nav button { color:rgba(255,255,255,.62); }
 .customer-app[data-mood='result'] .customer-mode-nav button.is-active { color:#fff; }

@@ -12,6 +12,7 @@
 # --- Stage 1: build ---------------------------------------------------------
 FROM node:20-alpine AS build
 WORKDIR /app
+ARG VITE_GOOGLE_CLIENT_ID
 
 # Install dependencies first so this layer caches when only source changes.
 COPY package.json package-lock.json ./
@@ -20,7 +21,7 @@ RUN npm ci
 COPY index.html vite.config.js ./
 COPY src ./src
 COPY public ./public
-RUN npm run build
+RUN VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID}" npm run build
 
 # --- Stage 2: serve ---------------------------------------------------------
 FROM nginx:1.27-alpine
