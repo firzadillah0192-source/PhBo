@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum GenerationMode {
+  // Read-only legacy jobs; the API no longer accepts ORIGINAL.
+  ORIGINAL
+  CLASSIC
+  BASIC
+  ADVANCED
+}
+
+enum GenerationStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Frame {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(120)
+  objectId  String   @unique
+  width     Int
+  height    Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  generations Generation[]
+}
+
+model PhotoSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique
+  claimTokenHash  String
+  accessTokenHash String? @unique
+  claimedAt       DateTime?
+  expiresAt       DateTime
+  generationLimit Int
+  generationUsed  Int      @default(0)
+  createdAt       DateTime @default(now())
+  photos          Photo[]
+  generations     Generation[]
+  @@index([expiresAt])
+}
+
+model Photo {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  objectId  String   @unique
+  mimeType  String
+  width     Int
+  height    Int
+  sessionId String   @db.Uuid
+  position  Int      @default(0)
+  session   PhotoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([sessionId, position])
+}
+
+model Generation {
+  id          String @id @default(uuid()) @db.Uuid
+  sessionId   String @db.Uuid
+  session     PhotoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  frameId     String? @db.Uuid
+  frame       Frame? @relation(fields: [frameId], references: [id], onDelete: Restrict)
+  mode        GenerationMode
+  status      GenerationStatus @default(QUEUED)
+  objectId    String?
+  error       String?
+  requestKey  String @db.VarChar(128)
+  templateId  String?
+  experienceId String?
+  engineConfig Json?
+  photoIds    String[] @default([]) @db.Uuid
+  attempts    Int @default(0)
+  leaseUntil  DateTime?
+  leaseToken  String? @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([sessionId, requestKey])
+  @@index([status, createdAt])
+}
