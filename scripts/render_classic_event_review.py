@@ -10,10 +10,12 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'backend'))
 from app.services.classic import compose_classic
-from app.services.classic_events import event_frame_definitions
+from app.services.classic_events import event_frame_definitions, original_frame_definitions
+from app.services.classic_format import classic_print_bytes
 
-output = ROOT / 'test' / 'output' / 'classic-events' / 'composites'
+output = ROOT / 'test' / 'output' / 'classic-strip-v2' / 'composites'
 output.mkdir(parents=True, exist_ok=True)
+(output / 'print').mkdir(exist_ok=True)
 captures = []
 for index, color in enumerate(('#b55754', '#387a9b', '#54936a', '#c4963e'), 1):
     photo = Image.new('RGB', (1200, 800), color)
@@ -25,13 +27,17 @@ for index, color in enumerate(('#b55754', '#387a9b', '#54936a', '#c4963e'), 1):
     stream = io.BytesIO()
     photo.save(stream, 'PNG')
     captures.append(stream.getvalue())
-frames = event_frame_definitions()
-sheet = Image.new('RGB', (1280, 520 * 8), '#eee9e1')
+frames = original_frame_definitions() + event_frame_definitions()
+sheet = Image.new('RGB', (1280, 520 * 9), '#eee9e1')
 draw = ImageDraw.Draw(sheet)
 for index, item in enumerate(frames):
-    row = SimpleNamespace(canvas_width=item['canvas_width'], canvas_height=item['canvas_height'], shot_count=item['shot_count'], layout_config_json=json.dumps({'slots': item['slots']}), frame_asset_path=str(ROOT / 'templates' / '_classic' / 'events' / item['filename']))
+    base = ROOT / 'templates' / '_classic'
+    if 'theme_slug' in item:
+        base /= 'events'
+    row = SimpleNamespace(canvas_width=item['canvas_width'], canvas_height=item['canvas_height'], shot_count=item['shot_count'], layout_config_json=json.dumps({'slots': item['slots']}), frame_asset_path=str(base / item['filename']))
     data = compose_classic(row, captures[:item['shot_count']])
-    (output / item['filename']).write_bytes(data)
+    (output / (item['id'] + '.png')).write_bytes(data)
+    (output / 'print' / (item['id'] + '.png')).write_bytes(classic_print_bytes(data))
     with Image.open(io.BytesIO(data)) as image:
         image.thumbnail((296, 450))
         x, y = (index % 4) * 320, (index // 4) * 520

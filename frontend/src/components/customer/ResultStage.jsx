@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { createResultClaim, resultDownloadUrl, resultImageUrl, uploadPreviewUrl } from '../../api.js'
+import { createResultClaim, getResult, resultDownloadUrl, resultImageUrl, uploadPreviewUrl } from '../../api.js'
 
 function claimTokenFromUrl(claimUrl) {
   try {
@@ -20,6 +20,14 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
   const [claimError, setClaimError] = useState('')
   const [shareMessage, setShareMessage] = useState('')
   const [remaining, setRemaining] = useState(resetSeconds)
+  const [printDownload, setPrintDownload] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    setPrintDownload(null)
+    if (mode === 'CLASSIC') getResult(resultId).then((metadata) => { if (alive) setPrintDownload(metadata.print_download_url || null) }).catch(() => {})
+    return () => { alive = false }
+  }, [resultId, mode])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setRevealed(true), 70)
@@ -191,6 +199,7 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
           <button className="customer-inline-button" onClick={shareResult}>Share</button>
           <button className="customer-inline-button" onClick={openOnPhone} disabled={claimBusy}>Open on Phone / QR</button>
           <button className="customer-inline-button" onClick={() => window.print()}>Print</button>
+          {printDownload && <a className="customer-inline-button" href={printDownload} download>Download print · 2 × 6 in</a>}
           {shareMessage && <small className="result-share-message" role="status">{shareMessage}</small>}
         </div>
         <a className="customer-solid-button" href={resultDownloadUrl(resultId)} download>Download photo <b>v</b></a>

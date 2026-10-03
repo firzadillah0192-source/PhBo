@@ -11,6 +11,21 @@ import { readCustomerFlow, updateCustomerFlow } from './customerSession.js'
 const frames = JSON.parse(readFileSync(new URL('../../backend/app/data/classic_event_frames.json', import.meta.url))).frames
 const layouts = [{ id: 'classic-frame-001', name: 'Original', shot_count: 4 }, ...frames.map((item) => ({ ...item, preview_url: `/api/classic/layouts/${item.id}/preview` }))]
 
+test('all 35 Classic templates use the frozen 1:3 master and print profile', () => {
+  const originals = JSON.parse(readFileSync(new URL('../../backend/app/data/classic_original_strip_frames.json', import.meta.url))).frames
+  const profile = JSON.parse(readFileSync(new URL('../../backend/app/data/classic_print_profile.json', import.meta.url)))
+  assert.equal(profile.frozen, true)
+  assert.deepEqual(profile.master, { width: 1200, height: 3600, dpi: 600 })
+  assert.deepEqual(profile.print, { width: 600, height: 1800, dpi: 300 })
+  assert.equal(originals.length + frames.length, 35)
+  for (const frame of [...originals, ...frames]) {
+    assert.equal(frame.canvas_width, 1200)
+    assert.equal(frame.canvas_height, 3600)
+    assert.equal(frame.print_profile, profile.id)
+    assert.equal(frame.slots.length, frame.shot_count)
+  }
+})
+
 test('eight event themes each contain four frames, half three-shot and half four-shot', () => {
   assert.equal(frames.length, 32)
   assert.equal(new Set(frames.map((item) => item.id)).size, 32)

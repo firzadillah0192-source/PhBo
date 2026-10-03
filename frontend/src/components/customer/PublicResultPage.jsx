@@ -47,11 +47,11 @@ export default function PublicResultPage({ token }) {
     }
   }
 
-  const download = async (event) => {
+  const download = async (event, url = claim.download_url) => {
     event.preventDefault()
     setShareMessage('')
     try {
-      const response = await fetch(claim.download_url)
+      const response = await fetch(url)
       if (!response.ok) throw new Error('download unavailable')
       const blob = await response.blob()
       const objectUrl = URL.createObjectURL(blob)
@@ -84,6 +84,7 @@ export default function PublicResultPage({ token }) {
       <p className="public-claim-expiry">Available until {friendlyDate(claim.expires_at)}.</p>
       <div className="public-claim-actions">
         <a className="public-claim-download" href={claim.download_url} onClick={download}>Download photo <b>-&gt;</b></a>
+        {claim.print_download_url && <a className="public-claim-download" href={claim.print_download_url} onClick={(event) => download(event, claim.print_download_url)}>Download print · 2 × 6 in</a>}
         <button className="public-claim-share" onClick={share}>Share</button>
       </div>
       {shareMessage && <p className="public-claim-message" role="status">{shareMessage}</p>}

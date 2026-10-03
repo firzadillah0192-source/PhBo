@@ -12,7 +12,7 @@ from app.experiences import ExperienceDefinition, list_experiences
 from app.models import ExperienceStatus, ManagedExperience, ManagedTemplate, ClassicLayout, AdvancedFrameStyle, AdvancedOrnament
 from app.services.classic import CLASSIC_SEEDS
 from app.services.classic import validated_frame
-from app.services.classic_events import event_frame_definitions
+from app.services.classic_events import event_frame_definitions, original_frame_definitions
 from app.services.advanced_prompt import FRAME_STYLE_SEEDS, ORNAMENT_SEEDS
 from app.templates_registry import TemplateDefinition, get_registry
 
@@ -57,7 +57,8 @@ def seed_catalog(session: Session) -> None:
                 metadata_path=str(metadata) if metadata.exists() else None,
                 enabled=True, sort_order=-1 if item.id == "sci-fi-space-commander-framed-001" else order, updated_by="seed",
             ))
-    for order, (slug, name, filename, raw_slots) in enumerate(CLASSIC_SEEDS):
+    originals = original_frame_definitions()
+    for order, (slug, name, filename, raw_slots) in enumerate(CLASSIC_SEEDS if not originals else ()):
         if session.get(ClassicLayout, slug) is None:
             slots = [dict(x=x, y=y, width=width, height=height, fit="cover") for x, y, width, height in raw_slots]
             session.add(ClassicLayout(
@@ -66,19 +67,23 @@ def seed_catalog(session: Session) -> None:
                 frame_asset_path=str(settings.templates_dir / "_classic" / filename),
                 active=True, sort_order=order,
             ))
-    for item in event_frame_definitions():
-        if session.get(ClassicLayout, item["id"]) is not None:
+    for item in originals + event_frame_definitions():
+        row = session.get(ClassicLayout, item["id"])
+        previous = json.loads(row.layout_config_json) if row else {}
+        version = item.get("collection_version", 1)
+        if row and previous.get("collection_version", 1) >= version:
             continue
-        frame_path = settings.templates_dir / "_classic" / "events" / item["filename"]
+        root = settings.templates_dir / "_classic"
+        frame_path = (root if item in originals else root / "events") / item["filename"]
         if not frame_path.is_file():
             continue
-        row = ClassicLayout(
-            id=item["id"], slug=item["id"], name=item["name"],
-            canvas_width=item["canvas_width"], canvas_height=item["canvas_height"],
-            shot_count=item["shot_count"], frame_asset_path=str(frame_path),
-            layout_config_json=json.dumps({"slots": item["slots"], "theme_slug": item["theme_slug"], "theme_name": item["theme_name"]}),
-            active=True, sort_order=item["sort_order"],
-        )
+        if row is None:
+            row = ClassicLayout(id=item["id"], slug=item["id"], name=item["name"], active=True, sort_order=item["sort_order"])
+        # One-time, versioned format correction. Keep names, publication and
+        # sorting; existing Result files remain immutable in result storage.
+        row.canvas_width, row.canvas_height = item["canvas_width"], item["canvas_height"]
+        row.shot_count, row.frame_asset_path = item["shot_count"], str(frame_path)
+        row.layout_config_json = json.dumps({**previous, "slots": item["slots"], "theme_slug": item.get("theme_slug", "classic-originals"), "theme_name": item.get("theme_name", "Classic Originals"), "collection_version": version, "print_profile": item.get("print_profile")})
         validated_frame(row).close()
         session.add(row)
     for order, (slug, name, description, prompt) in enumerate(FRAME_STYLE_SEEDS):

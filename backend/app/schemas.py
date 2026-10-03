@@ -219,6 +219,7 @@ class ResultResponse(BaseModel):
     model: str | None = None
     result_url: str
     download_url: str
+    print_download_url: str | None = None
     created_at: datetime
 
 
@@ -238,6 +239,7 @@ class ResultClaimResponse(BaseModel):
 class PublicResultResponse(BaseModel):
     image_url: str
     download_url: str
+    print_download_url: str | None = None
     expires_at: datetime
     created_at: datetime
     content_type: str

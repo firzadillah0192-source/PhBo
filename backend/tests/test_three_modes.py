@@ -28,14 +28,14 @@ def _upload(client, color=(160, 100, 70)):
 def test_classic_layouts_match_reviewed_assets(client, db_session):
     layouts = client.get("/api/classic/layouts").json()
     assert [(item["id"], item["shot_count"], item["canvas_width"], item["canvas_height"]) for item in layouts] == [
-        ("classic-frame-001", 4, 724, 2172),
-        ("classic-frame-002", 4, 724, 2172),
-        ("classic-frame-003", 3, 724, 2172),
+        ("classic-frame-001", 4, 1200, 3600),
+        ("classic-frame-002", 4, 1200, 3600),
+        ("classic-frame-003", 3, 1200, 3600),
     ]
     for item in layouts:
         assert len(item["slots"]) == item["shot_count"]
         assert client.get(item["preview_url"]).content.startswith(b"\x89PNG")
-        assert validated_frame(db_session.get(ClassicLayout, item["id"])).size == (724, 2172)
+        assert validated_frame(db_session.get(ClassicLayout, item["id"])).size == (1200, 3600)
 
 
 def test_classic_rejects_wrong_capture_count(client, captured_queue):
@@ -85,7 +85,7 @@ def test_classic_uses_shared_result_claim_and_zero_ai_credit(client, captured_qu
     assert status["layout_id"] == "classic-frame-003"
     result_id = status["result_id"]
     result = client.get(f"/api/results/{result_id}").json()
-    assert (result["width"], result["height"]) == (724, 2172)
+    assert (result["width"], result["height"]) == (1200, 3600)
     assert client.get(result["download_url"]).status_code == 200
     claim = client.post(f"/api/results/{result_id}/claim", json={})
     assert claim.status_code == 200

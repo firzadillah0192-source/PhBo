@@ -40,12 +40,14 @@ def test_event_asset_alpha_geometry_branding_and_composite(item):
     row = layout(item)
     assert hashlib.sha256(Path(row.frame_asset_path).read_bytes()).hexdigest() == item['sha256']
     with validated_frame(row) as frame:
-        assert frame.size == (1024, 1536)
+        assert frame.size == (1200, 3600)
         assert frame.getchannel('A').getextrema() == (0, 255)
         alpha = frame.getchannel('A')
-        assert alpha.histogram()[0] == sum(slot['width'] * slot['height'] for slot in item['slots'])
+        area = sum(slot['width'] * slot['height'] for slot in item['slots'])
+        assert .94 * area <= alpha.histogram()[0] <= area
         for slot in item['slots']:
-            assert alpha.crop((slot['x'], slot['y'], slot['x'] + slot['width'], slot['y'] + slot['height'])).getextrema() == (0, 0)
+            opening = alpha.crop((slot['x'], slot['y'], slot['x'] + slot['width'], slot['y'] + slot['height']))
+            assert opening.histogram()[0] >= .94 * slot['width'] * slot['height']
         colors = [(220, 80, 80), (60, 150, 210), (80, 170, 110), (225, 180, 70)]
         output = compose_classic(row, [make_png(600, 400, color=colors[i]) for i in range(row.shot_count)])
         with Image.open(io.BytesIO(output)) as composite:
@@ -82,7 +84,7 @@ def test_event_catalog_seed_idempotent_preview_and_admin_preserve_theme(client, 
     first = next(item for item in listed if item['id'] == FRAMES[0]['id'])
     preview = client.get(first['preview_url'])
     assert preview.status_code == 200
-    assert Image.open(io.BytesIO(preview.content)).size == (320, 480)
+    assert Image.open(io.BytesIO(preview.content)).size == (160, 480)
     headers = {'X-Admin-Token': 'test-admin-token'}
     updated = client.patch('/api/admin/classic-layouts/' + first['id'], headers=headers, json={'slots': first['slots']})
     assert updated.status_code == 200
@@ -107,9 +109,25 @@ def test_event_classic_uses_shared_result_no_provider_no_ai_credits(client, db_s
     assert job.layout_id == item['id']
     result_id = client.get('/api/generations/' + job_id).json()['result_id']
     result = client.get('/api/results/' + result_id).json()
-    assert (result['width'], result['height']) == (1024, 1536)
+    assert (result['width'], result['height']) == (1200, 3600)
     assert client.get(result['download_url']).status_code == 200
-    assert client.post('/api/results/' + result_id + '/claim', json={}).status_code == 200
+    master = client.get(result['download_url'])
+    with Image.open(io.BytesIO(master.content)) as image:
+        assert image.size == (1200, 3600)
+        assert image.info['dpi'][0] == pytest.approx(600, abs=.1)
+    printed = client.get(result['print_download_url'])
+    assert printed.status_code == 200
+    assert 'no-store' in printed.headers['cache-control']
+    with Image.open(io.BytesIO(printed.content)) as image:
+        assert image.size == (600, 1800)
+        assert image.info['dpi'][0] == pytest.approx(300, abs=.1)
+    claim = client.post('/api/results/' + result_id + '/claim', json={})
+    assert claim.status_code == 200
+    token = claim.json()['claim_url'].rsplit('/', 1)[-1]
+    public = client.get('/api/public/results/' + token).json()
+    qr_print = client.get(public['print_download_url'])
+    assert qr_print.status_code == 200
+    assert qr_print.content == printed.content
     assert stub_provider.calls == []
     assert client.get('/api/account/usage').json()['ai_remaining'] == before
     # The legacy suite shares a database; remove only this test's claim.

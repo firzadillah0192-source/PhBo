@@ -1,0 +1,1270 @@
+{
+  "frames": [
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-001",
+      "name": "Ketupat Anyaman",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "emerald green and warm ivory, woven palm-leaf ketupat diamonds, palm fronds and champagne-gold accents",
+      "artwork_sha256": "e71b0dccdda686b8ed6b74f08b177e4dee2647c4c1fb84525417beab1ca3492f",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 129,
+          "y": 135,
+          "width": 941,
+          "height": 606,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 831,
+          "width": 941,
+          "height": 605,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 1527,
+          "width": 941,
+          "height": 605,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 2223,
+          "width": 941,
+          "height": 604,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-002",
+      "name": "Bulan Sabit",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "deep midnight teal with a refined luminous crescent moon, tiny gold stars and pearl arches",
+      "artwork_sha256": "31e081251905256b8c2cf93df0bb7a574fd7d36ac739e041e288d13fedc77717",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 95,
+          "y": 437,
+          "width": 1010,
+          "height": 664,
+          "fit": "cover"
+        },
+        {
+          "x": 95,
+          "y": 1229,
+          "width": 1010,
+          "height": 662,
+          "fit": "cover"
+        },
+        {
+          "x": 95,
+          "y": 2018,
+          "width": 1010,
+          "height": 655,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-003",
+      "name": "Floral Silaturahmi",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "sage green and ivory, delicate white jasmine blooms and lush tropical botanical borders",
+      "artwork_sha256": "463c60f2226979f4896df5e65e74521086a7aa92c7fb0766627b761ca850cb1c",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 134,
+          "y": 202,
+          "width": 932,
+          "height": 593,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 904,
+          "width": 932,
+          "height": 593,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 1606,
+          "width": 932,
+          "height": 593,
+          "fit": "cover"
+        },
+        {
+          "x": 134,
+          "y": 2308,
+          "width": 932,
+          "height": 592,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "id": "classic-eid-fitri-004",
+      "name": "Silaturahmi Gold",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "warm champagne gold on ivory, embossed star geometry and elegant architectural arches",
+      "artwork_sha256": "09072427cc8d9d8f78a7100049212d92da387528ec0382f6bd2ff24644e4b376",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 123,
+          "y": 295,
+          "width": 954,
+          "height": 810,
+          "fit": "cover"
+        },
+        {
+          "x": 123,
+          "y": 1217,
+          "width": 953,
+          "height": 789,
+          "fit": "cover"
+        },
+        {
+          "x": 123,
+          "y": 2116,
+          "width": 954,
+          "height": 808,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-001",
+      "name": "Geometri Islami",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "warm sand and turquoise interlocking star geometry, tactile ceramic-like patterned bezel",
+      "artwork_sha256": "a095b32e274ff76b99748c7bd086496507e4e03bdd018862241e04a1e16956b8",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 112,
+          "y": 217,
+          "width": 977,
+          "height": 609,
+          "fit": "cover"
+        },
+        {
+          "x": 111,
+          "y": 918,
+          "width": 978,
+          "height": 609,
+          "fit": "cover"
+        },
+        {
+          "x": 111,
+          "y": 1620,
+          "width": 978,
+          "height": 608,
+          "fit": "cover"
+        },
+        {
+          "x": 111,
+          "y": 2321,
+          "width": 978,
+          "height": 600,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-002",
+      "name": "Lentera Malam",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "indigo and old gold, decorative lanterns with warm light and luxurious jewel-toned edges",
+      "artwork_sha256": "8bfe11f3587a7ecc7d18245d4860f7d2b6f3743c1ea3813e7a4286c091c49783",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 127,
+          "y": 413,
+          "width": 948,
+          "height": 705,
+          "fit": "cover"
+        },
+        {
+          "x": 127,
+          "y": 1241,
+          "width": 948,
+          "height": 701,
+          "fit": "cover"
+        },
+        {
+          "x": 127,
+          "y": 2063,
+          "width": 948,
+          "height": 655,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-003",
+      "name": "Lengkung Harmoni",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "stone ivory and olive, graceful carved ornamental arches and restrained linework",
+      "artwork_sha256": "8ff0a7b0d565a1122f03e22914f79890344b2270262382abe89664edfef6e9e2",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 154,
+          "y": 248,
+          "width": 894,
+          "height": 589,
+          "fit": "cover"
+        },
+        {
+          "x": 153,
+          "y": 966,
+          "width": 895,
+          "height": 599,
+          "fit": "cover"
+        },
+        {
+          "x": 153,
+          "y": 1695,
+          "width": 895,
+          "height": 596,
+          "fit": "cover"
+        },
+        {
+          "x": 153,
+          "y": 2421,
+          "width": 895,
+          "height": 590,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "eid-adha",
+      "theme_name": "Eid Adha",
+      "id": "classic-eid-adha-004",
+      "name": "Earth Tone",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "terracotta, cream and soft moss, linen-like texture and crafted botanical sprigs",
+      "artwork_sha256": "a8a837a25020fedb40e245738ef82a5b9dbc89da03abcf40c4667f1483097653",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 112,
+          "y": 279,
+          "width": 976,
+          "height": 749,
+          "fit": "cover"
+        },
+        {
+          "x": 112,
+          "y": 1161,
+          "width": 976,
+          "height": 753,
+          "fit": "cover"
+        },
+        {
+          "x": 112,
+          "y": 2049,
+          "width": 976,
+          "height": 752,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-001",
+      "name": "Ceria Anak",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "premium playful sky blue and soft lemon, cheerful rounded stars and friendly geometric confetti",
+      "artwork_sha256": "ab02e014ea0cc32f5bfc3488f49c6ac13d387e4a1e6ae467c81538435d1507d0",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 113,
+          "y": 148,
+          "width": 979,
+          "height": 596,
+          "fit": "cover"
+        },
+        {
+          "x": 113,
+          "y": 894,
+          "width": 979,
+          "height": 596,
+          "fit": "cover"
+        },
+        {
+          "x": 113,
+          "y": 1638,
+          "width": 979,
+          "height": 597,
+          "fit": "cover"
+        },
+        {
+          "x": 113,
+          "y": 2384,
+          "width": 979,
+          "height": 596,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-002",
+      "name": "Royal Blue",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "royal blue and champagne gold, dimensional ornamental scrolls and elegant celebratory medallions",
+      "artwork_sha256": "08dcf6980a6c12668116e09683a86382fbb0ad70b8bb82bca4d120c62f4bdbfa",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 106,
+          "y": 199,
+          "width": 987,
+          "height": 728,
+          "fit": "cover"
+        },
+        {
+          "x": 106,
+          "y": 1106,
+          "width": 987,
+          "height": 747,
+          "fit": "cover"
+        },
+        {
+          "x": 106,
+          "y": 2030,
+          "width": 987,
+          "height": 750,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-003",
+      "name": "Petualangan",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "sky blue and grass green, charming paper-cut clouds, a tiny compass and colorful celebratory bunting",
+      "artwork_sha256": "653d37ee0e756cfd50f1c23e4b71e0da285b63fd842dd0496c4e3eae673b7bf2",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 147,
+          "y": 175,
+          "width": 907,
+          "height": 611,
+          "fit": "cover"
+        },
+        {
+          "x": 147,
+          "y": 904,
+          "width": 907,
+          "height": 613,
+          "fit": "cover"
+        },
+        {
+          "x": 147,
+          "y": 1635,
+          "width": 907,
+          "height": 612,
+          "fit": "cover"
+        },
+        {
+          "x": 147,
+          "y": 2365,
+          "width": 907,
+          "height": 612,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "khitan",
+      "theme_name": "Khitan",
+      "id": "classic-khitan-004",
+      "name": "Tradisional",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "warm copper and cream, tasteful Indonesian batik-inspired ornamental geometry and celebratory botanical accents",
+      "artwork_sha256": "2d0c93060aeb178c9ef1e239605c8fc05bfdeb36e2363628c01634e4d1e7ea99",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 91,
+          "y": 208,
+          "width": 1017,
+          "height": 792,
+          "fit": "cover"
+        },
+        {
+          "x": 91,
+          "y": 1145,
+          "width": 1017,
+          "height": 776,
+          "fit": "cover"
+        },
+        {
+          "x": 91,
+          "y": 2063,
+          "width": 1017,
+          "height": 781,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-001",
+      "name": "Melati Putih",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Sundanese-wedding-inspired white jasmine garlands, delicate green leaves, luminous ivory botanical stationery",
+      "artwork_sha256": "f5dc3667ec79cd4c9eaf2d6bed3aeac4baefde1603376fa1498792d131aa3acb",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 133,
+          "y": 137,
+          "width": 934,
+          "height": 629,
+          "fit": "cover"
+        },
+        {
+          "x": 133,
+          "y": 886,
+          "width": 934,
+          "height": 627,
+          "fit": "cover"
+        },
+        {
+          "x": 133,
+          "y": 1632,
+          "width": 934,
+          "height": 623,
+          "fit": "cover"
+        },
+        {
+          "x": 133,
+          "y": 2375,
+          "width": 934,
+          "height": 617,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-002",
+      "name": "Siger Elegance",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Sundanese-wedding-inspired silver filigree based on the arched silhouette of a bridal siger, pearl ivory and pale gold",
+      "artwork_sha256": "a0d07e848a0585cf700e52492007730e526308285e7fd14c5df0ffba0c6c529e",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 99,
+          "y": 282,
+          "width": 1002,
+          "height": 752,
+          "fit": "cover"
+        },
+        {
+          "x": 99,
+          "y": 1137,
+          "width": 1002,
+          "height": 757,
+          "fit": "cover"
+        },
+        {
+          "x": 99,
+          "y": 1996,
+          "width": 1002,
+          "height": 751,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-003",
+      "name": "Floral Hijau",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Sundanese-wedding-inspired deep leafy green, lush refined white garden blooms and layered botanical edges",
+      "artwork_sha256": "8ba639bdf23481a0bd9d4523cac66bd7423572719eae967740c4c22bb5d9eda8",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 141,
+          "y": 158,
+          "width": 917,
+          "height": 632,
+          "fit": "cover"
+        },
+        {
+          "x": 141,
+          "y": 907,
+          "width": 917,
+          "height": 632,
+          "fit": "cover"
+        },
+        {
+          "x": 141,
+          "y": 1657,
+          "width": 918,
+          "height": 632,
+          "fit": "cover"
+        },
+        {
+          "x": 141,
+          "y": 2407,
+          "width": 918,
+          "height": 601,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "id": "classic-wedding-sunda-004",
+      "name": "Sunda Gold",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Sundanese-wedding-inspired antique gold and ivory, delicate filigree and tasteful jasmine border accents",
+      "artwork_sha256": "1ef60339cc7df7df6ad5608beb8e9ee0c3ea05b69c68f270037b46433a466e73",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 111,
+          "y": 206,
+          "width": 977,
+          "height": 754,
+          "fit": "cover"
+        },
+        {
+          "x": 111,
+          "y": 1098,
+          "width": 977,
+          "height": 759,
+          "fit": "cover"
+        },
+        {
+          "x": 111,
+          "y": 1998,
+          "width": 977,
+          "height": 761,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-001",
+      "name": "Batik Klasik",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Javanese-wedding-inspired abstract diagonal batik cloth pattern, rich walnut and cream with antique gold",
+      "artwork_sha256": "c11f42acf6e67e63b2fcaa83eceea59d06511d508232f86b30946d3455d808ca",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 105,
+          "y": 133,
+          "width": 990,
+          "height": 620,
+          "fit": "cover"
+        },
+        {
+          "x": 105,
+          "y": 885,
+          "width": 990,
+          "height": 619,
+          "fit": "cover"
+        },
+        {
+          "x": 105,
+          "y": 1631,
+          "width": 990,
+          "height": 618,
+          "fit": "cover"
+        },
+        {
+          "x": 105,
+          "y": 2377,
+          "width": 990,
+          "height": 621,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-002",
+      "name": "Janur Harmoni",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Javanese-wedding-inspired folded young palm leaves and woven botanical ribbons, soft yellow-green and ivory",
+      "artwork_sha256": "fb37aef46a820531e50aa97d2a50b19c6d16060682212db42cce5e4325be1989",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 145,
+          "y": 193,
+          "width": 910,
+          "height": 747,
+          "fit": "cover"
+        },
+        {
+          "x": 145,
+          "y": 1069,
+          "width": 910,
+          "height": 748,
+          "fit": "cover"
+        },
+        {
+          "x": 145,
+          "y": 1948,
+          "width": 910,
+          "height": 748,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-003",
+      "name": "Pendopo",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Javanese-wedding-inspired pavilion roof silhouettes and carved teak details, warm wood, charcoal and ivory",
+      "artwork_sha256": "132a60a28a267a71b258044f61eff3a14d11b9bba4d9eb63638c8bc94a20abcf",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 136,
+          "y": 226,
+          "width": 929,
+          "height": 569,
+          "fit": "cover"
+        },
+        {
+          "x": 136,
+          "y": 913,
+          "width": 929,
+          "height": 569,
+          "fit": "cover"
+        },
+        {
+          "x": 136,
+          "y": 1598,
+          "width": 929,
+          "height": 567,
+          "fit": "cover"
+        },
+        {
+          "x": 136,
+          "y": 2282,
+          "width": 929,
+          "height": 566,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "id": "classic-wedding-jawa-004",
+      "name": "Jawa Cream",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Javanese-wedding-inspired cream and chocolate brown, restrained textile pattern and fine jasmine garlands",
+      "artwork_sha256": "82376cb747d059e0f4b9118dc715d5b3bfaddcce39c398b40bb6d95c26b6824a",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 112,
+          "y": 195,
+          "width": 976,
+          "height": 863,
+          "fit": "cover"
+        },
+        {
+          "x": 112,
+          "y": 1201,
+          "width": 976,
+          "height": 858,
+          "fit": "cover"
+        },
+        {
+          "x": 112,
+          "y": 2196,
+          "width": 976,
+          "height": 721,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-001",
+      "name": "Kembang Kelapa",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Betawi-wedding-inspired colorful kembang kelapa ornaments, finely cut paper decorations, ivory and bright celebratory accents",
+      "artwork_sha256": "92cec6721cd5cff0e69598763265eaaa1ce22b91fc832a1b58bb0c9431a345d9",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 142,
+          "y": 191,
+          "width": 916,
+          "height": 627,
+          "fit": "cover"
+        },
+        {
+          "x": 142,
+          "y": 923,
+          "width": 916,
+          "height": 629,
+          "fit": "cover"
+        },
+        {
+          "x": 142,
+          "y": 1661,
+          "width": 916,
+          "height": 630,
+          "fit": "cover"
+        },
+        {
+          "x": 142,
+          "y": 2401,
+          "width": 916,
+          "height": 600,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-002",
+      "name": "Gigi Balang",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Betawi-wedding-inspired repeating triangular gigi balang architectural cutwork, warm green and cream",
+      "artwork_sha256": "d53da24e82af77656f98eb1106956ab4a66e6d48603922eabaee9d9410388f1d",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 120,
+          "y": 205,
+          "width": 959,
+          "height": 799,
+          "fit": "cover"
+        },
+        {
+          "x": 120,
+          "y": 1125,
+          "width": 959,
+          "height": 800,
+          "fit": "cover"
+        },
+        {
+          "x": 120,
+          "y": 2049,
+          "width": 959,
+          "height": 798,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-003",
+      "name": "Betawi Cerah",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Betawi-wedding-inspired fuchsia, emerald and gold floral celebration border with premium festive materials",
+      "artwork_sha256": "8e5e1ccc88a656ba5bc0f196076c87b67b1f326cd4681656866676691d80a794",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 119,
+          "y": 173,
+          "width": 961,
+          "height": 580,
+          "fit": "cover"
+        },
+        {
+          "x": 119,
+          "y": 892,
+          "width": 961,
+          "height": 581,
+          "fit": "cover"
+        },
+        {
+          "x": 119,
+          "y": 1610,
+          "width": 962,
+          "height": 579,
+          "fit": "cover"
+        },
+        {
+          "x": 119,
+          "y": 2327,
+          "width": 961,
+          "height": 579,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "id": "classic-wedding-betawi-004",
+      "name": "Floral Betawi",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Betawi-wedding-inspired elegant jasmine and tropical floral border, coral pink and pearl ivory",
+      "artwork_sha256": "de5ab4eeee46d7b12b56d1316fd75fd3505a94f6133c57d3cf1a1dc45d0572a5",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 119,
+          "y": 280,
+          "width": 963,
+          "height": 687,
+          "fit": "cover"
+        },
+        {
+          "x": 119,
+          "y": 1150,
+          "width": 963,
+          "height": 687,
+          "fit": "cover"
+        },
+        {
+          "x": 119,
+          "y": 2020,
+          "width": 963,
+          "height": 683,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-001",
+      "name": "Songket Merah",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "Minangkabau-wedding-inspired rich red songket textile with refined geometric gold weaving",
+      "artwork_sha256": "a667489ab8dcae87b6f3f6d1d0381c6056f68d3666222c2f1860e77cd4cc482b",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 138,
+          "y": 202,
+          "width": 924,
+          "height": 625,
+          "fit": "cover"
+        },
+        {
+          "x": 138,
+          "y": 951,
+          "width": 924,
+          "height": 624,
+          "fit": "cover"
+        },
+        {
+          "x": 138,
+          "y": 1700,
+          "width": 924,
+          "height": 624,
+          "fit": "cover"
+        },
+        {
+          "x": 138,
+          "y": 2449,
+          "width": 924,
+          "height": 624,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-002",
+      "name": "Suntiang Gold",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "Minangkabau-wedding-inspired tiered floral gold suntiang silhouette as symmetrical fine filigree, warm gold and ivory",
+      "artwork_sha256": "65a0306dbcc982055c7edf19446c5c41fd095d1f711ad315f259b03e02b16ba5",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 124,
+          "y": 379,
+          "width": 952,
+          "height": 681,
+          "fit": "cover"
+        },
+        {
+          "x": 124,
+          "y": 1192,
+          "width": 952,
+          "height": 691,
+          "fit": "cover"
+        },
+        {
+          "x": 124,
+          "y": 2015,
+          "width": 952,
+          "height": 686,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-003",
+      "name": "Gonjong",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "Minangkabau-wedding-inspired pointed gonjong roof silhouettes and refined textile ornament, burgundy, ivory and gold",
+      "artwork_sha256": "c2e5d3337870e59e73228a4a4af301048ae6afece01b7529c009137b27940b95",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 122,
+          "y": 307,
+          "width": 956,
+          "height": 552,
+          "fit": "cover"
+        },
+        {
+          "x": 122,
+          "y": 951,
+          "width": 956,
+          "height": 556,
+          "fit": "cover"
+        },
+        {
+          "x": 121,
+          "y": 1599,
+          "width": 957,
+          "height": 556,
+          "fit": "cover"
+        },
+        {
+          "x": 121,
+          "y": 2247,
+          "width": 957,
+          "height": 575,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "id": "classic-wedding-minang-004",
+      "name": "Minang Red Gold",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "Minangkabau-wedding-inspired ceremonial red and warm gold, luxurious woven texture and graceful botanical ornaments",
+      "artwork_sha256": "8e3414f78babe051b46ea0564e948e525c4e5f77505a5cdc18ad08088df4d24b",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 108,
+          "y": 343,
+          "width": 985,
+          "height": 705,
+          "fit": "cover"
+        },
+        {
+          "x": 108,
+          "y": 1194,
+          "width": 985,
+          "height": 708,
+          "fit": "cover"
+        },
+        {
+          "x": 108,
+          "y": 2050,
+          "width": 985,
+          "height": 709,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-001",
+      "name": "Balon Confetti",
+      "variant": 1,
+      "shot_count": 4,
+      "motif": "premium joyful balloons and elegant confetti, bright coral, sky blue and butter yellow on ivory",
+      "artwork_sha256": "c776418add3235eddc4996461691fe94b70f5829c32fcb842b19361a7022b411",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 129,
+          "y": 145,
+          "width": 941,
+          "height": 596,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 837,
+          "width": 942,
+          "height": 609,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 1543,
+          "width": 942,
+          "height": 611,
+          "fit": "cover"
+        },
+        {
+          "x": 129,
+          "y": 2250,
+          "width": 942,
+          "height": 593,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-002",
+      "name": "Pastel Anak",
+      "variant": 2,
+      "shot_count": 3,
+      "motif": "soft lavender, mint and peach, charming rounded stars and gentle dimensional celebratory ribbons",
+      "artwork_sha256": "1399b6f21da3505471bfb358237a593e9ae7773d1d7c713b249ca6abcfd5ad05",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 119,
+          "y": 221,
+          "width": 963,
+          "height": 726,
+          "fit": "cover"
+        },
+        {
+          "x": 119,
+          "y": 1124,
+          "width": 963,
+          "height": 726,
+          "fit": "cover"
+        },
+        {
+          "x": 119,
+          "y": 2028,
+          "width": 964,
+          "height": 725,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-003",
+      "name": "Colorful Pop",
+      "variant": 3,
+      "shot_count": 4,
+      "motif": "bold refined graphic celebration with cobalt, coral, lemon and lilac, playful abstract forms and dimensional confetti",
+      "artwork_sha256": "36be104eceed57ccccebf08231985d1824af040215fad12a3e78a89849df9e35",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 130,
+          "y": 148,
+          "width": 939,
+          "height": 597,
+          "fit": "cover"
+        },
+        {
+          "x": 130,
+          "y": 878,
+          "width": 941,
+          "height": 598,
+          "fit": "cover"
+        },
+        {
+          "x": 130,
+          "y": 1614,
+          "width": 933,
+          "height": 596,
+          "fit": "cover"
+        },
+        {
+          "x": 130,
+          "y": 2342,
+          "width": 941,
+          "height": 596,
+          "fit": "cover"
+        }
+      ]
+    },
+    {
+      "theme": "birthday",
+      "theme_name": "Ulang Tahun",
+      "id": "classic-birthday-004",
+      "name": "Birthday Elegance",
+      "variant": 4,
+      "shot_count": 3,
+      "motif": "warm black and champagne gold, tasteful balloon silhouettes and elegant foil confetti for an adult celebration",
+      "artwork_sha256": "6e16d39bf951de55437019f3ef972a914ea3885228bfff8fa9bac91d7e6ef1d8",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "branding_reviewed": true,
+      "slots": [
+        {
+          "x": 114,
+          "y": 199,
+          "width": 973,
+          "height": 798,
+          "fit": "cover"
+        },
+        {
+          "x": 114,
+          "y": 1103,
+          "width": 973,
+          "height": 800,
+          "fit": "cover"
+        },
+        {
+          "x": 114,
+          "y": 2009,
+          "width": 973,
+          "height": 800,
+          "fit": "cover"
+        }
+      ]
+    }
+  ],
+  "reviewed": true,
+  "review_notes": "Visually checked all 32 single-column strips and themed NXBooth / Powered by GenNexByte footers against contact sheets; slots measured from white photo interiors."
+}

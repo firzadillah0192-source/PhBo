@@ -1,0 +1,136 @@
+{
+  "version": 2,
+  "frames": [
+    {
+      "id": "classic-frame-001",
+      "name": "Classic Frame 1",
+      "filename": "original-masters/classic-frame1.png",
+      "collection_version": 2,
+      "print_profile": "classic-strip-2x6-v1",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 155,
+          "y": 145,
+          "width": 894,
+          "height": 710,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 940,
+          "width": 893,
+          "height": 712,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 1741,
+          "width": 893,
+          "height": 708,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 2538,
+          "width": 893,
+          "height": 657,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 0,
+      "sha256": "6986d7749b699e4fb5f0b529df88cf149ae42c74ea8c9b4ca80ccb7f797bf61e",
+      "source_sha256": "0241000b682fca757dc0840402286d975cbd560391242ec91607326c6c56b0cc",
+      "source_width": 724,
+      "source_height": 2172,
+      "branding_source": "original-artwork"
+    },
+    {
+      "id": "classic-frame-002",
+      "name": "Classic Frame 2",
+      "filename": "original-masters/classic-frame2.png",
+      "collection_version": 2,
+      "print_profile": "classic-strip-2x6-v1",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 4,
+      "slots": [
+        {
+          "x": 189,
+          "y": 219,
+          "width": 830,
+          "height": 636,
+          "fit": "cover"
+        },
+        {
+          "x": 186,
+          "y": 988,
+          "width": 833,
+          "height": 636,
+          "fit": "cover"
+        },
+        {
+          "x": 186,
+          "y": 1757,
+          "width": 836,
+          "height": 624,
+          "fit": "cover"
+        },
+        {
+          "x": 189,
+          "y": 2508,
+          "width": 830,
+          "height": 634,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 1,
+      "sha256": "d79b07fea69087741997c9a9074b2a4bc40ab21bd3eea54f679a0599133d9ed7",
+      "source_sha256": "bcd429cab98aaac88b6b0c1ec1e07f490a0d7c6bad8078d9eaaff0783d63c084",
+      "source_width": 724,
+      "source_height": 2172,
+      "branding_source": "original-artwork"
+    },
+    {
+      "id": "classic-frame-003",
+      "name": "Classic Frame 3",
+      "filename": "original-masters/classic-frame3.png",
+      "collection_version": 2,
+      "print_profile": "classic-strip-2x6-v1",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "slots": [
+        {
+          "x": 156,
+          "y": 251,
+          "width": 908,
+          "height": 771,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 1152,
+          "width": 908,
+          "height": 772,
+          "fit": "cover"
+        },
+        {
+          "x": 156,
+          "y": 2056,
+          "width": 908,
+          "height": 779,
+          "fit": "cover"
+        }
+      ],
+      "sort_order": 2,
+      "sha256": "ec2aa85bbff0e62c1622df971dc0337367dba8facdab52e64f96cf188bba0abd",
+      "source_sha256": "b0bf20ffe8870894f3e0d82a80971529a75a27a0c75a45120eff56d5d3ea1102",
+      "source_width": 724,
+      "source_height": 2172,
+      "branding_source": "original-artwork"
+    }
+  ]
+}

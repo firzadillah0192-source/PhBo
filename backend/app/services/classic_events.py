@@ -17,6 +17,11 @@ def event_frame_definitions() -> list[dict]:
     return data["frames"]
 
 
+def original_frame_definitions() -> list[dict]:
+    path = Path(__file__).resolve().parents[1] / "data" / "classic_original_strip_frames.json"
+    return json.loads(path.read_text())["frames"] if path.is_file() else []
+
+
 def layout_theme(config_json: str) -> dict[str, str]:
     try:
         config = json.loads(config_json)

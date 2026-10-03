@@ -1,8 +1,9 @@
 """Secure QR claims and public mobile result delivery."""
 
 from __future__ import annotations
+from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import Response as RawResponse
 from sqlalchemy.orm import Session
 
@@ -22,6 +23,7 @@ from app.services.claims import (
     touch_claim,
 )
 from app.services.rate_limit import enforce_public_rate_limit
+from app.services.classic_format import classic_print_bytes
 
 router = APIRouter(tags=["result-claims"])
 
@@ -70,6 +72,7 @@ def _public_result(claim: ResultClaim, token: str) -> PublicResultResponse:
     return PublicResultResponse(
         image_url=f"/api/public/results/{token}/image",
         download_url=f"/api/public/results/{token}/download",
+        print_download_url=f"/api/public/results/{token}/download?rendition=print" if claim.result.job.mode == "CLASSIC" and claim.result.width * 3 == claim.result.height else None,
         expires_at=claim.expires_at,
         created_at=claim.result.created_at,
         content_type=claim.result.content_type,
@@ -97,10 +100,19 @@ def public_result_image(token: str, request: Request, db: Session = Depends(get_
 
 
 @router.get("/api/public/results/{token}/download")
-def public_result_download(token: str, request: Request, db: Session = Depends(get_db)) -> RawResponse:
+def public_result_download(token: str, request: Request, db: Session = Depends(get_db), rendition: Literal["master", "print"] = "master") -> RawResponse:
     enforce_public_rate_limit(request, "download", 60)
     claim = get_claim_by_token(db, token)
     data = result_bytes(claim)
+    if rendition == "print":
+        if claim.result.job.mode != "CLASSIC":
+            raise HTTPException(status_code=422, detail="Print-strip export is available for Classic only")
+        try:
+            data = classic_print_bytes(data)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        register_download(db, claim)
+        return RawResponse(content=data, media_type="image/png", headers={"Cache-Control": "private, no-store", "Content-Disposition": 'attachment; filename="nxbooth-2x6-300dpi.png"'})
     register_download(db, claim)
     extension = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(claim.result.content_type, "bin")
     return RawResponse(

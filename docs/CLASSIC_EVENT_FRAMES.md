@@ -13,36 +13,38 @@
 | Wedding Padang / Minang | 4 | 2 | 2 |
 | Ulang Tahun | 4 | 2 | 2 |
 
-All new master PNGs are 1024 × 1536 (2:3). Each has a substantial decorative
-bezel, opaque artwork outside the photo openings, and precisely transparent
-rectangular openings. Photo order is top-left, top-right, bottom-left,
-bottom-right for four photographs; top-to-bottom for three photographs.
+All 35 Classic templates now use the frozen 1200 × 3600 (1:3) master and
+600 × 1800, 300 DPI print rendition (2 × 6 inches). Each event frame has a
+substantial decorative bezel and measured transparent openings, retaining
+decorative corners. Photo order is top-to-bottom in one column for both three
+and four photographs. See [CLASSIC_STRIP_FORMAT.md](CLASSIC_STRIP_FORMAT.md).
 
 The imagery is event-inspired artwork, not certification of ceremonial or
 regional authenticity. The operator should review motifs and a physical test
-print before use at a paid event. NXBooth and Powered by GenNexByte are approved
-deterministic text, not a fabricated logo.
+print before use at a paid event. NXBooth and Powered by GenNexByte lettering is
+generated within each new event artwork prompt and reviewed for readability.
 
 ## Files and preparation
 
-- Original generated artwork: `import-assets/classic-event-artwork/`.
-- Offline prompts: `docs/CLASSIC_EVENT_FRAME_PROMPTS.json`.
+- Current generated artwork: `import-assets/classic-event-artwork-v2/`.
+- Current prompts: `docs/CLASSIC_STRIP_FRAME_PROMPTS.json`.
 - Collection plan: `scripts/classic_event_collection.json`.
 - Measured, visually reviewed geometry and source hashes:
-  `scripts/classic_event_slots.reviewed.json`.
-- Managed transparent masters: `templates/_classic/events/`.
-- Small gallery thumbnails: `templates/_classic/events/previews/` (320 × 480).
+  `scripts/classic_strip_slots.reviewed.json`.
+- Managed transparent masters: `templates/_classic/events/strip-v2/`.
+- Small gallery thumbnails: `templates/_classic/events/strip-v2/previews/` (160 × 480).
 - Authoritative dimensions, slots, SHA-256 and file sizes:
   `backend/app/data/classic_event_frames.json`.
 
-The operator explicitly authorized Pillow to clean up transparency and add
-branding. The original artwork remains available. Preparation requires Pillow,
+The operator explicitly authorized Pillow to clean up transparency. Current
+branding remains part of the generated artwork. Old artwork remains available.
+Preparation requires Pillow,
 NumPy and OpenCV locally; this script never calls a provider or production DB.
 
 ```sh
-python scripts/build_classic_event_assets.py --inspect
-# Review test/output/classic-events/artwork-contact-sheet.jpg and measured-slots.json.
-python scripts/build_classic_event_assets.py --review-config scripts/classic_event_slots.reviewed.json
+python scripts/build_classic_strip_assets.py --inspect
+# Review test/output/classic-strip-v2/ contact sheets and measured-slots.json.
+python scripts/build_classic_strip_assets.py --review-config scripts/classic_strip_slots.reviewed.json
 python scripts/render_classic_event_review.py
 ```
 
@@ -54,8 +56,9 @@ shared Result/claim/download flow. Classic has zero Advanced credit usage and
 no runtime AI/provider call.
 
 Theme metadata lives in the existing `layout_config_json`. No new table or SQL
-migration is required. Seeding inserts missing IDs only and preserves existing
-admin publication changes. Admin slot edits preserve the theme metadata.
+migration is required. Version 2 seeding upgrades the existing canvas/assets
+once and preserves existing names, publication and ordering. Subsequent seeds
+preserve operator edits. Admin slot edits preserve the theme metadata.
 Catalog validation is cached by complete geometry and asset file stats; asset
 replacement or metadata edits invalidate the cached validation. Composition
 still validates the actual full-size master. The preview route serves the
@@ -63,8 +66,9 @@ small thumbnail only when it is at least as current as the master.
 
 ## Review and validation
 
-Scoped snapshot: full backend suite 215 passed; full frontend suite 41 passed;
-production build, Python compile and `git diff --check` passed. Tests cover all
+The earlier 2:3 collection passed 215 backend and 41 frontend tests. Those
+counts describe the prior version. The strip correction has additional format
+and print-export tests, with results reported after execution. Tests cover all
 32 assets, slot alpha/bounds, exact canvas, incorrect capture counts, photo
 ordering, pixel preservation, idempotent seeding, disabled-layout handling,
 theme retention, shared Result/claim/download and zero AI credits/provider calls.
@@ -75,11 +79,11 @@ selection clearing, camera entry and selection recovery after refresh.
 
 Synthetic review artifacts (not production assets, not committed):
 
-- `test/output/classic-events/finished-frame-contact-sheet.jpg`
-- `test/output/classic-events/composite-contact-sheet.jpg`
-- `test/output/classic-events/composites/` — one output for each new layout.
-- `test/output/classic-events/browser/` — device screenshots/reports.
-- `test/output/classic-events/public/` — public-site gallery screenshots/reports.
+- `test/output/classic-strip-v2/finished-frame-contact-sheet.jpg`
+- `test/output/classic-strip-v2/composite-contact-sheet.jpg`
+- `test/output/classic-strip-v2/composites/` — master and print outputs for all 35 layouts.
+- `test/output/classic-strip-v2/browser/` — device screenshots/reports.
+- Earlier `test/output/classic-events/` artifacts are retained for reference.
 
 Local browser validation:
 

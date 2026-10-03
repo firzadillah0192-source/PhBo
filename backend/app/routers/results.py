@@ -1,6 +1,7 @@
 """GET /api/results/{result_id} and image/download endpoints."""
 
 from __future__ import annotations
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -12,6 +13,7 @@ from app.dependencies import get_identity
 from app.models import ErrorCode, Result
 from app.schemas import ResultResponse
 from app.services import storage
+from app.services.classic_format import classic_print_bytes
 
 router = APIRouter(tags=["results"])
 
@@ -49,6 +51,7 @@ def get_result(result_id: str, identity: Identity = Depends(get_identity), db: S
         model=result.model,
         result_url=f"/api/results/{result.id}",
         download_url=f"/api/results/{result.id}/download",
+        print_download_url=f"/api/results/{result.id}/download?rendition=print" if result.job.mode == "CLASSIC" and result.width * 3 == result.height else None,
         created_at=result.created_at,
     )
 
@@ -60,8 +63,16 @@ def result_image(result_id: str, identity: Identity = Depends(get_identity), db:
 
 
 @router.get("/api/results/{result_id}/download", summary="Download result image")
-def result_download(result_id: str, identity: Identity = Depends(get_identity), db: Session = Depends(get_db)) -> Response:
+def result_download(result_id: str, identity: Identity = Depends(get_identity), db: Session = Depends(get_db), rendition: Literal["master", "print"] = "master") -> Response:
     result = _load_result(result_id, db, identity)
+    if rendition == "print":
+        if result.job.mode != "CLASSIC":
+            raise HTTPException(status_code=422, detail="Print-strip export is available for Classic only")
+        try:
+            data = classic_print_bytes(_read_or_404(result))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        return Response(content=data, media_type="image/png", headers={"Cache-Control": "private, no-store", "Content-Disposition": f'attachment; filename="nxbooth-{result.id}-2x6-300dpi.png"'})
     ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(result.content_type, "bin")
     return Response(
         content=_read_or_404(result),

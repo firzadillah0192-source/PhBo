@@ -18,6 +18,7 @@ from app.db import get_db
 from app.models import AdvancedFrameStyle, AdvancedOrnament, ClassicLayout
 from app.routers.product_options import layout_response
 from app.services.classic import ClassicLayoutError, slots_for, validated_frame
+from app.services.classic_format import MASTER_SIZE
 
 router = APIRouter(
     prefix="/api/admin", tags=["admin-product"],
@@ -82,6 +83,8 @@ def _preset_dict(row) -> dict:
 
 def _check_layout(row: ClassicLayout) -> None:
     try:
+        if row.active and (row.canvas_width, row.canvas_height) != MASTER_SIZE:
+            raise ClassicLayoutError("Classic is frozen at 1200 × 3600 pixels (1:3); print export is 600 × 1800 at 300 DPI")
         slots_for(row)
         if row.active:
             validated_frame(row)

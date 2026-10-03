@@ -6,7 +6,7 @@ import {
   uploadAdminClassicFrame,
 } from '../../api.js'
 
-const emptyLayout = { id: '', slug: '', name: '', canvas_width: 724, canvas_height: 2172, shot_count: 1, slots: [], enabled: false, sort_order: 0 }
+const emptyLayout = { id: '', slug: '', name: '', canvas_width: 1200, canvas_height: 3600, shot_count: 3, slots: [], enabled: false, sort_order: 0 }
 const emptyPreset = { id: '', slug: '', name: '', description: '', prompt_fragment: '', enabled: true, sort_order: 0 }
 
 export function ClassicLayoutsPanel() {
@@ -31,14 +31,14 @@ export function ClassicLayoutsPanel() {
       load()
     } catch (err) { setError(err.message) }
   }
-  return <section><div className="admin-section-head"><div><h2>Classic Layouts</h2><p className="admin-muted">Reviewed frame PNGs and structured photo slots.</p></div><button className="primary" onClick={() => edit(emptyLayout, true)}>Add layout</button></div>
+  return <section><div className="admin-section-head"><div><h2>Classic Layouts</h2><p className="admin-muted">Frozen strip format · 1:3 · master 1200 × 3600 · print 600 × 1800 at 300 DPI, 2 × 6 inches.</p></div><button className="primary" onClick={() => edit(emptyLayout, true)}>Add layout</button></div>
     {error && <div className="admin-error">{error}</div>}
     {editor && <form className="admin-card" onSubmit={save}><div className="admin-form-grid">
       <label className="admin-field">ID<input value={editor.id} disabled={!editor.isNew} required onChange={(event) => setEditor({ ...editor, id: event.target.value })} /></label>
       <label className="admin-field">Slug<input value={editor.slug} disabled={!editor.isNew} required onChange={(event) => setEditor({ ...editor, slug: event.target.value })} /></label>
       <label className="admin-field">Name<input value={editor.name} required onChange={(event) => setEditor({ ...editor, name: event.target.value })} /></label>
-      <label className="admin-field">Canvas width<input type="number" min="1" value={editor.canvas_width} onChange={(event) => setEditor({ ...editor, canvas_width: event.target.value })} /></label>
-      <label className="admin-field">Canvas height<input type="number" min="1" value={editor.canvas_height} onChange={(event) => setEditor({ ...editor, canvas_height: event.target.value })} /></label>
+      <label className="admin-field">Canvas width<input type="number" value={editor.canvas_width} readOnly /></label>
+      <label className="admin-field">Canvas height<input type="number" value={editor.canvas_height} readOnly /></label>
       <label className="admin-field">Shot count<input type="number" min="1" value={editor.shot_count} onChange={(event) => setEditor({ ...editor, shot_count: event.target.value })} /></label>
       <label className="admin-field">Sort order<input type="number" value={editor.sort_order} onChange={(event) => setEditor({ ...editor, sort_order: event.target.value })} /></label>
       <label className="admin-field">Status<select value={String(editor.enabled)} onChange={(event) => setEditor({ ...editor, enabled: event.target.value === 'true' })}><option value="true">Published</option><option value="false">Disabled</option></select></label>

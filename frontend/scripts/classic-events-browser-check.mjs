@@ -7,10 +7,10 @@ import { createServer } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const output = process.env.NXBOOTH_SCREENSHOT_DIR || resolve(root, 'test/output/classic-events/browser')
+const output = process.env.NXBOOTH_SCREENSHOT_DIR || resolve(root, 'test/output/classic-strip-v2/browser')
 const { chromium, webkit, devices } = await import(process.env.NXBOOTH_PLAYWRIGHT_MODULE || 'playwright-core')
 const frames = JSON.parse(await readFile(resolve(root, 'backend/app/data/classic_event_frames.json'))).frames
-const layouts = [...[1, 2, 3].map((index) => ({ id: `classic-frame-00${index}`, name: `Classic Frame ${index}`, shot_count: index === 3 ? 3 : 4, canvas_width: 724, canvas_height: 2172, preview_url: `/api/classic/layouts/classic-frame-00${index}/preview` })), ...frames.map((item) => ({ ...item, preview_url: `/api/classic/layouts/${item.id}/preview` }))]
+const layouts = [...[1, 2, 3].map((index) => ({ id: `classic-frame-00${index}`, name: `Classic Frame ${index}`, shot_count: index === 3 ? 3 : 4, canvas_width: 1200, canvas_height: 3600, preview_url: `/api/classic/layouts/classic-frame-00${index}/preview` })), ...frames.map((item) => ({ ...item, preview_url: `/api/classic/layouts/${item.id}/preview` }))]
 const engine = process.env.NXBOOTH_BROWSER || 'chromium'
 const cases = engine === 'webkit' ? [{ name: 'ipad-safari', options: devices['iPad (gen 7)'] }] : [{ name: 'desktop', options: { viewport: { width: 1440, height: 1000 } } }, { name: 'android', options: devices['Pixel 7'] }, { name: 'ipad', options: devices['iPad (gen 7)'] }, { name: 'narrow-mobile', options: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true } }]
 const server = await createServer({ root: resolve(root, 'frontend'), configFile: false, plugins: [react()], cacheDir: '/tmp/nxbooth-classic-events-vite-cache', server: { host: '0.0.0.0', port: 5178, strictPort: true }, logLevel: 'silent' })
@@ -34,9 +34,9 @@ try {
       if (path === '/api/experiences') return json({ experiences: [] })
       if (path.startsWith('/api/advanced/')) return json([])
       const frame = frames.find((frame) => path === `/api/classic/layouts/${frame.id}/preview`)
-      if (frame) return route.fulfill({ contentType: 'image/png', body: await readFile(resolve(root, 'templates/_classic/events/previews', frame.filename)) })
+      if (frame) return route.fulfill({ contentType: 'image/png', body: await readFile(resolve(root, 'templates/_classic/events', dirname(frame.filename), 'previews', `${frame.id}.png`)) })
       const original = path.match(/classic-frame-00([123])\/preview/)
-      if (original) return route.fulfill({ contentType: 'image/png', body: await readFile(resolve(root, `templates/_classic/classic-frame${original[1]}.png`)) })
+      if (original) return route.fulfill({ contentType: 'image/png', body: await readFile(resolve(root, `templates/_classic/original-masters/previews/classic-frame${original[1]}.png`)) })
       return json({ authenticated: false })
     })
     await page.goto('http://127.0.0.1:5178/create?mode=classic', { waitUntil: 'networkidle' })

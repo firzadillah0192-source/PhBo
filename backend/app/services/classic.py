@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 from app.models import ClassicLayout
+from app.services.classic_format import MASTER_SIZE, MASTER_DPI
 
 
 # Bounding boxes of the enclosed fully transparent components in the supplied PNGs.
@@ -87,5 +88,6 @@ def compose_classic(layout: ClassicLayout, capture_bytes: list[bytes]) -> bytes:
         canvas.paste(fitted, (slot["x"], slot["y"]))
     canvas.alpha_composite(frame)
     output = io.BytesIO()
-    canvas.save(output, format="PNG")
+    options = {"dpi": (MASTER_DPI, MASTER_DPI)} if canvas.size == MASTER_SIZE else {}
+    canvas.save(output, format="PNG", **options)
     return output.getvalue()
