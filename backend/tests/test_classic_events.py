@@ -64,16 +64,38 @@ def test_event_asset_alpha_geometry_branding_and_composite(item):
 
 
 @pytest.fixture
-def seeded_event_frames(db_session):
+def seeded_event_frames(db_session, tmp_path):
     destination = get_settings().templates_dir / '_classic' / 'events'
+    existing = {
+        row.id: {column.name: getattr(row, column.name) for column in row.__table__.columns}
+        for row in db_session.query(ClassicLayout).filter(
+            ClassicLayout.id.in_([item['id'] for item in FRAMES])
+        ).all()
+    }
+    backup = tmp_path / 'original-event-assets'
+    if destination.exists():
+        shutil.copytree(destination, backup)
     shutil.copytree(ROOT / 'templates' / '_classic' / 'events', destination, dirs_exist_ok=True)
     seed_catalog(db_session)
     try:
         yield
     finally:
-        db_session.query(ClassicLayout).filter(ClassicLayout.id.in_([item['id'] for item in FRAMES])).delete(synchronize_session=False)
+        for item in FRAMES:
+            row = db_session.get(ClassicLayout, item['id'])
+            previous = existing.get(item['id'])
+            if previous:
+                if row is None:
+                    row = ClassicLayout(**previous)
+                    db_session.add(row)
+                else:
+                    for key, value in previous.items():
+                        setattr(row, key, value)
+            elif row is not None:
+                db_session.delete(row)
         db_session.commit()
         shutil.rmtree(destination)
+        if backup.exists():
+            shutil.copytree(backup, destination)
 
 
 def test_event_catalog_seed_idempotent_preview_and_admin_preserve_theme(client, db_session, seeded_event_frames):

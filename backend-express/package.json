@@ -1,0 +1,62 @@
+{
+  "name": "nxphotobooth-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev:migration": "tsx watch src/migration-server.ts",
+    "start:migration": "node --enable-source-maps dist/migration-server.js",
+    "worker:migration": "tsx src/migration-worker.ts",
+    "worker:migration:start": "node --enable-source-maps dist/migration-worker.js",
+    "dev": "tsx watch src/server.ts",
+    "dev:classic": "node scripts/dev-classic.mjs",
+    "start": "node --enable-source-maps dist/server.js",
+    "worker": "tsx src/worker.ts",
+    "test": "tsx --test test/api.test.ts test/models.test.ts test/engines.test.ts test/candidate.test.mjs test/customer-catalog.test.ts test/customer-account.test.ts test/upload-image-engine.test.ts test/customer-generation.test.ts test/customer-generation-worker.test.ts test/native-runtime.test.ts test/native-generation-runner.test.ts",
+    "test:integration": "node --env-file=.env --import tsx --test test/integration.test.ts",
+    "test:catalog-integration": "tsx --test test/customer-catalog.integration.test.ts",
+    "test:account-integration": "tsx --test test/customer-account.integration.test.ts",
+    "test:queue-integration": "tsx --test test/redis-generation-queue.integration.test.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "node scripts/candidate-database.mjs deploy",
+    "db:dev": "node scripts/candidate-database.mjs dev",
+    "db:studio": "node scripts/candidate-database.mjs studio",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "worker:start": "node --enable-source-maps dist/worker.js"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "google-auth-library": "^10.9.1",
+    "helmet": "^8.1.0",
+    "minio": "^8.0.5",
+    "multer": "^2.0.2",
+    "pg": "^8.16.0",
+    "redis": "^5.12.1",
+    "sharp": "^0.34.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^24.13.6",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "prisma": "^7.0.0",
+    "supertest": "^7.1.0",
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3"
+  }
+}

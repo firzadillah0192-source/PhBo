@@ -1,0 +1,10 @@
+# Private image-only helper for the Express runtime. The application modules and
+# production image dependencies come from the currently approved Python image;
+# this image adds only the candidate's HTTP adapter and Classic compositor.
+FROM photobooth-api:beta-f8a58a9-google-sso
+WORKDIR /engine
+COPY basic_api.py classic_compositor.py ./
+ENV PYTHONPATH=/engine:/app
+USER photobooth
+EXPOSE 8100
+CMD ["uvicorn", "basic_api:api", "--host", "0.0.0.0", "--port", "8100", "--no-access-log"]

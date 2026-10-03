@@ -1,0 +1,467 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum GenerationMode {
+  // Read-only legacy jobs; the API no longer accepts ORIGINAL.
+  ORIGINAL
+  CLASSIC
+  BASIC
+  ADVANCED
+}
+
+enum GenerationStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Frame {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(120)
+  objectId  String   @unique
+  width     Int
+  height    Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  generations Generation[]
+}
+
+model PhotoSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique
+  claimTokenHash  String
+  accessTokenHash String? @unique
+  claimedAt       DateTime?
+  expiresAt       DateTime
+  generationLimit Int
+  generationUsed  Int      @default(0)
+  createdAt       DateTime @default(now())
+  photos          Photo[]
+  generations     Generation[]
+  @@index([expiresAt])
+}
+
+model Photo {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  objectId  String   @unique
+  mimeType  String
+  width     Int
+  height    Int
+  sessionId String   @db.Uuid
+  position  Int      @default(0)
+  session   PhotoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([sessionId, position])
+}
+
+model Generation {
+  id          String @id @default(uuid()) @db.Uuid
+  sessionId   String @db.Uuid
+  session     PhotoSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  frameId     String? @db.Uuid
+  frame       Frame? @relation(fields: [frameId], references: [id], onDelete: Restrict)
+  mode        GenerationMode
+  status      GenerationStatus @default(QUEUED)
+  objectId    String?
+  error       String?
+  requestKey  String @db.VarChar(128)
+  templateId  String?
+  experienceId String?
+  engineConfig Json?
+  photoIds    String[] @default([]) @db.Uuid
+  attempts    Int @default(0)
+  leaseUntil  DateTime?
+  leaseToken  String? @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([sessionId, requestKey])
+  @@index([status, createdAt])
+}
+
+// Read mappings of the EXISTING NXBooth registry. These names do not create a
+// second catalog. Do not use Prisma migrate to replace the existing SQL schema.
+model NxTemplate {
+  id                     String @id @db.VarChar(128)
+  name                   String @db.VarChar(255)
+  description            String
+  image_path             String @db.VarChar(512)
+  marketing_preview_path String? @db.VarChar(512)
+  metadata_path          String? @db.VarChar(512)
+  enabled                Boolean
+  sort_order             Int
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  updated_by String @default("admin") @db.VarChar(128)
+  @@map("admin_templates")
+}
+
+model NxExperience {
+  id                              String @id @db.VarChar(128)
+  name                            String @db.VarChar(255)
+  description                     String
+  category                        String @db.VarChar(64)
+  thumbnail_path                  String? @db.VarChar(512)
+  status                          String @db.VarChar(16)
+  enabled                         Boolean
+  sort_order                      Int
+  compatible_frame_style_ids_json String?
+  compatible_ornament_ids_json    String?
+  max_ornaments                   Int
+  internal_prompt String
+  provider String @db.VarChar(64)
+  model String @db.VarChar(128)
+  reference_mode String @default("SINGLE_USER_IMAGE") @db.VarChar(64)
+  output_format String @default("PNG") @db.VarChar(16)
+  preview_status String @default("MISSING") @db.VarChar(16)
+  preview_error String?
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  updated_by String @default("admin") @db.VarChar(128)
+  @@map("admin_experiences")
+}
+
+model NxClassicLayout {
+  id                 String @id @db.VarChar(32)
+  slug               String @unique @db.VarChar(128)
+  name               String @db.VarChar(255)
+  canvas_width       Int
+  canvas_height      Int
+  shot_count         Int
+  layout_config_json String
+  frame_asset_path   String? @db.VarChar(512)
+  active             Boolean
+  sort_order         Int
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  @@map("classic_layouts")
+}
+
+model NxFrameStyle {
+  id          String @id @db.VarChar(128)
+  slug        String @unique @db.VarChar(128)
+  name        String @db.VarChar(255)
+  description String
+  prompt_fragment String
+  enabled     Boolean
+  sort_order  Int
+  @@map("advanced_frame_styles")
+}
+
+model NxOrnament {
+  id          String @id @db.VarChar(128)
+  slug        String @unique @db.VarChar(128)
+  name        String @db.VarChar(255)
+  description String
+  prompt_fragment String @default("")
+  enabled     Boolean
+  sort_order  Int
+  @@map("advanced_ornaments")
+}
+
+model NxAccount {
+  id                String @id @db.VarChar(32)
+  email             String @unique @db.VarChar(320)
+  password_hash     String @db.VarChar(512)
+  display_name      String? @db.VarChar(255)
+  avatar_url        String? @db.VarChar(1024)
+  status            String @default("active") @db.VarChar(24)
+  ai_quota_total    Int @default(5)
+  ai_quota_used     Int @default(0)
+  ai_quota_reserved Int @default(0)
+  created_at        DateTime @default(now()) @db.Timestamptz
+  updated_at        DateTime @default(now()) @db.Timestamptz
+  last_login_at     DateTime? @db.Timestamptz
+  last_activity_at  DateTime? @db.Timestamptz
+  @@map("accounts")
+}
+
+model NxGuestSession {
+  id                String @id @db.VarChar(64)
+  ai_quota_total    Int @default(2)
+  ai_quota_used     Int @default(0)
+  ai_quota_reserved Int @default(0)
+  created_at        DateTime @default(now()) @db.Timestamptz
+  updated_at        DateTime @default(now()) @db.Timestamptz
+  @@map("guest_sessions")
+}
+
+model NxAuthSession {
+  id            String @id @db.VarChar(64)
+  account_id    String? @db.VarChar(32)
+  is_admin      Boolean @default(false)
+  admin_user_id String? @db.VarChar(64)
+  admin_role    String? @db.VarChar(32)
+  created_at    DateTime @default(now()) @db.Timestamptz
+  expires_at    DateTime @db.Timestamptz
+  last_seen_at  DateTime @default(now()) @db.Timestamptz
+  @@map("auth_sessions")
+}
+
+model NxAuthIdentity {
+  id               String @id @db.VarChar(32)
+  account_id       String @db.VarChar(32)
+  provider         String @db.VarChar(32)
+  provider_subject String @db.VarChar(255)
+  email            String? @db.VarChar(320)
+  created_at       DateTime @default(now()) @db.Timestamptz
+  last_login_at    DateTime? @db.Timestamptz
+  @@unique([provider, provider_subject], map: "uq_auth_identity_provider_subject")
+  @@map("auth_identities")
+}
+
+model NxCreditLedger {
+  id                    String @id @db.VarChar(32)
+  user_id               String? @db.VarChar(32)
+  guest_id              String? @db.VarChar(64)
+  amount                Int
+  type                  String @db.VarChar(64)
+  reason                String @default("")
+  related_generation_id String? @db.VarChar(32)
+  admin_actor_id        String? @db.VarChar(64)
+  idempotency_key       String @unique @db.VarChar(255)
+  metadata_json         String?
+  created_at            DateTime @default(now()) @db.Timestamptz
+  @@map("credit_ledger")
+}
+
+// Ownership fields used during signup. Full ingestion/generation models are
+// migrated separately; updateMany never touches the other existing columns.
+model NxUpload {
+  id         String @id @db.VarChar(32)
+  account_id String? @db.VarChar(32)
+  guest_id   String? @db.VarChar(64)
+  created_at        DateTime @default(now()) @db.Timestamptz
+  storage_path      String @db.VarChar(512)
+  filename          String @db.VarChar(255)
+  content_type      String @db.VarChar(64)
+  size_bytes        Int
+  width             Int
+  height            Int
+  format            String @db.VarChar(16)
+  sha256            String @db.VarChar(64)
+  validation_status String @default("VALID") @db.VarChar(16)
+  validation_detail String?
+  @@map("uploads")
+}
+
+model NxGenerationJob {
+  id         String @id @db.VarChar(32)
+  account_id String? @db.VarChar(32)
+  guest_id   String? @db.VarChar(64)
+  mode       String @default("ADVANCED") @db.VarChar(16)
+  created_at              DateTime @default(now()) @db.Timestamptz
+  updated_at              DateTime @default(now()) @db.Timestamptz
+  upload_id               String @db.VarChar(32)
+  template_id             String @db.VarChar(128)
+  experience_id           String? @db.VarChar(128)
+  layout_id               String? @db.VarChar(32)
+  capture_upload_ids_json String?
+  frame_style_id          String? @db.VarChar(128)
+  ornament_ids_json       String?
+  state                   String @default("QUEUED") @db.VarChar(16)
+  error_code              String? @db.VarChar(64)
+  error_message           String?
+  provider                String? @db.VarChar(64)
+  model                   String? @db.VarChar(128)
+  started_at              DateTime? @db.Timestamptz
+  finished_at             DateTime? @db.Timestamptz
+  @@map("generation_jobs")
+}
+
+model NxQuotaReservation {
+  id         String @id @db.VarChar(32)
+  job_id     String @unique @db.VarChar(32)
+  account_id String? @db.VarChar(32)
+  guest_id   String? @db.VarChar(64)
+  amount     Int @default(1)
+  status     String @default("RESERVED") @db.VarChar(16)
+  created_at DateTime @default(now()) @db.Timestamptz
+  settled_at DateTime? @db.Timestamptz
+  @@map("quota_reservations")
+}
+
+model NxGenerationEvent {
+  id            String @id @db.VarChar(32)
+  job_id        String @db.VarChar(32)
+  event_type    String @db.VarChar(64)
+  detail        String @default("")
+  metadata_json String?
+  created_at    DateTime @default(now()) @db.Timestamptz
+  @@map("generation_events")
+}
+
+model NxResult {
+  id           String @id @db.VarChar(32)
+  deleted_at   DateTime? @db.Timestamptz
+  created_at   DateTime @default(now()) @db.Timestamptz
+  job_id       String @unique @db.VarChar(32)
+  template_id  String @db.VarChar(128)
+  storage_path String @db.VarChar(512)
+  content_type String @db.VarChar(64)
+  size_bytes   Int
+  width        Int
+  height       Int
+  sha256       String @db.VarChar(64)
+  provider     String? @db.VarChar(64)
+  model        String? @db.VarChar(128)
+  @@map("results")
+}
+
+model NxResultClaim {
+  id                          String @id @db.VarChar(32)
+  result_id                   String @db.VarChar(32)
+  token_hash                  String @unique(map: "uq_result_claims_token_hash") @db.VarChar(64)
+  created_at                  DateTime @default(now()) @db.Timestamptz
+  expires_at                  DateTime @db.Timestamptz
+  first_accessed_at           DateTime? @db.Timestamptz
+  last_accessed_at            DateTime? @db.Timestamptz
+  download_count              Int @default(0)
+  is_revoked                  Boolean @default(false)
+  created_by_session_id       String? @db.VarChar(128)
+  created_by_kiosk_session_id String? @db.VarChar(128)
+  metadata_json               String?
+  @@map("result_claims")
+}
+
+model NxWorkerLease {
+  queue_kind String @db.VarChar(16)
+  job_id String @db.VarChar(32)
+  owner_token String @db.VarChar(64)
+  expires_at DateTime @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  @@id([queue_kind, job_id])
+  @@map("generation_worker_leases")
+}
+
+model NxProviderRun {
+  id String @id @db.VarChar(32)
+  generation_job_id String @db.VarChar(32)
+  account_id String? @db.VarChar(32)
+  provider_name String @db.VarChar(64)
+  provider_model String? @db.VarChar(128)
+  requested_model String? @db.VarChar(128)
+  provider_reported_model String? @db.VarChar(128)
+  provider_request_id String? @db.VarChar(255)
+  router_request_id String? @db.VarChar(255)
+  upstream_request_id String? @db.VarChar(255)
+  provider_account_label String? @db.VarChar(255)
+  provider_account_id String? @db.VarChar(255)
+  provider_strategy_hint String? @db.VarChar(255)
+  routing_strategy String? @db.VarChar(255)
+  provider_usage_raw_json String?
+  usage_available Boolean?
+  input_tokens Int?
+  output_tokens Int?
+  input_text_tokens Int?
+  input_image_tokens Int?
+  output_image_tokens Int?
+  total_tokens Int?
+  billable_units Int?
+  provider_reported_cost Float?
+  upstream_status String @db.VarChar(32)
+  upstream_error_code String? @db.VarChar(128)
+  upstream_error_message String?
+  retry_count Int @default(0)
+  attempt_count Int?
+  failover_count Int?
+  request_started_at DateTime @db.Timestamptz
+  request_completed_at DateTime? @db.Timestamptz
+  total_duration_ms Int?
+  router_duration_ms Int?
+  application_duration_ms Int?
+  created_at DateTime @default(now()) @db.Timestamptz
+  @@map("generation_provider_runs")
+}
+
+model NxAdminUser {
+  id String @id @db.VarChar(64)
+  name String @db.VarChar(255)
+  email String? @db.VarChar(320)
+  role String @default("operator") @db.VarChar(32)
+  is_active Boolean @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  @@map("admin_users")
+}
+
+model NxAuditLog {
+  id String @id @db.VarChar(32)
+  admin_actor_id String @db.VarChar(64)
+  action String @db.VarChar(96)
+  target_type String @db.VarChar(64)
+  target_id String @db.VarChar(128)
+  reason String @default("")
+  metadata_json String?
+  created_at DateTime @default(now()) @db.Timestamptz
+  @@map("admin_audit_log")
+}
+
+model NxPlan {
+  id String @id @db.VarChar(64)
+  code String @unique @db.VarChar(64)
+  name String @db.VarChar(255)
+  description String @default("")
+  monthly_ai_credits Int @default(0)
+  billing_period String @default("month") @db.VarChar(32)
+  price_amount Int?
+  currency String? @db.VarChar(8)
+  is_active Boolean @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  @@map("subscription_plans")
+}
+
+model NxSubscription {
+  id String @id @db.VarChar(32)
+  user_id String @db.VarChar(32)
+  plan_id String @db.VarChar(64)
+  status String @default("active") @db.VarChar(24)
+  source String @default("manual") @db.VarChar(32)
+  starts_at DateTime @default(now()) @db.Timestamptz
+  current_period_start DateTime @default(now()) @db.Timestamptz
+  current_period_end DateTime? @db.Timestamptz
+  cancel_at_period_end Boolean @default(false)
+  external_customer_id String? @db.VarChar(255)
+  external_subscription_id String? @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  @@map("subscriptions")
+}
+
+model NxPreviewSource {
+  id String @id @db.VarChar(128)
+  source_type String @default("portrait") @db.VarChar(32)
+  storage_path String? @db.VarChar(512)
+  content_type String? @db.VarChar(64)
+  active Boolean @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  updated_by String @default("admin") @db.VarChar(128)
+  @@map("preview_sources")
+}
+
+model NxPreviewJob {
+  id String @id @db.VarChar(32)
+  experience_id String @db.VarChar(128)
+  source_id String @db.VarChar(128)
+  purpose String @default("admin_preview_generation") @db.VarChar(64)
+  state String @default("QUEUED") @db.VarChar(16)
+  provider String? @db.VarChar(64)
+  model String? @db.VarChar(128)
+  output_path String? @db.VarChar(512)
+  error_message String?
+  requested_by String @default("admin") @db.VarChar(128)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+  started_at DateTime? @db.Timestamptz
+  finished_at DateTime? @db.Timestamptz
+  @@map("preview_generation_jobs")
+}

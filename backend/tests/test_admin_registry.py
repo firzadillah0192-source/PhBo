@@ -226,7 +226,9 @@ def test_worker_uses_latest_database_prompt_for_new_job(
     assert prompt.startswith('EXPERIENCE — PRIMARY VISUAL AUTHORITY\nprompt edited in Admin MVP')
     assert 'FRAME STYLE' in prompt
     assert 'PRINT AND COMPOSITION' in prompt
-    assert 'BRANDING SAFE AREA' in prompt
+    assert 'FRAME FOOTER BRANDING' in prompt
+    assert '"NXBooth"' in prompt
+    assert '"Powered by GenNexByte"' in prompt
 
 
 def test_worker_uses_latest_template_image_and_missing_asset_fails(
