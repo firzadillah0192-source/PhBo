@@ -1,0 +1,23 @@
+{
+  "id": "cyberpunk-neon-man-001",
+  "name": "Cyberpunk Neon · Man",
+  "description": "Man. Head-to-mid-thigh refined black techwear in a neon cyan and magenta futuristic city; detailed gunmetal frame with cyan and magenta lighting. Complete four-sided frame and integrated NXBooth footer with Powered by GenNexByte branding.",
+  "width": 1024,
+  "height": 1536,
+  "asset_filename": "template.png",
+  "preview_filename": "preview.png",
+  "face_region": [
+    416,
+    317,
+    171,
+    212
+  ],
+  "prompt": "Create a template-dominant head-to-mid-thigh photobooth portrait. Man. Head-to-mid-thigh refined black techwear in a neon cyan and magenta futuristic city; detailed gunmetal frame with cyan and magenta lighting. Complete four-sided frame and integrated NXBooth footer with Powered by GenNexByte branding. Keep true eye-level perspective, natural proportions, readable face, complete hairstyle and both thighs visible above the branding footer. Use the customer photo only as the identity reference; preserve their recognizable facial features. Preserve the template's costume, setting, pose, frame and NXBooth branding. Do not copy the customer's clothing or background. No close-up, waist-up crop, low-angle view, extra people, or additional brands.",
+  "composition": "head-to-mid-thigh",
+  "camera": "eye-level",
+  "branding": {
+    "footer": "NXBooth",
+    "credit": "Powered by GenNexByte"
+  },
+  "asset_generation_prompt": "Use case: compositing. Input 1 is the ORIGINAL NXBooth template: exact reference for layout, amount of body visible and branding. Input 2 is the edit target: preserve its theme but fix close-up composition and missing frame. Create ONE final premium photorealistic photobooth template, portrait 1024x1536 2:3. Subject: young adult clean-shaven Indonesian man, no beard moustache or stubble, black tailored techwear, neon cyan magenta futuristic city alley. All faces must have natural INDONESIAN/SOUTHEAST ASIAN features, realistic skin and clear readable face, confident calm expression. TRUE EYE-LEVEL camera, natural longer lens, natural anatomy. CRITICAL composition: standing HEAD TO MID-THIGH portrait INSIDE the frame. Show complete hair/head, shoulders, chest, waist, hips, BOTH thighs and hands naturally at the sides. Person height smaller like reference; head approximately y250-480 and thighs extend to y1200 in 1536 canvas. Not a face close-up, not waist-up, NOT head-to-boots. No shoes required. Rebuild a substantial intricate detailed restrained gunmetal technological frame with cyan and magenta neon, premium reference-level finish on ALL FOUR EDGES. Top title panel says exactly \"CYBERPUNK NEON\". Bottom branding plate below the visible thighs says exactly \"NXBOOTH\" (N X B O O T H), with smaller \"POWERED BY GENNEXBYTE\". Bottom event/date panel like image 1 says \"EVENT NAME\" and \"DATE\". Clear accurate letters. The complete title and bottom plate are within canvas, no cropped frame. Frame complements selected theme; integrate photograph within it. Premium cinematic photography, believable costumes and surroundings, no plastic skin, no game render, no low-angle, no exaggerated shoulders, no weapons, no extra people, no other brands. Preserve hijab only where requested, all hair covered on hijab variants.\nTargeted final edit: Use case: precise-object-edit. Make ONE single correction to this finished template: make the man's face COMPLETELY CLEAN-SHAVEN. Remove ALL moustache, beard, goatee and stubble from upper lip, chin, jaw and cheeks. Natural clean Indonesian/Southeast Asian male facial features and realistic bare skin. Keep his identity, head size, expression, lighting, natural skin pores. Preserve EVERYTHING else pixel-consistently: head-to-mid-thigh framing, hands, costume, background, title CYBERPUNK NEON, ALL frame ornamentation and exact NXBOOTH and POWERED BY GENNEXBYTE footer lettering, event/date strip. Output same portrait 1024x1536."
+}
