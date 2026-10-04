@@ -85,21 +85,24 @@ export class AdminCatalogService {
     const mimes: Record<string, string[]> = { jpeg: ['image/jpeg', 'image/jpg'], png: ['image/png'], webp: ['image/webp'] };
     if (!info.format || !mimes[info.format]?.includes(file.mimetype.toLowerCase()) || !info.width || !info.height || Math.min(info.width, info.height) < this.config.minDimension || Math.max(info.width, info.height) > this.config.maxDimension) throw new AppError(422, 'VALIDATION_FAILED', 'Image format or dimensions are invalid.');
     const bytes = await image.png().toBuffer();
+    const object = await this.assets.store(target, bytes);
+    if (object) return object;
     await mkdir(this.config.tmpDir, { recursive: true });
     const temporary = join(this.config.tmpDir, `${legacyId()}.png`);
     try { await writeFile(temporary, bytes, { flag: 'wx', mode: 0o600 }); await mkdir(join(target, '..'), { recursive: true }); await rename(temporary, target); }
     finally { await unlink(temporary).catch(() => {}); }
+    return target;
   }
   async replaceAsset(kind: 'experience' | 'template', id: string, purpose: 'image' | 'preview' | 'thumbnail', file: Express.Multer.File | undefined, actor: AdminPrincipal) {
     slug.parse(id);
     if (kind === 'experience') {
       if (!await this.model.read(db => db.nxExperience.findUnique({ where: { id } }))) throw notFound();
-      const target = join(this.config.templatesDir, '_experience_thumbnails', `${id}.png`); await this.saveImage(file, target);
+      const target = await this.saveImage(file, join(this.config.templatesDir, '_experience_thumbnails', `${id}.png`));
       const row = await this.model.transaction(async tx => { const row = await tx.nxExperience.update({ where: { id }, data: { thumbnail_path: target, preview_status: 'READY', preview_error: null, updated_at: new Date(), updated_by: actor.actor_id } }); await this.model.audit(tx, actor, 'experience_thumbnail_changed', 'experience', id); return row; });
       return this.experienceResponse(row);
     }
     if (!await this.model.read(db => db.nxTemplate.findUnique({ where: { id } }))) throw notFound();
-    const target = join(this.config.templatesDir, id, purpose === 'image' ? 'template.png' : 'preview.png'); await this.saveImage(file, target);
+    const target = await this.saveImage(file, join(this.config.templatesDir, id, purpose === 'image' ? 'template.png' : 'preview.png'));
     const row = await this.model.transaction(async tx => { const row = await tx.nxTemplate.update({ where: { id }, data: { ...(purpose === 'image' ? { image_path: target } : { marketing_preview_path: target }), updated_at: new Date(), updated_by: actor.actor_id } }); await this.model.audit(tx, actor, `template_${purpose}_changed`, 'template', id); return row; });
     return this.templateResponse(row);
   }
@@ -111,13 +114,16 @@ export class AdminCatalogService {
   async removePreview(kind: string, id: string, actor: AdminPrincipal) {
     const row = kind === 'experience' ? await this.model.read(db => db.nxExperience.findUnique({ where: { id } })) : await this.model.read(db => db.nxTemplate.findUnique({ where: { id } }));
     if (!row) throw notFound();
-    const path = await this.assets.file(kind === 'experience' ? (row as NxExperience).thumbnail_path : (row as NxTemplate).marketing_preview_path);
+    const reference = kind === 'experience' ? (row as NxExperience).thumbnail_path : (row as NxTemplate).marketing_preview_path;
+    const path = await this.assets.file(reference);
     // Imported assets can be shared between records. Removing a preview must
     // never delete a template master or a file owned by another catalog item.
     const canonical = resolve(kind === 'experience' ? join(this.config.templatesDir, '_experience_thumbnails', `${id}.png`) : join(this.config.templatesDir, id, 'preview.png'));
-    const referenced = path ? await this.model.read(async db => (await db.nxTemplate.count({ where: { OR: [{ image_path: path }, { marketing_preview_path: path, ...(kind === 'template' ? { id: { not: id } } : {}) }] } })) + (await db.nxExperience.count({ where: { thumbnail_path: path, ...(kind === 'experience' ? { id: { not: id } } : {}) } }))) : 0;
+    const aliases = [reference, canonical, this.assets.objectReference(canonical)].filter((value): value is string => Boolean(value));
+    const referenced = path ? await this.model.read(async db => (await db.nxTemplate.count({ where: { OR: [{ image_path: { in: aliases } }, { marketing_preview_path: { in: aliases }, ...(kind === 'template' ? { id: { not: id } } : {}) }] } })) + (await db.nxExperience.count({ where: { thumbnail_path: { in: aliases }, ...(kind === 'experience' ? { id: { not: id } } : {}) } }))) : 0;
     await this.model.transaction(async tx => { if (kind === 'experience') await tx.nxExperience.update({ where: { id }, data: { thumbnail_path: null, preview_status: 'MISSING', preview_error: null } }); else await tx.nxTemplate.update({ where: { id }, data: { marketing_preview_path: null } }); await this.model.audit(tx, actor, `${kind}_preview_removed`, kind, id); });
     if (path && resolve(path) === canonical && !referenced) await unlink(path).catch(error => { if (error.code !== 'ENOENT') throw error; });
+    if (reference?.startsWith('minio://catalog/') && reference === this.assets.objectReference(canonical) && !referenced) await this.assets.removeObject(reference);
   }
   async publishReady(actor: AdminPrincipal) {
     const ids: string[] = [];
@@ -145,7 +151,7 @@ export class AdminCatalogService {
     const row = await this.model.read(db => db.nxClassicLayout.findUnique({ where: { id } })); if (!row || !file) throw notFound();
     await mkdir(this.config.tmpDir, { recursive: true }); const candidate = join(this.config.tmpDir, `${legacyId()}.png`);
     const target = join(this.config.templatesDir, '_classic', `${id}.png`);
-    try { await writeFile(candidate, file.buffer, { flag: 'wx' }); await this.assets.validateLayout({ ...row, frame_asset_path: candidate }); await mkdir(join(target, '..'), { recursive: true }); await rename(candidate, target); return this.layoutResponse(await this.model.read(db => db.nxClassicLayout.update({ where: { id }, data: { frame_asset_path: target } }))); }
+    try { await writeFile(candidate, file.buffer, { flag: 'wx' }); await this.assets.validateLayout({ ...row, frame_asset_path: candidate }); const object = await this.assets.store(target, file.buffer); if (!object) { await mkdir(join(target, '..'), { recursive: true }); await rename(candidate, target); } return this.layoutResponse(await this.model.read(db => db.nxClassicLayout.update({ where: { id }, data: { frame_asset_path: object || target } }))); }
     catch (error) { if (error instanceof CatalogAssetError) throw new AppError(422, 'CLASSIC_LAYOUT_INVALID', 'Frame image does not match the reviewed layout.'); throw error; }
     finally { await unlink(candidate).catch(() => {}); }
   }

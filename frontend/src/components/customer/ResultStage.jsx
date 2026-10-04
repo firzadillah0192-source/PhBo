@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { createResultClaim, getResult, resultDownloadUrl, resultImageUrl, uploadPreviewUrl } from '../../api.js'
+import PrivateImage from './PrivateImage.jsx'
+const defaultDelivery = { createResultClaim, getResult, resultDownloadUrl, resultImageUrl, uploadPreviewUrl }
 
 function claimTokenFromUrl(claimUrl) {
   try {
@@ -11,7 +13,8 @@ function claimTokenFromUrl(claimUrl) {
   }
 }
 
-export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLook, kiosk = false, resetSeconds = 90 }) {
+export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLook, kiosk = false, resetSeconds = 90, delivery = defaultDelivery }) {
+  const { createResultClaim, getResult, resultDownloadUrl, resultImageUrl, uploadPreviewUrl } = delivery
   const [revealed, setRevealed] = useState(false)
   const [comparing, setComparing] = useState(false)
   const [split, setSplit] = useState(50)
@@ -27,7 +30,7 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
     setPrintDownload(null)
     if (mode === 'CLASSIC') getResult(resultId).then((metadata) => { if (alive) setPrintDownload(metadata.print_download_url || null) }).catch(() => {})
     return () => { alive = false }
-  }, [resultId, mode])
+  }, [resultId, mode, delivery])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setRevealed(true), 70)
@@ -62,7 +65,7 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
       if (alive) setClaimBusy(false)
     })
     return () => { alive = false }
-  }, [kiosk, resultId])
+  }, [kiosk, resultId, delivery])
 
   useEffect(() => {
     if (!kiosk) return undefined
@@ -122,7 +125,7 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
           <p>Scan to save this photo to your phone.</p>
         </div>
         <figure className="kiosk-result-photo">
-          <img src={result} alt="Your finished Photobooth AI portrait" />
+          <PrivateImage id={resultId} src={result} resolve={delivery.resolveResultImage} alt="Your finished Photobooth AI portrait" />
         </figure>
         <div className="kiosk-claim-panel">
           {claim ? <QRCodeSVG value={claim.qr_payload} size={238} level="M" includeMargin bgColor="#ffffff" fgColor="#111216" title="Scan to save your Photobooth AI photo" /> : <div className="kiosk-qr-placeholder">{claimBusy ? 'Preparing secure QR...' : 'QR unavailable'}</div>}
@@ -146,7 +149,7 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
         {original && <button className={`compare-toggle ${comparing ? 'is-active' : ''}`} onClick={() => setComparing((value) => !value)}>{comparing ? 'Close comparison' : 'Compare before / after'}</button>}
       </header>
       <figure className={`result-frame ${comparing ? 'is-comparing' : ''}`}>
-        <img src={result} alt="Your finished Photobooth AI portrait" />
+        <PrivateImage id={resultId} src={result} resolve={delivery.resolveResultImage} alt="Your finished Photobooth AI portrait" />
         {comparing && original && (
           <>
             <div className="compare-before" style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}>

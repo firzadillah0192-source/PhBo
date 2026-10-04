@@ -1,6 +1,7 @@
 /** Single frontend-to-backend API contract. Cookies carry guest/account/admin sessions. */
 
 const BASE = '/api'
+import { generationRequestKey,associateGenerationRequest,settleGenerationRequest } from './generationRequest.js'
 
 class ApiError extends Error {
   constructor(status, errorCode, message, detail) {
@@ -69,7 +70,7 @@ export function getUpload(uploadId) {
   return request('/uploads/' + encodeURIComponent(uploadId))
 }
 
-export function createGeneration(uploadId, mode, templateId = null, experienceId = null, options = {}) {
+export async function createGeneration(uploadId, mode, templateId = null, experienceId = null, options = {}) {
   const body = { upload_id: uploadId, mode }
   if (mode === 'CLASSIC') {
     body.layout_id = options.layoutId
@@ -81,10 +82,17 @@ export function createGeneration(uploadId, mode, templateId = null, experienceId
     body.frame_style_id = options.frameStyleId
     body.ornament_ids = options.ornamentIds || []
   }
-  return request('/generations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const key = generationRequestKey(body)
+  const job = await request('/generations', { method: 'POST', headers: { 'Content-Type': 'application/json','Idempotency-Key': key }, body: JSON.stringify(body) })
+  associateGenerationRequest(key,job.job_id)
+  return job
 }
 
-export function getGeneration(jobId) { return request('/generations/' + encodeURIComponent(jobId)) }
+export async function getGeneration(jobId) {
+  const job = await request('/generations/' + encodeURIComponent(jobId))
+  settleGenerationRequest(jobId,job.state)
+  return job
+}
 export function getResult(resultId) { return request('/results/' + encodeURIComponent(resultId)) }
 export function startKioskSession(newRun = false) {
   return request('/kiosk/session' + (newRun ? '?new_run=true' : ''), { method: 'POST' })

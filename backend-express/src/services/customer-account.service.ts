@@ -101,7 +101,7 @@ export class CustomerAccountService {
       const result = await this.model.creationResult(job.id);
       const experience = job.experience_id ? await this.model.creationExperience(job.experience_id) : null;
       const template = job.template_id ? await this.model.creationTemplate(job.template_id) : null;
-      const available = result && this.assets ? Boolean(await this.assets.file(result.storage_path)) : false;
+      const available = result && !result.deleted_at && this.assets ? await this.assets.exists(result.storage_path) : false;
       creations.push({ result_id: result?.id ?? null, id: result?.id ?? job.id, job_id: job.id, mode: job.mode,
         title: experience?.name || template?.name || job.experience_id || job.template_id || 'Photobooth creation', status: job.state,
         experience_id: job.experience_id, template_id: job.template_id || null, image_url: available ? `/api/results/${result!.id}/image` : null,

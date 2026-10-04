@@ -1,13 +1,13 @@
-# Express migration candidate
+# Express migration and production record
 
 Imported from `origin/master` of `firzadillah0192-source/PhBo`, commit `4ee0aa9`.
-This folder is an isolated migration candidate, not the backend serving NXBooth.
-The existing frontend, Python API, databases, queues, and deployment configuration remain active.
+This folder contains the native Express backend now serving NXBooth in production.
+The React frontend and existing PostgreSQL, Redis rate-limit, and MinIO services remain active.
 
 ## Target
 
-Express + TypeScript owns the HTTP API, customer workflows, generation queue, and
-worker, following the route → controller → service → model structure. BASIC and
+Express + TypeScript owns the production HTTP API, customer workflows, generation
+queue, and worker, following the route → controller → service → model structure. BASIC and
 ADVANCED both use the NineRouter provider abstraction and reserve one AI credit.
 Python remains a private image-processing helper for upload normalization, print
 formatting, and the separate Classic compositor; it does not generate BASIC images.
@@ -193,8 +193,7 @@ Dispose only the dedicated test containers after validation.
 
 ### Cutover blockers
 
-Live-provider identity/branding quality, physical camera and iPad Safari acceptance,
-final storage permission review, and operator-approved backup/cutover remain manual.
-Keep the current frontend and production services on the existing backend until
-those checks are approved. No deployment or production SQL is authorized by this
-candidate implementation.
+Physical camera and iPad Safari acceptance and live-provider identity/branding
+quality remain manual. The Express runtime, MinIO storage, Kiosk routes, signed
+delivery and PostgreSQL generation dispatch are active; the deployed release and
+database backup are recorded in [NATIVE_KIOSK_RELEASE.md](docs/NATIVE_KIOSK_RELEASE.md).

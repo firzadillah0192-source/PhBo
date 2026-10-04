@@ -16,7 +16,12 @@
     "dev:classic": "node scripts/dev-classic.mjs",
     "start": "node --enable-source-maps dist/server.js",
     "worker": "tsx src/worker.ts",
-    "test": "tsx --test test/api.test.ts test/models.test.ts test/engines.test.ts test/candidate.test.mjs test/customer-catalog.test.ts test/customer-account.test.ts test/upload-image-engine.test.ts test/customer-generation.test.ts test/customer-generation-worker.test.ts test/native-runtime.test.ts test/native-generation-runner.test.ts",
+    "test": "tsx --test test/api.test.ts test/models.test.ts test/engines.test.ts test/candidate.test.mjs test/customer-catalog.test.ts test/customer-account.test.ts test/upload-image-engine.test.ts test/customer-generation.test.ts test/customer-generation-worker.test.ts test/native-runtime.test.ts test/native-generation-runner.test.ts test/native-object-storage.test.ts test/catalog-object-storage.test.ts test/generation-request.test.ts test/native-kiosk.test.ts test/postgres-generation-queue.test.ts test/native-signed-delivery.test.ts",
+    "test:request-integration": "tsx --test test/generation-request.integration.test.ts",
+    "test:kiosk": "tsx --test test/native-kiosk.test.ts",
+    "test:kiosk-integration": "tsx --test test/generation-request.integration.test.ts",
+    "storage:migrate": "tsx src/migrate-storage.ts",
+    "test:storage-integration": "tsx --test test/native-object-storage.test.ts",
     "test:integration": "node --env-file=.env --import tsx --test test/integration.test.ts",
     "test:catalog-integration": "tsx --test test/customer-catalog.integration.test.ts",
     "test:account-integration": "tsx --test test/customer-account.integration.test.ts",
@@ -27,7 +32,8 @@
     "db:studio": "node scripts/candidate-database.mjs studio",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "worker:start": "node --enable-source-maps dist/worker.js"
+    "worker:start": "node --enable-source-maps dist/worker.js",
+    "test:postgres-queue-integration": "tsx --test test/generation-request.integration.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.0.0",

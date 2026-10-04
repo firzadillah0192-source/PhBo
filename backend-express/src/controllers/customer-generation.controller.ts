@@ -12,7 +12,7 @@ export function customerGenerationController(service: CustomerGenerationService,
     return found;
   };
   return {
-    create: async (req, res) => { res.status(202).json(await service.create(req.body, await identity(req, res))); },
+    create: async (req, res) => { res.status(202).json(await service.create(req.body, await identity(req, res), req.get('Idempotency-Key'))); },
     status: async (req, res) => { res.json(await service.status(req.params.id, await identity(req, res))); },
   };
 }

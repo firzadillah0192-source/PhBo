@@ -1,7 +1,7 @@
 import React from 'react'
 import { uploadPreviewUrl } from '../../api.js'
 
-export default function ProcessingStage({ job, upload }) {
+export default function ProcessingStage({ job, upload, previewUrl }) {
   const state = job?.state || 'QUEUED'
   const copy = state === 'QUEUED'
     ? ['Preparing your portrait', 'The studio is setting the light and opening your place in the queue.']
@@ -15,7 +15,7 @@ export default function ProcessingStage({ job, upload }) {
         <span className="processing-orbit orbit-one" aria-hidden="true" />
         <span className="processing-orbit orbit-two" aria-hidden="true" />
         <figure>
-          {uploadId && <img src={uploadPreviewUrl(uploadId)} alt="Your portrait being prepared" />}
+          {(uploadId || previewUrl) && <img src={previewUrl || uploadPreviewUrl(uploadId)} alt="Your portrait being prepared" />}
           <i className="processing-light" />
           <span className="processing-depth" />
           <span className="processing-mist" />

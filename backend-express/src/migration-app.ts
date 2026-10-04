@@ -19,8 +19,10 @@ import { customerGenerationRoutes } from './routes/customer-generation.routes.js
 import type { NativeAdminServices } from './controllers/admin.controller.js';
 import { nativeAdminRoutes } from './routes/admin.routes.js';
 import type { NativeRateLimitService } from './services/native-rate-limit.service.js';
+import type { NativeKioskService } from './services/native-kiosk.service.js';
+import { nativeKioskRoutes } from './routes/native-kiosk.routes.js';
 
-export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object> };
+export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService };
 
 // Candidate /api contract, independent of the incompatible upstream /api/v1 API.
 // Unported routes remain unavailable; there is no forwarding to FastAPI.
@@ -46,6 +48,7 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
   });
   app.use(express.json({ limit: '32kb' }));
   app.use(cookieParser());
+  if (config.kiosk) app.use('/api/v1',nativeKioskRoutes(config.kiosk,catalog,config.uploadMaxBytes ?? 12*1024*1024));
   app.get('/health', (_req, res) => { res.json({ status: 'ok', service: 'nxbooth-express' }); });
   if(config.health)app.get('/api/health',async(_req,res)=>{res.json(await config.health!());});
   if(config.admin)app.use('/api/admin',nativeAdminRoutes(config.admin,config.uploadMaxBytes??12*1024*1024));

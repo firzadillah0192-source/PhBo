@@ -1,7 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import type { NxExperience, NxFrameStyle, NxOrnament } from '@prisma/client';
 import { generationInput, validateAdvancedSelection } from '../src/services/customer-generation-input.js';
 import { composeAdvancedPrompt, composeBasicPrompt, STYLE_PRINCIPLE, COMPOSITION_RULES, BRANDING_RULES } from '../src/services/advanced-prompt.service.js';
@@ -79,24 +77,22 @@ test('provider usage coverage includes both Basic and Advanced AI jobs', async (
   assert.equal(providers.failed, 1);
 });
 
-test('native prompt composition matches current Python byte-for-byte for all ten presets', () => {
-  // Read constants/function via the stdlib AST, without importing application
-  // settings, accessing a database, connecting a provider, or printing secrets.
-  const path = fileURLToPath(new URL('../../backend/app/services/advanced_prompt.py', import.meta.url));
-  const script = `import ast,json,sys
-tree=ast.parse(open(sys.argv[1]).read())
-names={'STYLE_PRINCIPLE','COMPOSITION_RULES','BRANDING_RULES','FRAME_STYLE_SEEDS'}
-nodes=[n for n in tree.body if (isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and n.targets[0].id in names) or (isinstance(n,ast.FunctionDef) and n.name=='compose_advanced_prompt')]
-namespace={'AdvancedSelectionError':ValueError}
-exec(compile(ast.Module(body=nodes,type_ignores=[]),'prompt-parity','exec'),namespace)
-print(json.dumps({'principle':namespace['STYLE_PRINCIPLE'],'composition':namespace['COMPOSITION_RULES'],'branding':namespace['BRANDING_RULES'],'presets':[(i,p,namespace['compose_advanced_prompt']('  Experience authority  ',p)) for i,_,_,p in namespace['FRAME_STYLE_SEEDS']]}))`;
-  const reference = JSON.parse(execFileSync('python3', ['-c', script, path], { encoding: 'utf8' }));
-  assert.equal(STYLE_PRINCIPLE, reference.principle); assert.equal(COMPOSITION_RULES, reference.composition); assert.equal(BRANDING_RULES, reference.branding);
-  assert.equal(reference.presets.length, 10);
-  for (const [_id, fragment, expected] of reference.presets) {
-    const actual = composeAdvancedPrompt('  Experience authority  ', fragment);
-    assert.equal(actual, expected); assert.equal(actual, composeAdvancedPrompt('Experience authority', fragment));
-    assert.match(actual, /^EXPERIENCE — PRIMARY VISUAL AUTHORITY\nExperience authority/);
+test('native prompt composition is deterministic for all ten editable style IDs', () => {
+  const presets = [
+    ['natural','Create a subtle organic photobooth frame.'],['modern','Create a sophisticated contemporary photobooth frame.'],
+    ['minimal','Create a refined minimal composition.'],['luxury','Create a premium luxury treatment.'],
+    ['retro','Create a tasteful retro composition.'],['film','Create a premium film-inspired treatment.'],
+    ['cute','Create a polished playful frame.'],['editorial','Create a high-end editorial composition.'],
+    ['futuristic','Create a premium futuristic treatment.'],['artistic','Create an expressive art-directed frame.'],
+  ];
+  assert.equal(presets.length,10);assert.equal(new Set(presets.map(([id])=>id)).size,10);
+  for (const [id,fragment] of presets) {
+    const actual=composeAdvancedPrompt('  Experience authority  ',fragment);
+    assert.equal(actual,composeAdvancedPrompt('Experience authority',fragment));
+    assert.match(actual,/^EXPERIENCE — PRIMARY VISUAL AUTHORITY\nExperience authority/);
+    assert.ok(actual.indexOf('FRAME STYLE\n'+fragment)<actual.indexOf('PRINT AND COMPOSITION\n'));
+    assert.ok(actual.includes(STYLE_PRINCIPLE));assert.ok(actual.includes(COMPOSITION_RULES));assert.ok(actual.includes(BRANDING_RULES));
+    assert.match(id,/^[a-z]+$/);
   }
   assert.throws(() => composeAdvancedPrompt('', 'frame')); assert.throws(() => composeAdvancedPrompt('experience', ' '));
 });

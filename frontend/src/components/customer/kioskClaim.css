@@ -1,0 +1,12 @@
+.customer-app.kiosk-claim-page{min-height:100vh;padding:24px clamp(16px,4vw,64px);background:#f7f7f4}
+.customer-app.kiosk-claim-page[data-mood='result']{background:#10151d;color:#f7f7f4}
+.kiosk-claim-nav{display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding-bottom:24px;border-bottom:1px solid #ffffff24;margin-bottom:32px}
+.kiosk-claim-nav>a{font-size:26px;color:inherit;text-decoration:none;font-weight:700}
+.kiosk-claim-nav>small{margin-left:auto}
+.kiosk-photo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:18px;margin:28px 0}
+.kiosk-photo-grid>button{position:relative;min-width:0;padding:8px;border:2px solid transparent;background:#ffffff0a;color:inherit;border-radius:12px}
+.kiosk-photo-grid>button.is-selected{border-color:#d9b889}
+.kiosk-photo-grid img{display:block;width:100%;height:auto;max-height:55vh;object-fit:contain;border-radius:6px}
+.kiosk-photo-grid span{display:block;padding:12px}
+.kiosk-claim-page .selection-dock{flex-wrap:wrap}
+@media(max-width:600px){.kiosk-claim-nav>small{margin-left:0}.kiosk-claim-nav>span{width:100%}.kiosk-claim-page .selection-dock>button{min-height:48px}.kiosk-claim-page .stage-heading h1{font-size:clamp(28px,8vw,48px)}}

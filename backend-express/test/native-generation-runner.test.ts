@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import type { NxGenerationJob } from '@prisma/client';
 import { NativeGenerationRunner } from '../src/services/native-generation-runner.service.js';
 
-async function runnerFor(root: string, available = true) {
+async function runnerFor(root: string, available = true, expectedModel = 'private/image-model') {
   const source = await sharp({ create: { width: 120, height: 180, channels: 3, background: 'purple' } }).png().toBuffer();
   const providerImage = await sharp({ create: { width: 100, height: 150, channels: 3, background: 'orange' } }).png().toBuffer();
   const sourcePath = join(root, 'source.jpg');
@@ -18,9 +18,9 @@ async function runnerFor(root: string, available = true) {
     async template(id: string) { assert.equal(id, 'space-template'); return { id, name: 'Space Commander', description: 'A cinematic sci-fi commander portrait.', enabled: true }; },
     async experience(id: string) { assert.equal(id, 'basic-model'); return { id, status: 'published', enabled: true, model: 'private/image-model' }; },
   };
-  const runs = { async start(_job: NxGenerationJob, provider: string, modelId: string) { assert.equal(provider, '9router'); assert.equal(modelId, 'private/image-model'); return { id: 'provider-run' }; },
+  const runs = { async start(_job: NxGenerationJob, provider: string, modelId: string) { assert.equal(provider, '9router'); assert.equal(modelId, expectedModel); return { id: 'provider-run' }; },
     async finish(_run: unknown, _job: NxGenerationJob, image: unknown, error?: unknown) { finishes.push({ image, error }); } };
-  const uploads = { async owned() { return { path: sourcePath }; } };
+  const uploads = { async owned() { return { path: sourcePath }; }, async read(path: string) { assert.equal(path, sourcePath); return source; } };
   const classic = { async generate() { assert.fail('BASIC must not use the local Classic compositor'); } };
   const images = { async providerInput(bytes: Buffer) { return bytes; }, async advancedResult(bytes: Buffer) { assert.deepEqual(bytes, providerImage); return providerImage; } };
   const provider = { name: '9router', available: () => available, async generate(input: Buffer | null, prompt: string, modelId: string) {
@@ -60,4 +60,19 @@ test('BASIC reports a disconnected AI provider instead of falling back to local 
     assert.equal(finishes.length, 1);
     assert.equal((finishes[0].error as { code: string }).code, 'AI_PROVIDER_NOT_CONNECTED');
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('queued BASIC job uses its frozen prompt and model after registry changes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'nxbooth-ai-basic-snapshot-'));
+  try {
+    const { runner,calls,providerImage } = await runnerFor(root,true,'frozen/provider-model');
+    const snapshot={version:1,mode:'BASIC',prompt:'Frozen curated scene prompt.',model:'frozen/provider-model'};
+    const job={id:'job-snapshot',mode:'BASIC',account_id:null,guest_id:'guest',upload_id:'upload',template_id:'space-template',
+      engine_config_json:JSON.stringify(snapshot)} as NxGenerationJob;
+    const generated=await runner.generate(job);
+    assert.deepEqual(generated.bytes,providerImage);
+    assert.equal(calls.length,1);
+    assert.equal(calls[0].prompt,snapshot.prompt);
+    assert.equal(calls[0].model,snapshot.model);
+  } finally { await rm(root,{recursive:true,force:true}); }
 });

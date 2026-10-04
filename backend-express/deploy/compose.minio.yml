@@ -1,0 +1,9 @@
+# Add after the reviewed native Express Compose configuration.
+# Secrets come from the existing .env env_file; never inline credentials here.
+services:
+  photobooth-express:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  photobooth-express-worker:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

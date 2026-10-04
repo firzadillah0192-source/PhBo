@@ -23,6 +23,8 @@ export function kioskResultRoute(resultId) {
 
 export function parseCustomerRoute(pathname = '/', search = '') {
   const path = pathname.replace(/\/$/, '') || '/'
+  const photoClaim = path.match(/^\/claim\/([A-Za-z0-9_-]{24})$/)
+  if (photoClaim) return { name: 'photo-claim',id: photoClaim[1],mode: null,tab: null,kiosk: true }
   if (path === '/r' || path.startsWith('/r/')) {
     const token = path.slice(3)
     return { name: 'claim', id: token ? decodeURIComponent(token) : null, mode: null, tab: null, kiosk: false }

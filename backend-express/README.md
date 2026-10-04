@@ -1,10 +1,9 @@
 # NX Photobooth Backend
 
-> **NXBooth migration candidate:** imported from `origin/master` at `4ee0aa9`.
-> Read [MIGRATION.md](MIGRATION.md) first. The notes below are upstream documentation;
-> historical commands/defaults do not describe the active NXBooth deployment.
-> Current candidate defaults use port 8081 and the framed Basic template.
-> No production services or databases have been switched to this backend.
+> **NXBooth native Express runtime:** based on `origin/master` at `4ee0aa9`.
+> Read [MIGRATION.md](MIGRATION.md) first. This Express/TypeScript API and worker
+> now serve the production application. The notes below include upstream reference
+> commands; historical defaults do not describe the active deployment.
 
 CLASSIC accepts 1–4 photos and uses the Python frame compositor. BASIC keeps its one-template customer flow
 but generates through the server-side AI provider; ADVANCED uses NineRouter experience presets. Both AI modes

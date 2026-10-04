@@ -17,7 +17,10 @@ export class CustomerCatalogService {
       templates.push({ id: row.id, name: row.name, description: row.description,
         preview_url: await this.assets.file(row.marketing_preview_path) ? `/api/templates/${row.id}/preview` : null,
         width: meta.width, height: meta.height,
-        basic_available: Boolean(await this.assets.file(row.image_path) && meta.face_region),
+        // Basic is provider-backed in the Express candidate. A face ROI is
+        // required only by the retired local engine, so template availability
+        // follows the managed image asset instead of legacy geometry metadata.
+        basic_available: Boolean(await this.assets.file(row.image_path)),
         enabled: row.enabled, sort_order: row.sort_order });
     }
     return { templates, count: templates.length };

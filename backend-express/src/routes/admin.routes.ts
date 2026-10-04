@@ -16,7 +16,7 @@ export function nativeAdminRoutes(services:NativeAdminServices,maximum:number){
     router.post(path,authorizedUpload,c.action('content_manager',(req,actor)=>services.catalog.replaceAsset(kind,String(req.params.id),purpose,req.file,actor)));
     if(purpose!=='image')router.delete(path,c.action('content_manager',(req,actor)=>services.catalog.removePreview(kind,String(req.params.id),actor),204));
   }
-  router.get('/classic-layouts',c.layouts);router.post('/classic-layouts',c.createLayout);router.patch('/classic-layouts/:id',c.patchLayout);router.post('/classic-layouts/:id/frame',authorizedUpload,c.frame);
+  router.get('/classic-layouts',c.layouts);router.post('/classic-layouts',c.createLayout);router.patch('/classic-layouts/:id',c.patchLayout);router.delete('/classic-layouts/:id',c.removeLayout);router.post('/classic-layouts/:id/frame',authorizedUpload,c.frame);
   router.get('/advanced/:kind',c.presets);router.post('/advanced/:kind',c.createPreset);router.patch('/advanced/:kind/:id',c.patchPreset);
   router.get('/preview-sources',c.sources);router.post('/preview-sources/:id',authorizedUpload,c.replaceSource);router.get('/preview-sources/:id/image',c.sourceImage);
   router.post('/experiences/:id/preview',c.preview);router.post('/preview-jobs/generate-missing',c.previewBatch);router.get('/preview-jobs/:id',c.previewJob);

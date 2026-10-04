@@ -266,6 +266,8 @@ model NxGenerationJob {
   capture_upload_ids_json String?
   frame_style_id          String? @db.VarChar(128)
   ornament_ids_json       String?
+  engine_config_json      String?
+  worker_attempts         Int @default(0)
   state                   String @default("QUEUED") @db.VarChar(16)
   error_code              String? @db.VarChar(64)
   error_message           String?

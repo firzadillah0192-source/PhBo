@@ -50,6 +50,15 @@ test('native Express catalog preserves Basic framed template fields and public p
   } finally { await h.close(); }
 });
 
+test('provider-backed Basic templates do not require legacy face geometry metadata', async () => {
+  const h = await fixture();
+  try {
+    await writeFile(join(h.root, h.template.id, 'template.json'), JSON.stringify({ width: 1024, height: 1536 }));
+    const response = await request(h.app).get('/api/templates').expect(200);
+    assert.equal(response.body.templates[0].basic_available, true);
+  } finally { await h.close(); }
+});
+
 test('native experience catalog preserves publication, preview and compatibility without exposing prompts', async () => {
   const h = await fixture();
   try {

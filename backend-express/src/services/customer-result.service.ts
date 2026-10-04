@@ -6,6 +6,7 @@ import type { NxResult } from '@prisma/client';
 import type { CustomerResultModel } from '../models/customer-result.model.js';
 import type { CustomerIdentity } from './customer-account.service.js';
 import { AppError } from '../lib/errors.js';
+import type { NativeObjectStorage } from './native-object-storage.service.js';
 
 export type ResultDeliveryConfig = { resultsDir: string; claimHours: number; publicOrigin: string; production: boolean; kioskResetSeconds?: number };
 const unavailable = () => new AppError(404, 'CLAIM_UNAVAILABLE', 'This photo is no longer available.');
@@ -18,7 +19,7 @@ export async function classicPrintBytes(bytes: Buffer) {
 }
 
 export class CustomerResultService {
-  constructor(private readonly model: CustomerResultModel, readonly config: ResultDeliveryConfig) {}
+  constructor(private readonly model: CustomerResultModel, readonly config: ResultDeliveryConfig, private readonly objects?: NativeObjectStorage) {}
   async owned(id: string, identity: CustomerIdentity, claim = false) {
     const found = await this.model.result(id);
     const owned = found?.job.account_id ? found.job.account_id === identity.account?.id : Boolean(found?.job.guest_id && found.job.guest_id === identity.guest?.id);
@@ -38,6 +39,10 @@ export class CustomerResultService {
   }
   async bytes(result: NxResult, publicClaim = false) {
     try {
+      if (result.storage_path.startsWith('minio://')) {
+        if (!this.objects) throw new Error('Object storage unavailable');
+        return await this.objects.read(result.storage_path);
+      }
       const root = await realpath(this.config.resultsDir);
       const path = await realpath(result.storage_path);
       const rest = relative(root, path);
@@ -47,6 +52,11 @@ export class CustomerResultService {
       if (publicClaim) throw new AppError(404, 'CLAIM_UNAVAILABLE', 'We could not load this photo right now. Please try again.');
       throw new AppError(404, 'RESULT_NOT_FOUND', 'result file no longer exists on disk');
     }
+  }
+  async delivery(id: string,identity: CustomerIdentity,notAfter?: Date,proxyPrefix='/api/results') {
+    const { result } = await this.owned(id,identity);
+    const signed = result.storage_path.startsWith('minio://') ? await this.objects?.signedUrl(result.storage_path,notAfter) : null;
+    return { url: signed?.url ?? `${proxyPrefix}/${result.id}/image`,expires_at: signed?.expires_at ?? null,delivery: signed ? 'minio' : 'api' };
   }
   async rendition(found: NonNullable<Awaited<ReturnType<CustomerResultModel['result']>>>, print: boolean, publicClaim = false) {
     if (print && found.job.mode !== 'CLASSIC') throw new AppError(422, 'CLASSIC_PRINT_INVALID', 'Print-strip export is available for Classic only');
@@ -89,12 +99,17 @@ export class CustomerResultService {
   async delete(id: string, identity: CustomerIdentity, actorType: 'owner' | 'admin' = 'owner') {
     const { result } = await this.owned(id, identity);
     try {
-      const path = resolve(result.storage_path);
-      const root = await realpath(this.config.resultsDir).catch(() => resolve(this.config.resultsDir));
-      const info = await lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
-      const canonical = info ? await realpath(path) : path;
-      if (info?.isSymbolicLink() || dirname(canonical) !== resolve(root, result.id.slice(0, 2)) || parse(canonical).name !== result.id) throw new Error();
-      if (info) await unlink(path);
+      if (result.storage_path.startsWith('minio://')) {
+        if (!this.objects || !this.objects.matchesReference('results',result.id,result.storage_path)) throw new Error('Invalid result reference');
+        await this.objects.remove(result.storage_path);
+      } else {
+        const path = resolve(result.storage_path);
+        const root = await realpath(this.config.resultsDir).catch(() => resolve(this.config.resultsDir));
+        const info = await lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+        const canonical = info ? await realpath(path) : path;
+        if (info?.isSymbolicLink() || dirname(canonical) !== resolve(root, result.id.slice(0, 2)) || parse(canonical).name !== result.id) throw new Error();
+        if (info) await unlink(path);
+      }
     } catch { throw new AppError(500, 'RESULT_DELETE_FAILED', 'Could not delete the result photo.'); }
     await this.model.markDeleted(result, actorType);
     return { result_id: result.id, deleted: true };

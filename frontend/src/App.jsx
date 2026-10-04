@@ -30,6 +30,7 @@ import ProcessingStage from './components/customer/ProcessingStage.jsx'
 import ResultStage from './components/customer/ResultStage.jsx'
 import KioskResultStage from './components/customer/KioskResultStage.jsx'
 import PublicResultPage from './components/customer/PublicResultPage.jsx'
+import KioskClaimPage from './components/customer/KioskClaimPage.jsx'
 import CelestialWorld from './components/world/CelestialWorld.jsx'
 import { accountTabRoute, initialCustomerStage, kioskGenerationRoute, kioskModeRoute, kioskResultRoute, modeRoute, parseCustomerRoute } from './customerRoute.js'
 import { clearCustomerFlow, readCustomerFlow, updateCustomerFlow } from './customerSession.js'
@@ -61,6 +62,7 @@ export default function App() {
   const admin = window.location.pathname === '/admin' || window.location.pathname === '/admin/'
   const route = parseCustomerRoute(window.location.pathname, window.location.search)
   if (route.name === 'claim' && route.id) return <PublicResultPage token={route.id} />
+  if (route.name === 'photo-claim' && route.id) return <KioskClaimPage code={route.id} />
   return admin ? <AdminPage /> : <CustomerApp />
 }
 

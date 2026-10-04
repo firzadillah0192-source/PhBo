@@ -14,6 +14,6 @@ export function customerUploadController(service: CustomerUploadService, account
   return {
     create: async (req, res) => { res.status(201).json(await service.create(req.file, await identity(req, res))); },
     metadata: async (req, res) => { res.json(service.response((await service.owned(req.params.id, await identity(req, res))).upload)); },
-    preview: async (req, res) => { const found = await service.owned(req.params.id, await identity(req, res)); res.type(found.upload.content_type).sendFile(found.path); },
+    preview: async (req, res) => { const found = await service.owned(req.params.id, await identity(req, res)); res.type(found.upload.content_type).send(await service.read(found.path)); },
   };
 }

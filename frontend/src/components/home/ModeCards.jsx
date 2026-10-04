@@ -14,9 +14,9 @@ export function CatalogImage({ src, alt, loading = 'lazy', fallback = 'Preview c
     : <span className="landing-image-fallback">{fallback}</span>
 }
 
-export default function ModeCards({ previews = {}, onSelect, chooser = false }) {
+export default function ModeCards({ previews = {}, onSelect, chooser = false, modeIds }) {
   return <div className={`landing-mode-grid ${chooser ? 'is-chooser' : ''}`}>
-    {CREATION_MODES.map((mode, index) => <article className={`landing-mode-card mode-${mode.name.toLowerCase()}`} key={mode.id}>
+    {CREATION_MODES.filter(mode => !modeIds || modeIds.includes(mode.id)).map((mode, index) => <article className={`landing-mode-card mode-${mode.name.toLowerCase()}`} key={mode.id}>
       <div className="landing-mode-image">
         <CatalogImage key={previews[mode.id]} src={previews[mode.id]} alt={`${mode.title} preview`} fallback={mode.note} />
         <span className="landing-mode-number" aria-hidden="true">0{index + 1}</span>

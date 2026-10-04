@@ -1,0 +1,15 @@
+services:
+  photobooth-express:
+    image: photobooth-express:kiosk-20261004T131815Z
+    environment:
+      NATIVE_KIOSK_ENABLED: "true"
+      GENERATION_QUEUE_BACKEND: postgres
+      MINIO_SIGNED_URLS_ENABLED: "true"
+  photobooth-express-worker:
+    image: photobooth-express:kiosk-20261004T131815Z
+    environment:
+      NATIVE_KIOSK_ENABLED: "true"
+      GENERATION_QUEUE_BACKEND: postgres
+      MINIO_SIGNED_URLS_ENABLED: "true"
+  photobooth-web:
+    image: photobooth-web:kiosk-20261004T131815Z

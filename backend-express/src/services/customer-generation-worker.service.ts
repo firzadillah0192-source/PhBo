@@ -6,6 +6,7 @@ import type { NxGenerationJob } from '@prisma/client';
 import type { CustomerGenerationModel } from '../models/customer-generation.model.js';
 import { AppError } from '../lib/errors.js';
 import { legacyId } from './customer-credentials.service.js';
+import type { NativeObjectStorage } from './native-object-storage.service.js';
 
 export type GeneratedImage = { bytes: Buffer; provider: string; model: string };
 export type NativeGenerationRunner = { generate(job: NxGenerationJob): Promise<GeneratedImage> };
@@ -13,7 +14,8 @@ export type NativeGenerationRunner = { generate(job: NxGenerationJob): Promise<G
 // No process is started by this service. The candidate consumer must not be
 // enabled until engine, provider telemetry and crash recovery parity is complete.
 export class CustomerGenerationWorkerService {
-  constructor(private readonly model: CustomerGenerationModel, private readonly engine: NativeGenerationRunner, private readonly resultsDir: string) {}
+  constructor(private readonly model: CustomerGenerationModel, private readonly engine: NativeGenerationRunner, private readonly resultsDir: string, private readonly objects?: NativeObjectStorage) {}
+  private remove(path: string) { return path.startsWith('minio://') && this.objects ? this.objects.remove(path) : unlink(path); }
   async process(id: string) {
     const token = legacyId();
     const job = await this.model.claim(id, token);
@@ -40,22 +42,23 @@ export class CustomerGenerationWorkerService {
       if ((job.mode === 'BASIC' || job.mode === 'ADVANCED') && (metadata.width !== 2160 || metadata.height !== 3240)) throw new AppError(502, 'GENERATION_IMAGE_INVALID', 'AI output does not match the print master.');
       const resultId = legacyId();
       const directory = resolve(this.resultsDir, resultId.slice(0, 2));
-      path = join(directory, `${resultId}.png`);
-      await mkdir(directory, { recursive: true });
-      await writeFile(path, bytes, { flag: 'wx', mode: 0o600 });
+      const eventSlug=typeof this.model.eventSlugForJob==='function' ? await this.model.eventSlugForJob(job.id) ?? undefined : undefined;
+      path = this.objects ? this.objects.reference('results', resultId,eventSlug) : join(directory, `${resultId}.png`);
+      if (this.objects) await this.objects.put(path, bytes, 'image/png');
+      else { await mkdir(directory, { recursive: true }); await writeFile(path, bytes, { flag: 'wx', mode: 0o600 }); }
       stored = true;
       completing = true;
       const completed = await this.model.complete(id, { id: resultId, job_id: id,
         template_id: job.template_id || job.layout_id || '', storage_path: path, content_type: 'image/png',
         size_bytes: bytes.length, width: metadata.width, height: metadata.height,
         sha256: createHash('sha256').update(bytes).digest('hex'), provider: generated.provider, model: generated.model }, token);
-      if (!completed) await unlink(path);
+      if (!completed) await this.remove(path);
       return completed;
     } catch (error) {
       // A database timeout after COMMIT is ambiguous. Keep the image and avoid a
       // contradictory refund/failure; recovery must inspect the durable Result.
       if (completing) throw new AppError(503, 'GENERATION_COMPLETION_UNCERTAIN', 'Generation completion needs reconciliation.');
-      if (stored && path) await unlink(path).catch(() => {});
+      if (stored && path) await this.remove(path).catch(() => {});
       await this.model.fail(id, error instanceof AppError ? error.code : 'INTERNAL_ERROR',
         error instanceof AppError ? error.message : 'Generation failed unexpectedly. Please try again.', token);
       return false;

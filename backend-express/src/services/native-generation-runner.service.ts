@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import type { NxGenerationJob } from '@prisma/client';
 import type { CustomerGenerationModel } from '../models/customer-generation.model.js';
 import type { ProviderRunModel } from '../models/provider-run.model.js';
@@ -10,6 +9,7 @@ import { composeAdvancedPrompt, composeBasicPrompt } from './advanced-prompt.ser
 import { validateAdvancedSelection } from './customer-generation-input.js';
 import { AppError } from '../lib/errors.js';
 import { ProviderFailure } from './native-provider.service.js';
+import { parseGenerationSnapshot } from './generation-snapshot.js';
 
 export class NativeGenerationRunner {
   constructor(private readonly model: CustomerGenerationModel, private readonly runs: ProviderRunModel, private readonly uploads: CustomerUploadService,
@@ -18,7 +18,9 @@ export class NativeGenerationRunner {
   async generate(job: NxGenerationJob) {
     if (job.mode === 'CLASSIC') return this.classic.generate(job);
     const owner = { account: job.account_id ? { id: job.account_id } : null, guest: job.guest_id ? { id: job.guest_id } : null };
-    const source = await readFile((await this.uploads.owned(job.upload_id, owner)).path);
+    const source = await this.uploads.read((await this.uploads.owned(job.upload_id, owner)).path);
+    const snapshot = parseGenerationSnapshot(job.engine_config_json,job.mode);
+    if (snapshot && snapshot.mode!=='CLASSIC') return this.generateWithProvider(job,source,snapshot.prompt,snapshot.model);
     if (job.mode === 'BASIC') {
       const row = await this.model.template(job.template_id);
       if (!row?.enabled) throw new AppError(404, 'TEMPLATE_NOT_FOUND', 'Basic template unavailable.');
