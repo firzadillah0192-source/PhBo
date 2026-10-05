@@ -43,10 +43,9 @@ function LookCard({ item, index, selected, onSelect }) {
         {preview ? <img src={preview} alt={`${item.name} creative preview`} loading={index < 6 ? 'eager' : 'lazy'} decoding="async" /> : <span className="look-card-placeholder" aria-label={`${item.name} preview unavailable`}><small>Approved preview</small><strong>{item.name}</strong><em>Preview coming soon</em></span>}
         <i aria-hidden="true" />
         <small>{group}</small>
-        {selected && <span className="look-card-selection" aria-hidden="true">Selected</span>}
-        <b aria-hidden="true">{selected ? '✓' : '↗'}</b>
+        <b aria-hidden="true">→</b>
       </span>
-      <span className="look-card-caption"><span><strong>{item.name}</strong><em>{group} · {line}</em></span><i aria-hidden="true">{selected ? 'Selected' : 'Enter world'}</i></span>
+      <span className="look-card-caption"><span><strong>{item.name}</strong><em>{group} · {line}</em></span><i aria-hidden="true">Continue →</i></span>
     </button>
   )
 }
@@ -82,8 +81,13 @@ export default function ExperienceBrowser({ mode, templates, experiences, layout
 
   if (catalogLoading) return <LoadingCatalog />
 
+  const choose = (id) => {
+    onSelect(id)
+    onContinue?.(id)
+  }
+
   if (mode === 'CLASSIC') {
-    return <ClassicFrameBrowser layouts={layouts} selectedId={selectedId} onSelect={onSelect} onContinue={onContinue} />
+    return <ClassicFrameBrowser layouts={layouts} selectedId={selectedId} onSelect={choose} />
   }
 
   if (mode === 'BASIC') {
@@ -101,19 +105,18 @@ export default function ExperienceBrowser({ mode, templates, experiences, layout
               type="button"
               className={`template-card ${selectedId === item.id ? 'is-selected' : ''}`}
               aria-pressed={selectedId === item.id}
-              onClick={() => onSelect(item.id)}
+              onClick={() => choose(item.id)}
             >
               <span className="template-card-media">
                 {templatePreview(item) ? <img src={templatePreview(item)} alt={`${item.name} studio preview`} loading="lazy" decoding="async" /> : <span className="template-preview-placeholder"><small>Marketing preview</small><strong>Preview coming soon</strong><em>Curated by Photobooth AI</em></span>}
                 <i aria-hidden="true" />
                 <small>Curated studio</small>
-                <b aria-hidden="true">{selectedId === item.id ? '✓' : '＋'}</b>
+                <b aria-hidden="true">→</b>
               </span>
-              <span className="template-card-caption"><span><strong>{item.name}</strong><em>{item.description || 'Instant studio portrait · no AI credit'}</em></span><i aria-hidden="true">{selectedId === item.id ? 'Selected' : 'Select'}</i></span>
+              <span className="template-card-caption"><span><strong>{item.name}</strong><em>{item.description || 'Curated studio portrait'}</em></span><i aria-hidden="true">Continue →</i></span>
             </button>
           ))}
         </div> : <div className="template-empty"><strong>No studios are available right now.</strong><span>Please check back shortly.</span></div>}
-        <SelectionDock label={templates.find((item) => item.id === selectedId)?.name || 'Choose a studio'} onContinue={onContinue} disabled={!selectedId} />
       </section>
     )
   }
@@ -155,21 +158,11 @@ export default function ExperienceBrowser({ mode, templates, experiences, layout
         <section className="experience-collection" key={group}>
           <header><div><p>Explore</p><h2>{group}</h2></div><span>{items.length} {items.length === 1 ? 'world' : 'worlds'}</span></header>
           <div className="experience-gallery">
-            {items.map((item, index) => <LookCard key={item.id} item={item} index={offset + index} selected={selectedId === item.id} onSelect={onSelect} />)}
+            {items.map((item, index) => <LookCard key={item.id} item={item} index={offset + index} selected={selectedId === item.id} onSelect={choose} />)}
           </div>
         </section>
       ))}
 
-      <SelectionDock label={experiences.find((item) => item.id === selectedId)?.name || 'Choose a world'} selectionLabel="Selected world" onContinue={onContinue} disabled={!selectedId} continueLabel="Choose frame style" />
     </section>
-  )
-}
-
-function SelectionDock({ label, selectionLabel = 'Selected', onContinue, disabled, continueLabel = 'Continue to photo' }) {
-  return (
-    <div className="selection-dock">
-      <span aria-live="polite"><small>{disabled ? 'Next step' : selectionLabel}</small><strong>{label}</strong></span>
-      <button className="customer-solid-button" disabled={disabled} onClick={onContinue}>{continueLabel} <b>→</b></button>
-    </div>
   )
 }

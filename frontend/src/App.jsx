@@ -446,20 +446,23 @@ function CustomerApp() {
   }
 
   const selectTemplate = (id) => {
+    if (!id) return
     setSelectedTemplateId(id)
-    updateCustomerFlow({ templateId: id })
+    moveToStage(upload ? 'review' : 'photo', { templateId: id })
   }
   const selectExperience = (id) => {
+    if (!id) return
     setSelectedExperienceId(id)
     setSelectedFrameStyleId(null)
     setSelectedOrnamentIds([])
-    updateCustomerFlow({ experienceId: id, frameStyleId: null, ornamentIds: [] })
+    moveToStage('art-direction', { experienceId: id, frameStyleId: null, ornamentIds: [] })
   }
-  const selectLayout = (id) => { setSelectedLayoutId(id); updateCustomerFlow({ layoutId: id }) }
+  const selectLayout = (id) => { if (!id) return; setSelectedLayoutId(id); moveToStage('photo', { layoutId: id }) }
   const selectFrameStyle = (id) => { setSelectedFrameStyleId(id); updateCustomerFlow({ frameStyleId: id }) }
   const selectOrnaments = (ids) => { setSelectedOrnamentIds(ids); updateCustomerFlow({ ornamentIds: ids }) }
-  const moveToStage = (nextStage) => {
+  const moveToStage = (nextStage, selectionPatch = {}) => {
     setStage(nextStage)
+    window.scrollTo({ top: 0, behavior: 'auto' })
     const differentMode = readCustomerFlow()?.mode !== mode
     updateCustomerFlow({
       mode, stage: nextStage,
@@ -469,6 +472,7 @@ function CustomerApp() {
       frameStyleId: mode === 'ADVANCED' ? selectedFrameStyleId : null,
       ornamentIds: mode === 'ADVANCED' ? selectedOrnamentIds : [],
       ...(differentMode ? { uploadId: null, jobId: null, resultId: null, captureUploadIds: [] } : {}),
+      ...selectionPatch,
     })
   }
   const handleUploadPreviewError = async () => {
@@ -504,7 +508,7 @@ function CustomerApp() {
           <CustomerNotice message={notice} onDismiss={() => setNotice('')} onRetry={stage === 'processing' && job?.job_id ? () => startPolling(job.job_id) : stage === 'restore-failed' ? retryRestoreUpload : null} />
           <main className="customer-main">
             {stage === 'account' && <AccountCenter usage={usage} tab={route.tab} onTabChange={openAccount} onHome={home} onUsageChanged={refreshUsage} />}
-            {stage === 'gallery' && <ExperienceBrowser mode={mode} templates={templates} experiences={experiences} layouts={layouts} selectedId={selectedId} onSelect={mode === 'CLASSIC' ? selectLayout : mode === 'BASIC' ? selectTemplate : selectExperience} onContinue={() => moveToStage(mode === 'ADVANCED' ? 'art-direction' : 'photo')} catalogError={catalogError} catalogLoading={catalogLoading} onRetry={loadCatalog} />}
+            {stage === 'gallery' && <ExperienceBrowser mode={mode} templates={templates} experiences={experiences} layouts={layouts} selectedId={selectedId} onSelect={mode === 'CLASSIC' ? selectLayout : mode === 'BASIC' ? selectTemplate : selectExperience} catalogError={catalogError} catalogLoading={catalogLoading} onRetry={loadCatalog} />}
             {stage === 'art-direction' && <AdvancedOptionsStage experience={selection} frameStyles={frameStyles} ornaments={ornaments} frameStyleId={selectedFrameStyleId} ornamentIds={selectedOrnamentIds} onFrameStyle={selectFrameStyle} onOrnaments={selectOrnaments} onBack={() => moveToStage('gallery')} onContinue={() => moveToStage(upload ? 'review' : 'photo')} />}
             {stage === 'photo' && (mode === 'CLASSIC' ? selection && <ClassicCaptureStage layout={selection} onComplete={completeClassic} onBack={() => moveToStage('gallery')} /> : <PhotoStage mode={mode} busy={busy} onFile={handleFile} onBack={() => moveToStage(mode === 'ADVANCED' ? 'art-direction' : 'gallery')} />)}
             {stage === 'review' && mode === 'CLASSIC' && upload && selection && <section className="customer-empty"><p className="customer-kicker">Classic photo strip</p><h1>Your captures are ready.</h1><p>{readCustomerFlow()?.captureUploadIds?.length || 0} of {selection.shot_count} photographs are saved in this session.</p><button className="customer-solid-button" disabled={busy || readCustomerFlow()?.captureUploadIds?.length !== selection.shot_count} onClick={() => completeClassic(readCustomerFlow().captureUploadIds.map((upload_id) => ({ upload_id })))}>Compose photo strip</button><button className="customer-inline-button" onClick={() => moveToStage('photo')}>Take photos again</button></section>}

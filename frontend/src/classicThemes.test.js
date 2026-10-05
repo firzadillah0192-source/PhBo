@@ -60,8 +60,9 @@ test('Classic event gallery renders themes, previews, shot counts and selection 
     assert.match(html, /3 Photos/)
     assert.match(html, /4 Photos/)
     assert.match(html, /classic-eid-fitri-001\/preview/)
-    assert.match(html, /Continue to camera/)
+    assert.doesNotMatch(html, /selection-dock|Continue to camera/)
     const invalid = renderToStaticMarkup(React.createElement(Browser, { layouts, selectedId: 'not-published' }))
-    assert.match(invalid, /disabled=""/)
+    assert.doesNotMatch(invalid, /classic-layout-card is-selected/)
+    assert.match(invalid, /classic-layout-card/)
   } finally { await vite.close() }
 })

@@ -65,9 +65,9 @@ test('customer screens render all three choices and their required steps', async
     const modes = renderToStaticMarkup(React.createElement(ModeSelector, { onSelect: () => {} }))
     assert.match(modes, />Classic</); assert.match(modes, />Basic</); assert.match(modes, />Advanced</)
     const classic = renderToStaticMarkup(React.createElement(ExperienceBrowser, { mode: 'CLASSIC', layouts: [{ id: 'classic-frame-003', name: 'Classic Frame 3', shot_count: 3, preview_url: '/frame.png' }], selectedId: 'classic-frame-003', onSelect: () => {}, onContinue: () => {} }))
-    assert.match(classic, /3 Photos/); assert.match(classic, /Continue to camera/)
+    assert.match(classic, /3 Photos/); assert.match(classic, /classic-layout-card/); assert.doesNotMatch(classic, /selection-dock|Continue to camera/)
     const basic = renderToStaticMarkup(React.createElement(ExperienceBrowser, { mode: 'BASIC', templates: [{ id: 'framed', name: 'Framed Basic Template', preview_url: '/basic.png' }], selectedId: 'framed', onSelect: () => {}, onContinue: () => {} }))
-    assert.match(basic, /Framed Basic Template/); assert.match(basic, /Continue to photo/)
+    assert.match(basic, /Framed Basic Template/); assert.match(basic, /Continue →/); assert.doesNotMatch(basic, /selection-dock|＋/)
     const advanced = renderToStaticMarkup(React.createElement(AdvancedOptionsStage, { experience: { name: 'Mini Me', max_ornaments: 3 }, frameStyles: [{ id: 'modern', name: 'Modern', description: 'Clean' }], ornaments: [{ id: 'sparkles', name: 'Sparkles' }], frameStyleId: 'modern', ornamentIds: ['sparkles'], onFrameStyle: () => {}, onOrnaments: () => {}, onBack: () => {}, onContinue: () => {} }))
     assert.match(advanced, /Frame style/); assert.match(advanced, /Sparkles/)
     for (const id of ['natural', 'modern', 'minimal', 'luxury', 'retro', 'film', 'cute', 'editorial', 'futuristic', 'artistic']) {
