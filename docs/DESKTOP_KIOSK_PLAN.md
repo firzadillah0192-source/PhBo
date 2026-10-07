@@ -1,0 +1,511 @@
+# Rencana desktop kiosk Photobooth AI
+
+Status: DRAFT untuk keputusan produk dan proof of concept hardware. Dokumen ini tidak mengubah arsitektur, menjalankan deployment, atau menyatakan integrasi Canon sudah bekerja.
+
+Dokumen utama planning backend dan UI desktop event. Semua struktur file, endpoint baru, skema lokal, dan pilihan teknologi di bawah adalah usulan implementasi, bukan fitur yang sudah tersedia. Dokumen ditulis dalam bahasa Indonesia untuk review di repo PhBo.
+
+Perangkat yang ditentukan pengguna: PC Windows, kamera Canon EOS 2000D terhubung ke PC melalui kabel data USB, printer Canon PIXMA G1370. Versi/arsitektur Windows dan koneksi printer belum ditentukan. Nama printer dicatat sesuai pengguna; pencarian dokumentasi resmi G1370 belum menemukan spesifikasi, sehingga nomor model/driver perlu diverifikasi, tanpa menggantinya dengan model lain.
+
+## Tujuan dan batas lingkup
+
+Desktop app di komputer event mengelola sesi tamu, kamera Canon, dan printer Canon. Web tetap menjadi kanal yang sudah ada. Backend generation dan katalog dipakai bersama melalui kontrak API yang disepakati.
+
+MVP diusulkan untuk satu komputer, satu kamera, satu printer, dan satu format cetak. Tidak mencakup pembayaran, Android, Google Drive, fleet management, atau pembangunan ulang admin/template management. QR dapat menjadi tambahan setelah alur kamera sampai cetak lulus; bukan syarat MVP.
+
+## Kondisi source yang ditemukan
+
+- `frontend/` memakai React + Vite; komponen alur capture/review/processing/result sudah ada dan perlu dinilai untuk reuse.
+- `backend/` berisi FastAPI; Compose utama masih mendefinisikan layanan ini.
+- `backend-express/` berisi jalur native kiosk: sesi foto, upload, generation dengan idempotency key, polling hasil, dan akses result.
+- `backend-express/src/controllers/native-kiosk.controller.ts` menyediakan metadata/download rendition cetak. Ini bukan integrasi printer fisik.
+- `docs/BACKEND_RESTRUCTURE_REVIEW.md` adalah review baseline/historis. Pada `origin/main` commit `0335a4f`, `backend-express/MIGRATION.md` mencatat Express sebagai API production dan FastAPI dipertahankan untuk rollback. Rencana integrasi desktop memprioritaskan kontrak Express yang sudah ada; base URL dan versi runtime tetap diverifikasi sebelum implementasi.
+- Source telah diperiksa; status deployment dan kemampuan kamera/printer belum diuji untuk planning ini.
+
+## Keputusan sebelum implementasi
+
+1. OS sudah Windows; konfirmasi versi dan arsitektur komputer event.
+2. Kamera sudah Canon EOS 2000D melalui USB; konfirmasi firmware dan uji live view/autofocus. EOS 2000D tercantum pada daftar kompatibilitas Canon EDSDK v13.19.0 untuk Windows; verifikasi kembali paket SDK yang akan digunakan.
+3. Printer dicatat sebagai Canon PIXMA G1370; verifikasi nomor model, koneksi, driver/protokol, ukuran media, borderless, dan kemampuan pelaporan status.
+4. Bentuk output: satu foto atau beberapa foto; ukuran kertas; jumlah salinan; pemotongan strip manual atau didukung perangkat.
+5. Mode yang disediakan saat event: Classic, Basic, Advanced, atau subset. Classic ditemukan di source saat ini; Basic/Advanced hanya aktif jika engine/provider benar-benar tersedia.
+6. Target API dan credential kiosk; kebijakan event mengenai koneksi internet, penyimpanan foto, serta waktu penghapusan.
+
+## Rancangan yang diusulkan, belum diputuskan
+
+```text
+Kamera Canon <-> adapter kamera lokal
+                       |
+                 Desktop kiosk UI <-> backend Photobooth <-> worker/provider
+                       |
+                 adapter cetak lokal <-> antrean OS <-> printer Canon
+                       |
+                 file sesi + jurnal pekerjaan lokal
+```
+
+Pembagian tanggung jawab:
+
+- Desktop: live view, countdown, shutter, transfer foto, review/retake, penyimpanan lokal sementara, pemulihan sesi, antrean cetak, reset tamu, serta diagnostik operator.
+- Backend: validasi upload, katalog, generation, status job, ownership, dan hasil menggunakan kontrak yang sudah ada.
+- Kamera/printer berada di komputer event; backend VPS tidak mengakses USB perangkat event.
+- Capture dan penyimpanan foto dibuat lokal. Generation online memerlukan backend/provider; kemampuan Classic offline merupakan scope tambahan yang perlu keputusan, bukan janji MVP.
+
+Opsi desktop untuk dibandingkan setelah PoC hardware:
+
+| Opsi | Kegunaan | Hal yang harus dibuktikan |
+| --- | --- | --- |
+| Electron + React + proses adapter native | Reuse UI React yang sudah ada | Integrasi SDK, konsumsi sumber daya, isolasi IPC, packaging adapter |
+| .NET desktop + UI native atau WebView | Kandidat jika fokus Windows dan integrasi native | Biaya reuse UI, deployment runtime, integrasi SDK dan cetak |
+| Tauri + React + adapter native | Alternatif shell dengan UI React | Binding SDK, packaging, mekanisme cetak, beban maintenance |
+
+Tidak ada framework yang dipilih oleh dokumen ini. Hasil PoC dan keputusan pemilik proyek menentukan pilihan.
+
+## Integrasi kamera
+
+Canon menyediakan EDSDK untuk koneksi USB dan CCAPI untuk HTTP/network. Kandidat awal adalah EDSDK melalui USB; cek model dan firmware pada daftar kompatibilitas resmi terlebih dahulu. Akses SDK dan ketentuan distribusi diperiksa sebelum installer dibuat.
+
+Untuk EOS 2000D pada rencana ini, jalur capture adalah kabel data USB ke PC Windows dengan EDSDK, bukan jalur Wi-Fi. Uji awal memakai EOS Utility sebagai diagnosis koneksi/remote shooting, kemudian tutup EOS Utility saat menguji adapter kiosk untuk memeriksa konflik akses kamera. Verifikasi kabel mampu transfer data, pengaturan power-off, serta kebutuhan daya untuk durasi event. Capture sukses berarti JPEG resolusi penuh sudah ditransfer dan diverifikasi di PC, bukan hanya frame live view.
+
+Kontrak adapter: daftar perangkat, connect/disconnect, mulai/hentikan live view, capture, transfer foto, dan status/error. Jangan menganggap webcam browser identik dengan kontrol kamera Canon.
+
+PoC harus membuktikan live view, shutter, foto resolusi penuh tersimpan, orientasi benar, disconnect/reconnect, timeout, dan kamera busy. Proses native diusulkan terpisah agar kegagalan SDK dapat dipulihkan tanpa kehilangan sesi UI.
+
+## Integrasi printer
+
+Gunakan jalur printer OS yang didukung model terpilih; tidak mengasumsikan SDK kamera bisa mengontrol printer. PoC mencakup discovery printer, driver/protokol, media size, orientation, copies, margins, dan cetak tanpa dialog pelanggan.
+
+Pisahkan master result dari berkas siap cetak. Validasi rasio fisik, bleed/crop, safe area, dan scaling berdasarkan media sebenarnya. Strip digital 2x6 tidak otomatis berarti printer mendukung kertas atau pemotongan 2x6; opsi dua strip di satu lembar hanya ditetapkan setelah format disepakati.
+
+Jurnal lokal menyimpan ID pekerjaan, result, printer, copies, status, serta waktu submit. Diterima spooler tidak boleh dilaporkan sebagai cetakan fisik selesai. Jika driver tidak memberikan bukti completion, gunakan status accepted/unknown dan konfirmasi operator. Sesudah crash atau timeout ambigu, jangan otomatis mengirim ulang; operator menentukan reprint agar tidak mencetak ganda.
+
+## Alur tamu dan operator
+
+Tamu: mulai -> pilih mode/template -> live view -> countdown -> capture -> review/retake -> generation -> preview -> print -> reset sesi.
+
+Operator: persiapan event -> cek kamera/printer/API -> test capture dan test print -> buka kiosk. Akses operator dilindungi dari tamu; menyediakan reconnect, inspeksi antrean, reprint terkontrol, dan recovery sesi. Gunakan konfigurasi event yang sudah tersedia bila sesuai, tanpa membangun admin baru.
+
+State sesi lokal dipisahkan dari state generation (`QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`) dan state cetak. Generation selesai tidak berarti print selesai. Satu session ID memetakan capture, upload, job generation, result, dan pekerjaan cetak.
+
+## Ketahanan dan data
+
+- Simpan capture sebelum upload; retry upload/generation dengan ID dan idempotency yang konsisten supaya tidak membuat pekerjaan/biaya ganda.
+- Setelah restart, pulihkan jurnal dan periksa status backend sebelum retry. Tidak mengirim ulang print yang hasilnya ambigu.
+- Saat internet putus, foto tersimpan; beritahu bahwa generation belum tersedia. Cetak hasil yang sudah tersimpan dapat dilanjutkan jika printer tersedia.
+- Reset layar dan data sesi aktif sebelum tamu berikutnya; tamu tidak dapat membuka sesi sebelumnya.
+- Credential berada di penyimpanan OS/proses tepercaya, bukan bundle React. IPC hanya mengizinkan operasi tertentu; adapter tidak menerima shell command atau path arbitrary dari UI. Jika memakai localhost, bind loopback dan autentikasi panggilannya.
+- Tentukan folder data desktop melalui fasilitas app-data OS dan kebijakan retention event. `/srv/photobooth` tetap untuk runtime VPS; jangan memaksakan path Linux pada Windows.
+- Log diagnostik memakai ID dan kode error tanpa foto, secret, atau URL akses sensitif. Penghapusan capture mengikuti retention yang disepakati dan tidak dilakukan saat pekerjaan masih membutuhkannya.
+- Engine/provider tidak tersedia harus menghasilkan `BASIC_ENGINE_NOT_CONNECTED` atau `AI_PROVIDER_NOT_CONNECTED`; tidak ada placeholder sukses.
+
+## Tahapan dan kriteria lulus
+
+| Tahap | Deliverable | Kriteria lulus |
+| --- | --- | --- |
+| 0. Hardware dan keputusan | Model/OS/media/API terpilih, matriks kompatibilitas, keputusan shell | Ketersediaan SDK/driver terverifikasi dan pemilik proyek menyetujui rancangan |
+| 1. PoC hardware | Test tool kamera dan printer | Capture asli dan cetak fisik benar; reconnect dan error tercatat pada perangkat target |
+| 2. Desktop capture | Installer percobaan, live view, countdown, review, jurnal sesi | Beberapa sesi nyata; retake/reset tidak mencampur foto antartamu; restart memulihkan capture |
+| 3. Integrasi backend | Upload, generation, polling, download/cache result | Hasil nyata; disconnect/retry/restart tidak menggandakan job; error engine/provider ditampilkan |
+| 4. Cetak | Print profile, antrean persisten, kontrol copies/reprint | Ukuran fisik benar, tanpa dialog tamu, double click tidak menggandakan print; printer offline dan outcome ambigu ditangani |
+| 5. Uji event | Installer di komputer event, panduan operator, laporan soak test | Target durasi, jumlah sesi, latency, kapasitas print, recovery, dan retention disepakati lalu diuji |
+
+Setiap tahap dilaporkan dan ditinjau sebelum beralih tahap. Estimasi waktu dibuat setelah model hardware dan hasil PoC tersedia. Uji printer harus memakai cetakan fisik; screenshot UI atau HTTP 200 tidak cukup.
+
+## Referensi resmi
+
+- Canon SDK dan tabel kompatibilitas: https://industrial.imaging.canon.de/integration/sdk/
+- Daftar kompatibilitas EDSDK v13.19.0, termasuk EOS 2000D: https://developercommunity.usa.canon.com/resource/1744393287000/CDC_EDSDKRAW_Compat_List
+- EOS Utility, kamera yang kompatibel: https://cam.start.canon/en/S003/manual/html/UG-00_Before_0050.html
+
+Spesifikasi printer ditambahkan setelah dokumentasi model yang tepat ditemukan. Tidak ada klaim dukungan printer fisik sebelum test print pada perangkat pengguna.
+
+## Struktur aplikasi yang diusulkan
+
+Rekomendasi awal untuk dibandingkan melalui PoC: Electron + React/Vite untuk desktop, proses adapter kamera C#/.NET melalui binding EDSDK, adapter Windows printing, dan SQLite untuk metadata/jurnal lokal. Ini menambah client desktop; tidak mengganti database PostgreSQL, queue, worker, atau provider backend server. Jika PoC menunjukkan shell .NET lebih tepat, struktur tanggung jawab berikut tetap berlaku dan keputusan dicatat sebelum implementasi.
+
+```text
+desktop/                          # Paket baru; belum dibuat
+  package.json
+  electron/
+    main.ts                       # Lifecycle window, single instance, kiosk mode
+    preload.ts                    # Bridge IPC dengan operasi terbatas
+    ipc/
+      session.handlers.ts
+      camera.handlers.ts
+      printer.handlers.ts
+      operator.handlers.ts
+    services/
+      session-orchestrator.ts     # Urutan capture -> upload -> generation -> print
+      device-supervisor.ts        # Proses adapter, heartbeat, recovery
+      backend-client.ts           # TLS, auth, cookie jar/token, retry
+      catalog-cache.ts
+      capture-store.ts            # File aman dan checksum
+      upload-outbox.ts            # Upload persisten dan rekonsiliasi
+      generation-monitor.ts      # Polling status nyata
+      result-cache.ts
+      print-preparation.ts        # Layout fisik, profil media
+      print-queue.ts              # Submit terurut dan rekonsiliasi spooler
+      recovery-service.ts
+      retention-service.ts
+    repositories/
+      local-database.ts
+      migrations/
+      sessions.repository.ts
+      captures.repository.ts
+      operations.repository.ts
+      print-jobs.repository.ts
+    security/
+      credential-store.ts         # Penyimpanan credential OS
+      operator-access.ts
+    diagnostics/
+      logger.ts
+      support-export.ts          # Tanpa foto/token/secret
+  src/
+    App.tsx
+    screens/                     # UI tamu dan operator, lihat tabel layar
+    components/
+      LiveView.tsx
+      Countdown.tsx
+      CaptureSlots.tsx
+      TemplateCard.tsx
+      ResultPreview.tsx
+      DeviceStatus.tsx
+      ErrorPanel.tsx
+    state/
+      session-machine.ts
+      operator-state.ts
+    bridge/
+      kiosk-client.ts             # UI memanggil IPC, bukan USB/secret/backend
+    styles/
+      kiosk.css
+  shared/
+    commands.ts
+    events.ts
+    schemas.ts
+    errors.ts
+  native/
+    CanonCameraBridge/            # Integrasi EOS 2000D dan EDSDK
+    WindowsPrintBridge/           # Adapter Windows spooler/driver
+  tests/
+    unit/
+    integration/
+    ui/
+    hardware/                     # Test manual/otomasi di Windows event
+  packaging/
+    installer-config.*
+  .env.example                    # Tanpa secret nyata
+
+docs/
+  DESKTOP_KIOSK_PLAN.md            # Dokumen ini
+  desktop/                        # Dokumen lanjutan saat tahap terkait dikerjakan
+    HARDWARE_ACCEPTANCE.md
+    API_CONTRACT.md
+    OPERATOR_GUIDE.md
+    RELEASE_CHECKLIST.md
+```
+
+Nama file adalah arah organisasi, bukan kewajiban membuat semua scaffolding sekaligus. Buat hanya modul yang diperlukan tahap aktif. Hindari dependency tambahan sampai kebutuhan terbukti.
+
+Reuse frontend dilakukan setelah menilai coupling komponen sekarang terhadap browser API dan session web. Prioritaskan aturan validasi, presentasi template, pesan error, dan tampilan preview. Kamera browser dan fetch web tidak disalin sebagai mekanisme hardware desktop. Jangan memindahkan frontend publik ke desktop atau mengubah frontend web hanya untuk menghindari duplikasi beberapa komponen.
+
+## Struktur backend server dan boundary
+
+Backend desktop lokal adalah orchestrator dan adapter hardware, bukan server generation kedua. Server Photobooth tetap menjadi sumber otoritatif untuk katalog, izin mode, generation, quota, dan result.
+
+### Jalur yang sudah ditemukan di Express
+
+```text
+/api/v1 route
+  -> native-kiosk.controller
+  -> native-kiosk.service
+  -> customer upload/generation/result services
+  -> model/database + storage
+  -> generation worker
+  -> image engine/provider abstraction
+```
+
+Lokasi source relevan:
+
+- `backend-express/src/routes/native-kiosk.routes.ts`
+- `backend-express/src/controllers/native-kiosk.controller.ts`
+- `backend-express/src/services/native-kiosk.service.ts`
+- `backend-express/src/models/native-kiosk.model.ts`
+- `backend-express/src/services/customer-generation.service.ts`
+- `backend-express/src/services/customer-result.service.ts`
+- `frontend/src/nativeKioskApi.js`
+
+Target awal sesuai catatan production repo adalah Express; keberadaan folder FastAPI dan Compose dasar tidak menjadi alasan migrasi kembali. Jika pengguna secara eksplisit memilih FastAPI kemudian, perubahan target membutuhkan keputusan terpisah dan kontrak padanan yang ditulis khusus. Desktop tidak boleh mencoba dua backend bergantian ketika request gagal; satu instalasi mengikat satu API target/version yang teruji.
+
+Dokumen `RETRO_DEPLOYMENT.md` mencatat proxy Express pada release frontend terdahulu, tetapi itu bukan verifikasi runtime API kiosk hari ini. Tahap 0 harus memastikan base URL, version, health, enabled mode, dan endpoint kiosk yang benar-benar aktif. Tidak diperlukan cutover backend atau Docker/PostgreSQL/Redis lokal di PC event untuk rancangan ini.
+
+### Kontrak source saat ini, belum klaim runtime
+
+| Operasi | Endpoint Express yang ditemukan | Input/akses dan hasil penting |
+| --- | --- | --- |
+| Buat sesi + upload foto | `POST /api/v1/photo-sessions` | `X-API-Key`, multipart field `image` 1–4 file, field `event` opsional; 201 `{data: ...}` berisi `code`, `photos`, `claimToken`, expiry |
+| Claim sesi | `POST /api/v1/photo-sessions/:code/claim` | JSON `{token}`; menghasilkan cookie `photo_session` HttpOnly pada path `/api/v1` |
+| Baca sesi | `GET /api/v1/photo-sessions/:code` | Cookie sesi; foto, quota, mode/selection yang diizinkan |
+| Katalog | `GET /api/v1/frames`, `/templates`, `/experiences`, `/frame-styles`, `/ornaments` | Metadata untuk pilihan pelanggan; server tetap memvalidasi selection |
+| Generation | `POST /api/v1/generations` | Cookie + `Idempotency-Key`; JSON selection di bawah; 202 `{data: ...}` |
+| Status generation | `GET /api/v1/generations/:id` | Cookie; `status`, `resultId`, error, URL hasil |
+| Riwayat sesi | `GET /api/v1/photo-sessions/:code/generations` | Cookie; untuk rekonsiliasi pekerjaan |
+| Metadata hasil | `GET /api/v1/results/:id` | Cookie; dimensi, checksum, URL master/download dan print jika tersedia |
+| Download master | `GET /api/v1/results/:id/download` | Cookie; bytes image |
+| Download rendition print | `GET /api/v1/results/:id/download?rendition=print` | Pada source ini hanya Classic 1:3; output 600×1800 dengan metadata 300 DPI |
+
+Contoh request sesuai parser source, menggunakan placeholder ID dan tidak berisi secret:
+
+```json
+{
+  "sessionCode": "<kode-sesi-server>",
+  "mode": "CLASSIC",
+  "photoIds": ["<photo-id-1>", "<photo-id-2>", "<photo-id-3>"],
+  "frameId": "<layout-yang-diizinkan>",
+  "ornamentIds": []
+}
+```
+
+Basic memakai satu `photoIds` dan `templateId`; Advanced memakai satu foto, `experienceId`, serta selection frame/ornament sesuai izin. Shot count Classic mengikuti metadata layout dan validasi generation, bukan selalu tiga seperti contoh.
+
+Source result metadata dapat mengandung provider/model. Backend-client desktop membuang field teknis itu dari view model pelanggan. UI tidak menawarkan provider, model ID, prompt, atau API key sebagai pilihan.
+
+### Gap wajib untuk desktop yang andal
+
+1. Sesi upload saat ini langsung menerima 1–4 foto. Capture, retake, dan pemilihan foto dilakukan lokal sebelum sesi server dibuat. Perlu kontrak lanjutan jika event membutuhkan append capture setelah sesi server ada.
+2. `photo-sessions` belum menyediakan idempotency upload/session create. Jika respons 201 hilang setelah commit, retry buta berisiko sesi/foto ganda. Idempotency generation saja tidak menyelesaikan gap ini.
+3. Cookie dari claim harus dikelola oleh trusted backend-client, terpisah per sesi dan tidak diakses React. Jangan melakukan claim otomatis sebelum menilai konsekuensi single-use claim terhadap QR pelanggan. QR ditunda pada MVP desktop; desain QR berikutnya harus menyediakan ownership desktop dan claim pelanggan yang terpisah.
+4. Recovery sesudah restart perlu akses sesi yang aman sampai expiry. Simpan credential akses melalui proteksi OS dan hapus saat masa retensi berakhir; claim token jangan dicetak ke log.
+5. Ukuran upload source harus diuji dengan JPEG EOS 2000D. Normalisasi/resizing untuk backend, jika diperlukan, menyimpan original lokal dan mengikuti batas API; jangan memperbesar upload limit tanpa uji memori, keamanan, dan kebutuhan.
+6. Rendition print saat ini bukan profil kertas PIXMA. Basic/Advanced belum memiliki dukungan rendition print pada endpoint ini; desktop dapat menyusun master menjadi lembar cetak lokal setelah profilnya diuji.
+
+### Perubahan server minimum yang diusulkan
+
+Pada API terpilih, tambahkan idempotency ke create session sebelum menetapkan desktop siap event:
+
+- Header `Idempotency-Key` pada upload sesi; scope key ke identity kiosk + event.
+- Fingerprint request berdasarkan selection dan hash file yang tervalidasi; key sama + isi berbeda -> 409 `IDEMPOTENCY_CONFLICT`.
+- Reservasi key unik secara atomik, status operasi, expiry, dan referensi session. Tangani crash di tengah upload; gunakan status pending/failed yang bisa direkonsiliasi, bukan meninggalkan key sukses tanpa session.
+- Replay hasil sukses harus mengembalikan sesi sama. Jika respons replay berisi credential sensitif, persist payload terenkripsi atau rancang pertukaran credential yang aman; hash claim token saat ini tidak bisa dipakai untuk membangun ulang token asli.
+- Usulan endpoint baru: `GET /api/v1/kiosk/operations/:key` dengan auth kiosk dan scope yang sama. Respons minimal `PENDING`, `COMPLETED`, atau `FAILED`, serta referensi sesi jika aksesnya sah. Detail credential/replay disepakati dalam kontrak sebelum implementasi.
+- Perubahan route, schema, service, model/migration dan pengujian harus berada di satu backend target saja. Tidak membuat migration Express dan FastAPI bersamaan untuk fitur yang sama.
+
+Endpoint operasi di atas BELUM ADA dan tidak boleh dipanggil seolah sudah tersedia. Jika perubahan server ditunda, recovery upload ambigu harus berhenti untuk pemeriksaan operator; release dinyatakan PARTIAL untuk ketahanan event, bukan menjamin exactly-once.
+
+## Model metadata lokal dan penyimpanan file
+
+SQLite diusulkan hanya untuk state desktop persisten, dengan transaksi, migration version, dan locking single-instance. File foto tetap di filesystem. Database ini tidak menggantikan PostgreSQL server.
+
+| Entitas | Field inti yang diusulkan | Aturan |
+| --- | --- | --- |
+| `event_config` | ID lokal/server, label, allowed modes, selection, printer/profile, version | Konfigurasi tervalidasi; izin server membatasi pilihan |
+| `sessions` | ID lokal, event, phase, selection JSON, server code/ID, job/result IDs, timestamps | Credential hanya berupa reference ke secret store; satu sesi aktif tamu |
+| `captures` | ID, session, slot, attempt, file reference, checksum, dimensi, accepted | Original tidak ditimpa retake; accepted shot dipilih eksplisit |
+| `operations` | ID, session, type, key, fingerprint, status, attempts, retry time, remote ID | Key/fingerprint tetap untuk retry operasi yang sama |
+| `results` | ID lokal/server, session, master file, checksum, dimensi | Download diverifikasi sebelum tersedia untuk print |
+| `print_profiles` | ID/version, printer, paper mm, DPI target, margins, orientation, layout | Profil tervalidasi lewat cetakan fisik; snapshot per job |
+| `print_jobs` | ID, session/result, print file hash, profile snapshot, copies, state, spooler ID, parent reprint ID | Print immutable setelah submit; reprint adalah job baru dengan alasan |
+| `audit_events` | ID, session/job reference, action, timestamp, error code | Operator action tanpa foto/secret; retention terpisah |
+
+Layout data memakai path app-data Windows yang dipilih packaging:
+
+```text
+<app-data>/PhotoboothKiosk/
+  config/                 # Nonsecret
+  state/kiosk.sqlite
+  sessions/<generated-session-id>/
+    captures/
+    normalized/
+    results/
+    print/
+  logs/
+  cache/catalog/
+```
+
+Seluruh path dibuat trusted process dari ID yang dihasilkan aplikasi. UI hanya menerima opaque asset ID/preview, bukan absolute path. File ditulis ke temporary sibling lalu atomic rename; catat hash dan byte size sebelum menjadikan capture/result siap. Startup mendeteksi orphan/missing file dan meminta recovery; jangan otomatis menghapus capture yang belum direkonsiliasi.
+
+## IPC dan kontrak adapter lokal
+
+Untuk pilihan Electron, native adapter berkomunikasi dengan main process melalui pipe/stdio terbingkai; renderer memakai preload bridge. Tidak membuka HTTP port lokal jika tidak diperlukan. Protokol diberi version, request ID, timeout, event, dan validasi schema.
+
+| Command | Input | Hasil/event |
+| --- | --- | --- |
+| `devices.getStatus` | Tidak ada | Kamera, printer, API, disk, adapter readiness |
+| `session.start` | Event/selection ID | Session ID dan state |
+| `camera.connect` | Device ID tervalidasi | Connected atau kode error |
+| `camera.startLiveView` | Session ID | Preview frames melalui channel bounded |
+| `camera.capture` | Session ID, slot ID, operation ID | `capture.started`, lalu `capture.saved` atau error |
+| `session.acceptCapture` | Session ID, capture ID | Accepted slot; validasi ownership |
+| `session.retake` | Session ID, slot ID | Review/capture state sesuai budget |
+| `session.generate` | Session ID | Operation/job reference; tidak menerima prompt/provider |
+| `printer.submit` | Session ID, result ID, profile ID, command ID | Job ID lokal lalu update state |
+| `session.finish` | Session ID | Reset renderer setelah jurnal tersimpan |
+| `operator.unlock` | Credential/PIN | Access sementara, throttling; tidak dicatat ke log |
+| `operator.reprint` | Job ID, reason, copies | Job baru; operator access wajib |
+
+Preview memiliki frame sequence/timestamp dan backpressure: drop frame preview lama saat renderer lambat, tetapi tidak boleh drop file capture. Tangani DSLR busy/autofocus failure secara eksplisit; tombol capture tidak memicu command paralel. Kamera hanya dimiliki satu proses adapter.
+
+Untuk Electron: renderer tidak memakai Node integration, gunakan context isolation/sandbox sesuai kemampuan packaging, CSP, dan allowlist navigation. Native process memakai executable tetap dengan argumen tervalidasi; tidak menjalankan command bebas dari renderer. Detail setting dipastikan melalui dokumentasi resmi saat implementasi versi terpilih.
+
+## State machine dan recovery
+
+State sesi lokal yang diusulkan:
+
+```text
+IDLE -> SELECTING -> CAPTURING -> REVIEWING
+                REVIEWING -> CAPTURING       # slot berikutnya / retake
+                REVIEWING -> READY_TO_UPLOAD
+READY_TO_UPLOAD -> UPLOADING -> GENERATING -> RESULT_READY
+RESULT_READY -> PRINT_QUEUED -> PRINTING_OR_ACCEPTED -> FINISHED -> IDLE
+```
+
+`RECOVERY_REQUIRED` dan `CANCELLED` adalah cabang eksplisit. Interupsi printer tidak mengubah job generation menjadi FAILED. State generation memakai empat nilai existing. State print lokal diusulkan `PREPARED`, `SUBMITTING`, `ACCEPTED`, `CONFIRMED`, `FAILED`, `UNKNOWN`, `CANCELLED`:
+
+- Simpan `SUBMITTING` sebelum panggilan spooler. Jika proses crash setelah spooler menerima tetapi sebelum ID dicatat, startup masuk `UNKNOWN`; jangan submit otomatis.
+- `CONFIRMED` hanya jika ada bukti yang sesuai kemampuan driver atau konfirmasi operator. UI menampilkan “Dikirim ke printer” untuk `ACCEPTED`, bukan “Foto sudah tercetak”.
+- Cancel antrean lokal yang belum submit aman; cancel spooler tidak menjamin lembar belum tercetak. Status outcome tetap dilacak.
+- Satu command ID mencegah double click menjadi dua job. Idempotency internal tidak menjamin exactly-once fisik jika driver/OS tidak menyediakan rekonsiliasi.
+- Sesi yang sudah ditutup dapat memiliki print job background; operator memiliki akses, tamu berikutnya tidak dapat melihat hasilnya.
+
+| Gangguan | Respons aplikasi | Syarat melanjutkan |
+| --- | --- | --- |
+| Kamera dicabut | Hentikan capture; simpan slot yang sudah ada; tampilkan pesan jelas | Adapter reconnect dan status ready |
+| SDK process crash | Supervisor restart terbatas; jangan ulang shutter ambigu otomatis | Verifikasi file/transfer terakhir, operator jika ambigu |
+| Internet putus sebelum upload | Capture tetap lokal, outbox pending | Backend sehat dan pengguna/operator melanjutkan |
+| Respons upload hilang | Rekonsiliasi operasi idempotent; jika belum didukung, recovery operator | Server session diketahui secara aman |
+| Generation timeout | Periksa job/riwayat dengan key yang sama; tampilkan status nyata | Result atau error definitif dari backend |
+| Printer offline/paper issue | Antrean ditahan; instruksi operator | Driver ready atau operator menyelesaikan masalah |
+| App restart ketika print submit | Tandai unknown; cek spooler bila memungkinkan | Konfirmasi operator sebelum reprint |
+| Disk hampir habis | Cegah sesi baru sebelum shutter; pertahankan sesi existing | Kapasitas memadai menurut ambang tervalidasi |
+| Sesi backend expired | Pertahankan file sesuai retention, tampilkan recovery | Pembuatan sesi baru hanya tindakan eksplisit, bukan retry identik |
+
+Polling generation memakai backoff/jitter yang dibatasi dan berhenti saat terminal/expired; heartbeat hardware terpisah. Tidak menampilkan persen progres palsu jika API tidak menyediakan progres.
+
+## Rancangan UI tamu
+
+UI kiosk berorientasi layar sentuh, satu aksi utama per layar, foto/live view dominan. Gunakan gaya visual aplikasi yang sudah ada; tidak mendesain ulang brand. Target resolusi/orientasi harus ditentukan dari monitor event; rencana awal diuji pada 1920×1080 dan skala Windows 100%, 125%, 150%. Target touch area awal minimal 48 CSS px, kontras terbaca, serta indikator fokus untuk operator keyboard.
+
+| Layar/komponen | Isi dan aksi utama | Loading/error/recovery |
+| --- | --- | --- |
+| `WelcomeScreen` | Nama event, petunjuk posisi, tombol “Mulai” | Tombol nonaktif jika perangkat kritis belum siap; pesan “Hubungi operator” |
+| `SelectionScreen` | Mode diizinkan dan kartu template/frame, “Lanjut” | Satu pilihan dapat langsung ditetapkan; katalog unavailable tidak membuka mode palsu |
+| `CaptureScreen` | Live view besar, panduan posisi, shot counter, “Ambil foto” | Countdown, tombol terkunci saat shutter/transfer; camera disconnected menahan sesi |
+| `ReviewScreen` | Foto tajam yang benar-benar tersimpan, slot sequence, “Pakai foto”, “Ulangi” | Budget retake dari aturan existing/event; tidak memakai frame preview sebagai capture |
+| `ReadyScreen` | Ringkasan foto/selection, “Proses foto” | Validasi shot count dan koneksi; offline menjaga foto lokal |
+| `ProcessingScreen` | Status upload/antrean/proses berdasarkan operasi nyata | Tampilkan retry atau operator saat error; tidak menjanjikan durasi yang belum diukur |
+| `ResultScreen` | Preview hasil, tombol “Cetak”, copies sesuai event | Print disabled sampai file/profil valid; retry download tanpa generation ulang |
+| `PrintStatusScreen` | Antrean/“Dikirim ke printer”, instruksi mengambil hasil | Outcome ambigu meminta operator; tombol cetak tidak submit ulang |
+| `ThankYouScreen` | Instruksi pengambilan, “Selesai”, countdown reset | Reset memutus akses UI sesi sebelumnya; job background tetap tercatat |
+| `RecoveryScreen` | Instruksi singkat pelanggan dan kode masalah | Detail teknis hanya panel operator |
+
+Timeout layar harus berbeda: idle selection boleh reset setelah peringatan; capture/transfer/generation aktif tidak dibatalkan diam-diam oleh timer idle. Lama review dan retake mengikuti aturan produk yang sudah ada, lalu dikonfirmasi untuk event. Tidak menyediakan kembali ke layar yang dapat menggandakan generation/print tanpa guard state.
+
+Wireframe capture dan hasil, untuk arah layout bukan final visual:
+
+```text
+CAPTURE
++----------------------------------------------------------+
+| Nama event                         Foto 2 dari 3          |
+|                                                          |
+|                  LIVE VIEW KAMERA                        |
+|                [panduan posisi wajah]                    |
+|                                                          |
+|       [slot 1] [slot 2] [slot 3]     [ AMBIL FOTO ]         |
++----------------------------------------------------------+
+
+RESULT
++----------------------------------------------------------+
+| Hasil foto                                               |
+|                                                          |
+|             PREVIEW HASIL / LAYOUT CETAK                  |
+|                                                          |
+|     Salinan sesuai pengaturan event       [ CETAK ]       |
++----------------------------------------------------------+
+```
+
+## Rancangan UI operator
+
+Operator membuka panel lewat shortcut/akses khusus yang tidak terlihat sebagai pilihan tamu, lalu unlock. Ini proteksi operasional aplikasi, bukan pengganti Windows account/security. Tidak membangun sistem admin web baru.
+
+| Panel | Fungsi yang diperlukan MVP |
+| --- | --- |
+| `SetupScreen` | Backend URL tervalidasi, event, pemilihan kamera/printer/profile, konfigurasi operator; secret tidak dipantulkan kembali |
+| `PreflightScreen` | Camera connect/live view/test capture, API health/auth/katalog, storage, printer availability/test print |
+| `OperatorDashboard` | Status hardware/backend, sesi aktif, antrean generation/print, pause/resume penerimaan tamu |
+| `PrintQueueScreen` | ID job, thumbnail terbatas, copies, accepted/unknown/failed, reprint beralasan dan konfirmasi |
+| `RecoveryPanel` | Pending upload/job, reconnect perangkat, lanjutkan/tutup sesi dengan tindakan eksplisit |
+| `DiagnosticsScreen` | Versi aplikasi/adapter, error codes, ekspor log tanpa foto/secret |
+
+Preflight diberi status hijau hanya untuk cek yang sudah dibuktikan; printer terdaftar bukan bukti test print sukses. Simpan waktu test print terakhir dan operator confirmation. Event dapat dimulai jika syarat mode yang dipilih terpenuhi; jika semua mode membutuhkan backend dan API offline, tidak membuka layanan generation seolah siap.
+
+## Print profile dan pipeline gambar
+
+Pipeline: result download -> verifikasi image/checksum -> apply print profile -> simpan print file immutable -> preview yang memakai layout sama -> submit ke driver -> catat status.
+
+Profil berisi ukuran kertas dalam mm, printable area yang diukur, orientation, borderless capability, target DPI, layout single/strip, copies limit, dan fit policy (`contain` atau crop yang dipreview). Resolusi pixel diturunkan dari ukuran fisik dan DPI; DPI metadata saja tidak menentukan ukuran cetak jika driver memakai fit-to-page.
+
+Jangan mengaplikasikan branding/template dua kali. Master tetap disimpan utuh; print preparation hanya membuat turunan. Color handling dimulai dari profil gambar/driver yang diuji; hindari double color management. Uji minimal foto wajah terang/gelap, crop tepi, teks kecil, dan penempatan strip. Durasi cetak dan drying/handling diukur pada printer serta media event untuk menentukan kapasitas antrean dan instruksi operator.
+
+Nomor model G1370 belum tervalidasi dokumentasinya; tidak menetapkan paper size, cutter, borderless, kecepatan, atau status tinta secara asumsi. Koneksi printer juga belum ditetapkan oleh pengguna.
+
+## Packaging, konfigurasi, dan operasional Windows
+
+- Installer mencakup desktop app dan adapter/runtime yang diizinkan lisensinya. Distribusi Canon SDK mengikuti ketentuan paket yang diperoleh; DLL proprietari tidak otomatis masuk repo publik.
+- Installer tidak otomatis mengunduh SDK/driver dari sumber tak dikenal. Driver target diverifikasi di PC event; kebutuhan admin saat instalasi dicatat. Aplikasi sehari-hari diusahakan berjalan sebagai user biasa.
+- Build/release Windows dikerjakan di runner atau mesin Windows yang disepakati; VPS Linux ini tidak menjadi bukti integrasi USB/driver Windows.
+- Single-instance guard mencegah dua app berebut kamera. Shutdown menghentikan live view, flush jurnal, dan menutup proses adapter.
+- Update dilakukan sebelum/sesudah event, tidak ketika capture/print berjalan. Migration lokal disertai backup metadata dan rencana rollback; jangan menurunkan binary melintasi schema yang tidak kompatibel.
+- Operator memeriksa kabel, power kamera, sleep Windows, media/tinta, printer test, koneksi internet, ruang disk, serta versi release sebelum event. Aplikasi boleh meminta power policy yang disepakati, tetapi tidak mengubah system policy diam-diam.
+- Retention berdasarkan persetujuan event, bukan angka arbitrer; foto tidak masuk bundle installer, git, log, atau support export.
+
+## Backlog implementasi dan dependensi
+
+| ID | Pekerjaan | Dependensi | Bukti selesai |
+| --- | --- | --- | --- |
+| K00 | Konfirmasi Windows/model printer/media/mode/API | Input pengguna dan runtime read-only | Matriks target terisi, dokumen keputusan |
+| K01 | Peroleh SDK dan uji EOS 2000D USB | K00, kamera fisik | Live view, shutter, full JPEG, reconnect, busy/timeout report |
+| K02 | Driver dan PoC print Windows | K00, printer/media fisik | Cetakan ukuran benar dan hasil uji spooler/offline |
+| K03 | Pilih shell dan kontrak adapter/IPC | K01–K02 | Keputusan teknologi dan protokol tervalidasi |
+| K04 | Shell kiosk, session state, local journal | K03 | Start/reset/restart recovery tests |
+| K05 | Capture UI, review/retake/selection | K04 + adapter | Sesi multi-shot nyata tanpa foto tertukar |
+| K06 | Idempotent session upload/recovery server | K00 + target API | Contract/integration tests request duplikat, concurrency, crash/replay |
+| K07 | Backend-client, outbox, generation monitor | K04, K06 | Upload/job/result nyata dan recovery internet |
+| K08 | Print preparation/queue/result UI | K02, K07 | Physical print test, duplicate/unknown guards |
+| K09 | Operator preflight, diagnostics, retention | K05, K07–K08 | Error drills, akses operator, cleanup aman |
+| K10 | Installer dan uji event lengkap | K09 | Release candidate dan acceptance report di Windows target |
+
+K01 dan K02 dapat dikerjakan independen setelah perangkat tersedia; tabel ini tidak menginstruksikan delegasi agent. Tidak mengimplementasikan seluruh backlog pada satu sprint. Setelah setiap sprint, jalankan tes lingkup terkait, laporkan PASS/PARTIAL/FAIL, lalu berhenti untuk review.
+
+## Matriks pengujian dan acceptance
+
+| Area | Test penting | Tempat/bukti |
+| --- | --- | --- |
+| State/session | Retake, back, double click, timeout, session reset | Unit/integration dengan state transition nyata |
+| Ownership | Capture/result sesi A tidak dibuka sesi B | Repository + API negative tests |
+| Server contracts | Wrapper/field mapping, izin selection, error, cookie expiry, quotas | Integration di API target terisolasi |
+| Idempotency | Key sama payload sama/beda, respons hilang, konkurensi dan crash | DB-backed integration; bukan mock success saja |
+| Storage | File corrupt/missing, EXIF orientation, oversized upload, disk penuh | Local integration dengan temporary data |
+| Hardware camera | EOS 2000D USB live view/capture/transfer, cable unplug, EOS Utility conflict | Windows + kamera asli, log dan file hasil |
+| Hardware print | Profil ukuran fisik, scaling, copies, offline, reboot saat submit | Windows + printer asli + cetakan yang diperiksa |
+| UI | Touch, focus, disabled action, 100/125/150% display scale | UI automation + monitor event |
+| Security | IPC invalid schema/path, secret/log redaction, operator throttling | Negative tests terarah |
+| End-to-end | Capture -> backend -> hasil nyata -> cetak -> tamu berikutnya | Windows event + backend/provider asli |
+| Event soak | Sesi berulang, memory/disk/latency, antrean print, restart recovery | Report dengan durasi/jumlah sesi dan hardware version |
+
+Mock adapter dipakai untuk pengembangan dan error UI tetapi diberi label test; mock tidak memenuhi hardware acceptance. Advanced end-to-end memakai provider nyata yang terhubung; penggunaan berbayar dan quota disepakati pada sprint implementasinya.
+
+Target numerik soak test, latency generation, capture transfer, dan throughput printer ditentukan setelah PoC. Acceptance minimum: foto tidak tertukar, job/print tidak terduplikasi oleh aksi UI atau retry yang dapat diketahui, ambiguous print ditahan, sesi pulih setelah restart, serta mode unavailable tidak dilaporkan sukses.
+
+## Risiko dan keputusan yang masih terbuka
+
+| Risiko/keputusan | Dampak | Tindakan sebelum release |
+| --- | --- | --- |
+| Nama/driver printer belum terverifikasi | Profil dan silent print belum dapat dijanjikan | Konfirmasi label model dan uji driver/media |
+| SDK/firmware dan power kamera | Capture dapat gagal atau kamera tidur | Compatibility + real event-duration test |
+| Backend target/versi berbeda | Mapping auth/field tidak sesuai | Tetapkan API target tanpa migrasi implisit |
+| Single-use claim untuk desktop dan QR | Claim pelanggan bisa terblokir | QR ditunda; design ownership terpisah bila diminta |
+| Upload tidak idempotent saat ini | Sesi ganda setelah timeout | K06 atau recovery operator dengan status PARTIAL |
+| Driver tidak membuktikan physical completion | Auto retry dapat menggandakan cetak | Accepted/unknown + operator control |
+| Jaringan/provider lambat | Antrean tamu meningkat | Ukur latency, pesan jujur, aturan pause dan recovery |
+| Semua operasi offline diminta | Perlu engine/katalog lokal tambahan | Scope/arsitektur terpisah untuk diputuskan pengguna |
+
+## Status dokumen dan publikasi
+
+Planning mencakup struktur lokal/server, kontrak API source dan gap, model data, state/recovery, UI tamu/operator, hardware, packaging, backlog, dan acceptance. Implementasi desktop, perubahan backend, deployment, serta uji fisik belum dilakukan. Publikasi dokumen ke repo tidak mengaktifkan fitur kiosk pada aplikasi live.
