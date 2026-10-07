@@ -2,6 +2,16 @@
 
 Status: PLANNING, mengikuti diagram yang diunggah pengguna di [arsi phbo.jpeg](<arsi phbo.jpeg>) dan penjelasan bahwa gateway menangani request selain upload/download foto. Dokumen ini memperjelas target dan selisih source; belum mengimplementasikan gateway atau mengubah deployment.
 
+## Baseline teknologi untuk review (2026-10-07)
+
+Rekomendasi gateway adalah **NGINX OSS** sebagai proses/container kontrol khusus dengan konfigurasi routing, batas body JSON, rate limit, timeout, request ID dan log yang meredaksi akses sensitif. Auth/ownership bisnis tetap diperiksa API PhBo; gateway tidak menggantikan validasi media. Ini rekomendasi planning, belum deployment atau keputusan migrasi arsitektur.
+
+NGINX web yang sekarang ada di `frontend/nginx.conf` masih meneruskan request API dan multipart upload melalui proses yang sama. Target membutuhkan jalur media yang melewati entrypoint/proses berbeda dari gateway kontrol; sekadar membuat `location /media` pada proses gateway yang sama tidak memenuhi pemisahan bytes pengguna. Domain, TLS, endpoint storage dan kapasitas diputuskan sebelum deployment, tanpa mengubah reverse proxy proyek lain.
+
+Source/runtime baseline: API Express, PostgreSQL untuk dispatch job, Redis untuk rate limit, worker dan MinIO existing. Pemeriksaan `/api/health` pada 2026-10-07 melaporkan dependency `ok` dan queue backend `postgres`; ini belum uji generation atau load gateway. Redis `queue-classic`/`queue-router` tetap target diagram dalam tahap migrasi terpisah.
+
+Printer berada di PC Windows melalui adapter driver/spooler lintas merek. Epson L8050 menjadi profil pertama; Canon/model lain dapat memakai profil tervalidasi sendiri. Pemilihan printer tidak mengubah gateway atau server generation. Format baseline dan acceptance fisik berada di [planning desktop](DESKTOP_KIOSK_PLAN.md).
+
 ## Arah arsitektur dari pengguna
 
 Komponen dalam diagram: API Gateway -> API PhBo -> database dan Redis (`queue-classic`, `queue-router`) -> worker -> 9Router. API PhBo dan worker mengakses MinIO. Worker memperbarui status pekerjaan di database.
@@ -75,7 +85,7 @@ Kebutuhannya meliputi metode signing, expiry, pembatasan object/ukuran, checksum
 3. Desktop mengunduh bytes langsung dari endpoint HTTPS storage, tanpa melalui gateway.
 4. Result di-cache lokal dan diverifikasi sebelum print. URL expired diperbarui melalui gateway; tidak menjalankan ulang generation.
 
-Source `native-object-storage.service.ts` sudah menyediakan `presignedGetObject`. Catatan `NATIVE_KIOSK_RELEASE.md` menyebut signed MinIO delivery aktif pada release terdahulu; status live hari ini tidak diuji pada review dokumen ini.
+Source `native-object-storage.service.ts` sudah menyediakan `presignedGetObject`. Catatan `NATIVE_KIOSK_RELEASE.md` menyebut signed MinIO delivery aktif pada release terdahulu; health runtime 2026-10-07 sudah diperiksa, tetapi akses signed URL dan generation end-to-end belum diuji ulang pada tahap dokumen ini.
 
 Rendition cetak yang saat ini dibuat melalui API dapat memakai jalur media langsung sementara. Untuk hasil cetak yang disimpan di MinIO, API mengembalikan metadata/signature setelah file tersedia. Tidak membuat PNG cetak besar pada request gateway. Desktop juga dapat menyusun master menjadi print file lokal sesuai planning kiosk.
 
@@ -98,7 +108,7 @@ Worker mengakses 9Router melalui provider abstraction yang sudah ada. Provider/m
 ## Struktur modul server target
 
 ```text
-api-gateway/                    # Paket/config baru, teknologi belum dipilih
+api-gateway/                    # Usulan config NGINX OSS; belum dibuat
   routing/                     # kiosk/core/web control only
   access/                      # Auth policy dan rate limit kontrol
   observability/               # Request ID, redacted logs
@@ -122,7 +132,7 @@ Struktur adalah pembagian tanggung jawab, bukan instruksi memindahkan semua sour
 
 | Area | Source/catatan release yang ditemukan | Target diagram dan pekerjaan |
 | --- | --- | --- |
-| Gateway | Tidak dibuktikan sebagai layer terpisah pada review ini | Tambahkan routing kontrol dan jalur media bypass, tanpa memilih vendor gateway sekarang |
+| Gateway | Tidak dibuktikan sebagai layer terpisah pada review ini | Tambahkan NGINX OSS kontrol yang direkomendasikan dan jalur media terpisah; belum diimplementasikan |
 | Domain route | `/api` web/shared dan `/api/v1` native kiosk | Susun mapping `kiosk/core/web`; jangan menghapus URL existing tanpa compatibility plan |
 | Session/upload | `POST /api/v1/photo-sessions` membuat sesi sekaligus upload | Pisah sesi kontrol dan upload media, atau adapter kompatibel; route target belum ada |
 | Signed media | Signed GET MinIO sudah ada | Gunakan untuk bypass download; presigned upload masih opsi baru |
@@ -133,7 +143,7 @@ Queue PostgreSQL yang aktif tidak diganti ketika menambah gateway. Rencana perpi
 
 ## Urutan pekerjaan dan validasi
 
-1. Review URL mapping, ownership desktop/web, target queue, dan jalur upload. Teknologi/domain gateway belum diputuskan oleh dokumen ini.
+1. Review URL mapping, ownership desktop/web, target queue, dan jalur upload. NGINX OSS menjadi rekomendasi teknologi; domain/TLS dan URL publik belum ditetapkan.
 2. Definisikan kontrak create session kontrol, izin upload, upload media idempotent, metadata/signing, serta compatibility route lama.
 3. Implementasikan dan uji jalur media terotorisasi sebelum routing desktop ke gateway; buktikan file tidak melewati gateway.
 4. Tambahkan gateway control route tanpa mengubah worker/queue pada sprint yang sama.

@@ -1,18 +1,34 @@
 # Rencana desktop kiosk Photobooth AI
 
-Status: DRAFT untuk keputusan produk dan proof of concept hardware. Dokumen ini tidak mengubah arsitektur, menjalankan deployment, atau menyatakan integrasi Canon sudah bekerja.
+Status: PLANNING diperbarui 2026-10-07 untuk tahap 1 (perapihan dokumen). Keputusan pengguna, rekomendasi teknologi, dan pekerjaan yang belum diuji dibedakan di bawah. Integrasi hardware dan deployment belum dilakukan.
 
 Dokumen utama planning backend dan UI desktop event. Semua struktur file, endpoint baru, skema lokal, dan pilihan teknologi di bawah adalah usulan implementasi, bukan fitur yang sudah tersedia. Dokumen ditulis dalam bahasa Indonesia untuk review di repo PhBo.
 
 Update arsitektur pengguna: lihat [diagram arsi phbo](<arsi phbo.jpeg>) dan [planning API gateway serta jalur foto](PHBO_API_GATEWAY_ARCHITECTURE.md). Request kontrol desktop menggunakan API gateway; upload/download bytes foto menggunakan jalur media tanpa melalui gateway. Kontrak endpoint yang tercantum sebagai source saat ini tetap dibedakan dari route target `kiosk/core/web`.
 
-Perangkat yang ditentukan pengguna: PC Windows, kamera Canon EOS 2000D terhubung ke PC melalui kabel data USB, printer Canon PIXMA G1370. Versi/arsitektur Windows dan koneksi printer belum ditentukan. Nama printer dicatat sesuai pengguna; pencarian dokumentasi resmi G1370 belum menemukan spesifikasi, sehingga nomor model/driver perlu diverifikasi, tanpa menggantinya dengan model lain.
+Perangkat yang ditentukan pengguna: PC Windows dan kamera Canon EOS 2000D melalui kabel data USB. Pilihan pembelian printer saat ini Epson EcoTank L8050, tetapi pengguna meminta agar printer dapat diganti, termasuk ke Canon. L8050 menjadi target profil/uji pertama, bukan batas merek aplikasi. Versi/arsitektur Windows belum ditentukan; USB melalui driver Windows direkomendasikan sebagai koneksi printer awal.
+
+## Ringkasan keputusan dan rekomendasi
+
+| Area | Baseline planning | Status |
+| --- | --- | --- |
+| OS dan kamera | Windows; Canon EOS 2000D melalui USB | Ditentukan pengguna; versi OS/firmware dan hardware acceptance pending |
+| Printer | Adapter cetak Windows lintas merek; profil pertama Epson L8050, Canon dapat memakai profil terpisah | Permintaan pengguna; setiap model wajib test print |
+| Advanced | Satu foto pada lembar 4R, 4 × 6 inci (101,6 × 152,4 mm) | Baseline format; crop/borderless divalidasi fisik |
+| Classic | Dua strip 2 × 6 inci pada satu lembar 4R, dipotong manual | Baseline format; strip ini bukan ukuran 2R |
+| Desktop shell | Electron + React/Vite, proses adapter native C#/.NET | Rekomendasi untuk reuse frontend dan integrasi Windows; keputusan implementasi menunggu PoC/review |
+| State lokal | SQLite untuk jurnal; filesystem untuk foto; credential store Windows untuk secret | Rekomendasi; tidak mengganti database server |
+| Server | API Express existing, PostgreSQL, worker/provider existing, MinIO | Mengikuti source/runtime; tidak melakukan migrasi backend |
+| Gateway | NGINX OSS untuk JSON kontrol; jalur media terpisah | Rekomendasi; belum diimplementasikan |
+| Queue | PostgreSQL tetap baseline aktif; Redis queue sesuai diagram sebagai tahap terpisah | Tidak dipindahkan pada tahap gateway |
+
+Keputusan teknologi yang direkomendasikan bukan klaim telah dipilih atau dibangun. Tahap ini menghasilkan dokumen review, tanpa scaffolding, perubahan API, atau deployment.
 
 ## Tujuan dan batas lingkup
 
-Desktop app di komputer event mengelola sesi tamu, kamera Canon, dan printer Canon. Web tetap menjadi kanal yang sudah ada. Backend generation dan katalog dipakai bersama melalui kontrak API yang disepakati.
+Desktop app di komputer event mengelola sesi tamu, kamera Canon, dan printer melalui driver Windows. Web tetap menjadi kanal yang sudah ada. Backend generation dan katalog dipakai bersama melalui kontrak API yang disepakati.
 
-MVP diusulkan untuk satu komputer, satu kamera, satu printer, dan satu format cetak. Tidak mencakup pembayaran, Android, Google Drive, fleet management, atau pembangunan ulang admin/template management. QR dapat menjadi tambahan setelah alur kamera sampai cetak lulus; bukan syarat MVP.
+MVP diusulkan untuk satu komputer, satu kamera, satu printer aktif, dan satu ukuran kertas 4R dengan profil layout Advanced/Classic. Tidak mencakup pembayaran, Android, Google Drive, fleet management, atau pembangunan ulang admin/template management. QR dapat menjadi tambahan setelah alur kamera sampai cetak lulus; bukan syarat MVP.
 
 ## Kondisi source yang ditemukan
 
@@ -21,14 +37,14 @@ MVP diusulkan untuk satu komputer, satu kamera, satu printer, dan satu format ce
 - `backend-express/` berisi jalur native kiosk: sesi foto, upload, generation dengan idempotency key, polling hasil, dan akses result.
 - `backend-express/src/controllers/native-kiosk.controller.ts` menyediakan metadata/download rendition cetak. Ini bukan integrasi printer fisik.
 - `docs/BACKEND_RESTRUCTURE_REVIEW.md` adalah review baseline/historis. Pada `origin/main` commit `0335a4f`, `backend-express/MIGRATION.md` mencatat Express sebagai API production dan FastAPI dipertahankan untuk rollback. Rencana integrasi desktop memprioritaskan kontrak Express yang sudah ada; base URL dan versi runtime tetap diverifikasi sebelum implementasi.
-- Source telah diperiksa; status deployment dan kemampuan kamera/printer belum diuji untuk planning ini.
+- Pemeriksaan read-only 2026-10-07: container web/API healthy; `/api/health` melaporkan database, Redis, storage, queue `ok`, queue backend PostgreSQL, provider terhubung. Ini bukan bukti generation nyata atau integrasi kamera/printer; keduanya belum diuji pada pemeriksaan ini.
 
 ## Keputusan sebelum implementasi
 
 1. OS sudah Windows; konfirmasi versi dan arsitektur komputer event.
 2. Kamera sudah Canon EOS 2000D melalui USB; konfirmasi firmware dan uji live view/autofocus. EOS 2000D tercantum pada daftar kompatibilitas Canon EDSDK v13.19.0 untuk Windows; verifikasi kembali paket SDK yang akan digunakan.
-3. Printer dicatat sebagai Canon PIXMA G1370; verifikasi nomor model, koneksi, driver/protokol, ukuran media, borderless, dan kemampuan pelaporan status.
-4. Bentuk output: satu foto atau beberapa foto; ukuran kertas; jumlah salinan; pemotongan strip manual atau didukung perangkat.
+3. Profil pertama Epson L8050; jika diganti Canon/model lain, verifikasi driver Windows, koneksi, ukuran media, borderless, silent print, dan pelaporan status pada model tersebut. Tidak semua printer otomatis kompatibel hanya karena terdaftar di Windows.
+4. Baseline Advanced 4R dan Classic dua strip 2 × 6 inci per lembar 4R dengan potong manual. Tetapkan jumlah salinan, jenis kertas, fit/crop, kualitas dan safe area melalui test print; Basic tidak diasumsikan memiliki profil cetak tervalidasi.
 5. Mode yang disediakan saat event: Classic, Basic, Advanced, atau subset. Classic ditemukan di source saat ini; Basic/Advanced hanya aktif jika engine/provider benar-benar tersedia.
 6. Target API dan credential kiosk; kebijakan event mengenai koneksi internet, penyimpanan foto, serta waktu penghapusan.
 
@@ -42,7 +58,7 @@ Kamera Canon <-> adapter kamera lokal
                        |          kontrol JSON -> API gateway -> API PhBo
                        |          bytes foto -> API media / MinIO (bypass gateway)
                        |
-                 adapter cetak lokal <-> antrean OS <-> printer Canon
+                 adapter cetak lokal <-> antrean OS <-> printer terpilih
                        |
                  file sesi + jurnal pekerjaan lokal
 ```
@@ -63,7 +79,7 @@ Opsi desktop untuk dibandingkan setelah PoC hardware:
 | .NET desktop + UI native atau WebView | Kandidat jika fokus Windows dan integrasi native | Biaya reuse UI, deployment runtime, integrasi SDK dan cetak |
 | Tauri + React + adapter native | Alternatif shell dengan UI React | Binding SDK, packaging, mekanisme cetak, beban maintenance |
 
-Tidak ada framework yang dipilih oleh dokumen ini. Hasil PoC dan keputusan pemilik proyek menentukan pilihan.
+Electron + React/Vite dengan adapter C#/.NET menjadi rekomendasi utama dalam planning. Opsi lain dipertahankan sebagai fallback jika PoC hardware/packaging gagal; implementasi framework menunggu review keputusan dan bukti PoC.
 
 ## Integrasi kamera
 
@@ -79,7 +95,7 @@ PoC harus membuktikan live view, shutter, foto resolusi penuh tersimpan, orienta
 
 Gunakan jalur printer OS yang didukung model terpilih; tidak mengasumsikan SDK kamera bisa mengontrol printer. PoC mencakup discovery printer, driver/protokol, media size, orientation, copies, margins, dan cetak tanpa dialog pelanggan.
 
-Pisahkan master result dari berkas siap cetak. Validasi rasio fisik, bleed/crop, safe area, dan scaling berdasarkan media sebenarnya. Strip digital 2x6 tidak otomatis berarti printer mendukung kertas atau pemotongan 2x6; opsi dua strip di satu lembar hanya ditetapkan setelah format disepakati.
+Pisahkan master result dari berkas siap cetak. Validasi rasio fisik, bleed/crop, safe area, dan scaling berdasarkan media sebenarnya. Untuk Classic, susun dua strip 2 × 6 inci berdampingan pada satu lembar 4R portrait; pemotongan manual dilakukan setelah cetak. Jangan mengirim kertas 2 × 6 inci sebagai asumsi dukungan driver atau mengklaim auto-cut. Advanced memakai satu foto 4R dengan crop yang sama antara preview dan cetakan.
 
 Jurnal lokal menyimpan ID pekerjaan, result, printer, copies, status, serta waktu submit. Diterima spooler tidak boleh dilaporkan sebagai cetakan fisik selesai. Jika driver tidak memberikan bukti completion, gunakan status accepted/unknown dan konfirmasi operator. Sesudah crash atau timeout ambigu, jangan otomatis mengirim ulang; operator menentukan reprint agar tidak mencetak ganda.
 
@@ -121,7 +137,9 @@ Setiap tahap dilaporkan dan ditinjau sebelum beralih tahap. Estimasi waktu dibua
 - Daftar kompatibilitas EDSDK v13.19.0, termasuk EOS 2000D: https://developercommunity.usa.canon.com/resource/1744393287000/CDC_EDSDKRAW_Compat_List
 - EOS Utility, kamera yang kompatibel: https://cam.start.canon/en/S003/manual/html/UG-00_Before_0050.html
 
-Spesifikasi printer ditambahkan setelah dokumentasi model yang tepat ditemukan. Tidak ada klaim dukungan printer fisik sebelum test print pada perangkat pengguna.
+- [Spesifikasi resmi Epson EcoTank L8050](https://www.epson.co.id/Untuk-Rumah/Printer-untuk-Rumah/Home-Office-Printers/Printer-Tangki-Tinta-Epson-EcoTank-L8050-/p/C11CK37501), diperiksa 2026-10-07: 6 tinta dye, USB 2.0/Wi-Fi, 4R borderless, sekitar 25 detik pada mode Photo Default dengan Epson Premium Glossy Photo Paper. Pengukuran tidak mencakup pemrosesan komputer.
+
+Dukungan printer fisik tetap memerlukan test print pada perangkat pengguna. Spesifikasi L8050 tidak diterapkan pada profil Canon/model lain.
 
 ## Struktur aplikasi yang diusulkan
 
@@ -284,7 +302,7 @@ Source result metadata dapat mengandung provider/model. Backend-client desktop m
 3. Cookie dari claim harus dikelola oleh trusted backend-client, terpisah per sesi dan tidak diakses React. Jangan melakukan claim otomatis sebelum menilai konsekuensi single-use claim terhadap QR pelanggan. QR ditunda pada MVP desktop; desain QR berikutnya harus menyediakan ownership desktop dan claim pelanggan yang terpisah.
 4. Recovery sesudah restart perlu akses sesi yang aman sampai expiry. Simpan credential akses melalui proteksi OS dan hapus saat masa retensi berakhir; claim token jangan dicetak ke log.
 5. Ukuran upload source harus diuji dengan JPEG EOS 2000D. Normalisasi/resizing untuk backend, jika diperlukan, menyimpan original lokal dan mengikuti batas API; jangan memperbesar upload limit tanpa uji memori, keamanan, dan kebutuhan.
-6. Rendition print saat ini bukan profil kertas PIXMA. Basic/Advanced belum memiliki dukungan rendition print pada endpoint ini; desktop dapat menyusun master menjadi lembar cetak lokal setelah profilnya diuji.
+6. Rendition print saat ini bukan profil driver/printer Windows tervalidasi. Basic/Advanced belum memiliki dukungan rendition print pada endpoint ini; desktop dapat menyusun master menjadi lembar cetak lokal setelah profilnya diuji.
 7. Gateway tidak boleh menerima multipart upload endpoint gabungan saat ini. Target membutuhkan pemisahan create/read sesi (kontrol gateway) dan upload sesi (jalur media). Path `kiosk/session/{sessionCode}/upload` pada diagram pengguna belum ditemukan di source yang diperiksa; URL existing memerlukan compatibility mapping.
 
 ### Perubahan server minimum yang diusulkan
@@ -456,7 +474,27 @@ Profil berisi ukuran kertas dalam mm, printable area yang diukur, orientation, b
 
 Jangan mengaplikasikan branding/template dua kali. Master tetap disimpan utuh; print preparation hanya membuat turunan. Color handling dimulai dari profil gambar/driver yang diuji; hindari double color management. Uji minimal foto wajah terang/gelap, crop tepi, teks kecil, dan penempatan strip. Durasi cetak dan drying/handling diukur pada printer serta media event untuk menentukan kapasitas antrean dan instruksi operator.
 
-Nomor model G1370 belum tervalidasi dokumentasinya; tidak menetapkan paper size, cutter, borderless, kecepatan, atau status tinta secara asumsi. Koneksi printer juga belum ditetapkan oleh pengguna.
+### Adapter printer lintas merek
+
+Gunakan `WindowsPrintBridge` sebagai adapter OS generik, bukan `EpsonPrintBridge` atau SDK kamera untuk printer. UI/operator memilih installed printer lalu profil tervalidasi; tidak menampilkan merek sebagai batas fitur. `printerId` merujuk antrean Windows tertentu, sementara profil mengikat model/driver/media/settings yang sudah diuji. Adapter memeriksa kemampuan yang tersedia melalui driver; field yang tidak tersedia diberi status unknown dan diverifikasi operator.
+
+Profil memiliki `manufacturer`, `model`, `driverName`/versi, `connection`, `printerId`, ukuran kertas, orientation, borderless, media type, quality, fit/crop, safe area, color handling, layout, copies limit, waktu uji dan status validasi. Simpan opsi driver yang spesifik pada profil; jangan mengasumsikan nama setting Epson identik dengan Canon. Antarmuka umum mencakup enumerate/status/validateProfile/submit/cancel/queryJob dengan result/error yang konsisten. Implementasi detail dipastikan pada PoC Windows.
+
+Saat berganti dari Epson ke Canon: pause sesi baru -> selesaikan/rekonsiliasi job printer lama -> pilih printer dan profil baru -> test Advanced serta Classic -> ukur dimensi/crop/warna -> konfirmasi operator -> resume. Job existing mempertahankan snapshot profil; tidak diarahkan otomatis ke printer baru. Jika perlu reprint di printer baru, buat job eksplisit dengan profil baru dan alasan.
+
+Tidak menyediakan auto-cut dalam baseline. Borderless hanya aktif bila driver/media/model mendukung dan hasil uji lulus. Printer tanpa borderless dapat memakai profil bermargin jika format hasil disetujui; tidak mengubah crop diam-diam. Fitur scanner tidak diperlukan untuk alur capture DSLR.
+
+### Profil awal dan pengukuran kecepatan
+
+| Profil planning | Kertas/layout | File awal pada 300 PPI | Validasi |
+| --- | --- | --- | --- |
+| `l8050-advanced-4r` | 4R portrait; satu foto | 1200 × 1800 px | Ukuran, orientasi, crop/contain, borderless dan warna |
+| `l8050-classic-double-strip-4r` | 4R portrait; dua strip 2 × 6 inci | 1200 × 1800 px; masing-masing strip 600 × 1800 px | Garis tengah, safe area, potong manual dan hasil dua strip |
+| `<model>-<layout>-4r` | Model lain, termasuk Canon | Turunan sesuai ukuran fisik dan profil | Test print baru; tidak mewarisi validasi L8050 |
+
+300 PPI adalah baseline raster cetak, berbeda dari resolusi maksimum printhead. Render lokal tidak menggambar ulang frame/branding. Borderless driver dapat memperbesar gambar dan memangkas tepi; safe area dan kontrol expansion harus diuji, terutama pada dua strip.
+
+Angka 25 detik L8050 menjadi acuan spesifikasi, bukan SLA aplikasi. Ukur waktu persiapan file, submit/spool, printer mengeluarkan lembar, handling/potong, serta total per sesi; simpan mode kualitas, jenis kertas dan jumlah salinan. Catat P50/P95 dari sesi berulang sebelum menentukan batas antrean dan target sesi/jam. Menghitung 3600/25 saja tidak membuktikan kapasitas event. Konfirmasi fisik operator menjadi sumber waktu selesai jika driver hanya melaporkan accepted. Profil Canon/model lain memakai hasil pengukuran sendiri.
 
 ## Packaging, konfigurasi, dan operasional Windows
 
@@ -472,10 +510,10 @@ Nomor model G1370 belum tervalidasi dokumentasinya; tidak menetapkan paper size,
 
 | ID | Pekerjaan | Dependensi | Bukti selesai |
 | --- | --- | --- | --- |
-| K00 | Konfirmasi Windows/model printer/media/mode/API | Input pengguna dan runtime read-only | Matriks target terisi, dokumen keputusan |
+| K00 | Konfirmasi versi Windows/profil printer/media/mode/API | Input pengguna dan runtime read-only | Matriks target terisi, dokumen keputusan |
 | K01 | Peroleh SDK dan uji EOS 2000D USB | K00, kamera fisik | Live view, shutter, full JPEG, reconnect, busy/timeout report |
 | K02 | Driver dan PoC print Windows | K00, printer/media fisik | Cetakan ukuran benar dan hasil uji spooler/offline |
-| K03 | Pilih shell dan kontrak adapter/IPC | K01–K02 | Keputusan teknologi dan protokol tervalidasi |
+| K03 | Validasi rekomendasi Electron/.NET dan kontrak adapter/IPC | K01–K02 | Keputusan teknologi dan protokol tervalidasi |
 | K04 | Shell kiosk, session state, local journal | K03 | Start/reset/restart recovery tests |
 | K05 | Capture UI, review/retake/selection | K04 + adapter | Sesi multi-shot nyata tanpa foto tertukar |
 | K06 | Idempotent session upload/recovery server | K00 + target API | Contract/integration tests request duplikat, concurrency, crash/replay |
@@ -510,7 +548,7 @@ Target numerik soak test, latency generation, capture transfer, dan throughput p
 
 | Risiko/keputusan | Dampak | Tindakan sebelum release |
 | --- | --- | --- |
-| Nama/driver printer belum terverifikasi | Profil dan silent print belum dapat dijanjikan | Konfirmasi label model dan uji driver/media |
+| Pergantian merek/model/driver printer | Setting dan hasil cetak dapat berbeda | Adapter Windows generik, snapshot profil, test print ulang sebelum resume |
 | SDK/firmware dan power kamera | Capture dapat gagal atau kamera tidur | Compatibility + real event-duration test |
 | Backend target/versi berbeda | Mapping auth/field tidak sesuai | Tetapkan API target tanpa migrasi implisit |
 | Single-use claim untuk desktop dan QR | Claim pelanggan bisa terblokir | QR ditunda; design ownership terpisah bila diminta |
