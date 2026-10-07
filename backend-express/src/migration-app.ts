@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'node:crypto';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -29,6 +30,11 @@ export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: numbe
 export function createMigrationApp(catalog: CustomerCatalogService, config: MigrationAppConfig, account?: CustomerAccountService, results?: CustomerResultService, uploads?: CustomerUploadService, generations?: CustomerGenerationService) {
   const app = express();
   app.disable('x-powered-by');
+  app.use((req,res,next) => {
+    const incoming = req.get('X-Request-ID');
+    res.set('X-Request-ID',incoming && /^[A-Za-z0-9_-]{1,64}$/.test(incoming) ? incoming : randomUUID());
+    next();
+  });
   if(config.trustProxy)app.set('trust proxy',1);
   app.use(helmet());
   app.use(cors({ origin: config.corsOrigins, credentials: true }));

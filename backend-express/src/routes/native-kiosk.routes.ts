@@ -9,6 +9,12 @@ export function nativeKioskRoutes(service: NativeKioskService, catalog: Customer
   const router = Router(), handlers = nativeKioskController(service,catalog);
   const limit = (maximum: number) => rateLimit({ windowMs: 60000,limit: maximum,standardHeaders: 'draft-8',legacyHeaders: false });
   const upload = multer({ storage: multer.memoryStorage(),limits: { fileSize: maxBytes,files: 4,fields: 1,parts: 5 } }).array('image',4);
+  const kioskAuth: import('express').RequestHandler = (req,_res,next) => { service.authorize(req.get('X-API-Key')); next(); };
+  router.post('/kiosk/sessions',kioskAuth,limit(30),handlers.reserve);
+  // Authenticate the session-specific grant before reading multipart bytes.
+  router.post('/kiosk/session/:code/upload',kioskAuth,limit(30),async (req,_res,next) => {
+    await service.authorizeTransfer(req.params.code,req.get('X-Kiosk-Upload-Token')); next();
+  },multer({ storage: multer.memoryStorage(),limits: { fileSize: maxBytes,files: 4,fields: 0,parts: 4 } }).array('image',4),handlers.transfer);
   router.post(['/photo-sessions','/upload-image'],(req,_res,next) => { service.authorize(req.get('X-API-Key')); next(); },limit(30),upload,handlers.create);
   router.post('/photo-sessions/:code/claim',limit(20),handlers.claim);
   router.get('/photo-sessions/:code',handlers.session);

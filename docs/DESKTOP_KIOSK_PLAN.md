@@ -19,7 +19,7 @@ Perangkat yang ditentukan pengguna: PC Windows dan kamera Canon EOS 2000D melalu
 | Desktop shell | Electron + React/Vite, proses adapter native C#/.NET | Rekomendasi untuk reuse frontend dan integrasi Windows; keputusan implementasi menunggu PoC/review |
 | State lokal | SQLite untuk jurnal; filesystem untuk foto; credential store Windows untuk secret | Rekomendasi; tidak mengganti database server |
 | Server | API Express existing, PostgreSQL, worker/provider existing, MinIO | Mengikuti source/runtime; tidak melakukan migrasi backend |
-| Gateway | NGINX OSS untuk JSON kontrol; jalur media terpisah | Rekomendasi; belum diimplementasikan |
+| Gateway | NGINX OSS untuk JSON kontrol; jalur media terpisah | Kandidat kiosk tahap 2 tersedia/diuji; belum deployment live |
 | Queue | PostgreSQL tetap baseline aktif; Redis queue sesuai diagram sebagai tahap terpisah | Tidak dipindahkan pada tahap gateway |
 
 Keputusan teknologi yang direkomendasikan bukan klaim telah dipilih atau dibangun. Tahap ini menghasilkan dokumen review, tanpa scaffolding, perubahan API, atau deployment.
@@ -319,6 +319,12 @@ Pemecahan sesi kontrol dan upload media harus mempersist operation/session ID se
 - Perubahan route, schema, service, model/migration dan pengujian harus berada di satu backend target saja. Tidak membuat migration Express dan FastAPI bersamaan untuk fitur yang sama.
 
 Endpoint operasi di atas BELUM ADA dan tidak boleh dipanggil seolah sudah tersedia. Jika perubahan server ditunda, recovery upload ambigu harus berhenti untuk pemeriksaan operator; release dinyatakan PARTIAL untuk ketahanan event, bukan menjamin exactly-once.
+
+### Update kandidat tahap 2 — 2026-10-07
+
+Kontrak legacy di atas tetap berlaku dan belum diganti di production. Kandidat menambah `POST /api/v1/kiosk/sessions` (JSON kontrol, create/replay idempotent) serta `POST /api/v1/kiosk/session/:code/upload` (multipart media dengan grant khusus sesi, upload/replay idempotent). Detail credential, base URL, fingerprint, migration, crash/orphan, batas recovery claim dan tes tersedia di [README gateway](../api-gateway/README.md). Tidak memakai endpoint operasi usulan yang belum dibuat.
+
+K06 memiliki implementasi kandidat reserve/upload dan tes PostgreSQL; promotion live serta recovery cookie claim ambigu masih pending. Client desktop harus memakai kontrak baru setelah release API yang tepat dipasang, bukan menganggap endpoint tersedia pada backend live sekarang.
 
 ## Model metadata lokal dan penyimpanan file
 

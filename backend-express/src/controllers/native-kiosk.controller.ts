@@ -6,6 +6,8 @@ import { z } from 'zod';
 export function nativeKioskController(service: NativeKioskService, catalog: CustomerCatalogService): Record<string,HttpHandler> {
   const credential = (req: Parameters<HttpHandler>[0]) => req.cookies?.photo_session;
   return {
+    reserve: async (req,res) => { res.status(201).json({ data: await service.reserve(req.body,req.get('Idempotency-Key')) }); },
+    transfer: async (req,res) => { res.json({ data: await service.transfer(req.params.code,req.get('X-Kiosk-Upload-Token'),Array.isArray(req.files) ? req.files : [],req.body,req.get('Idempotency-Key')) }); },
     create: async (req,res) => { res.status(201).json({ data: await service.create(Array.isArray(req.files) ? req.files : [],req.body) }); },
     claim: async (req,res) => {
       const result = await service.claim(req.params.code,req.body,credential(req));

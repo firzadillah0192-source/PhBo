@@ -1,10 +1,10 @@
 # Arsitektur API gateway dan jalur foto PhBo
 
-Status: PLANNING, mengikuti diagram yang diunggah pengguna di [arsi phbo.jpeg](<arsi phbo.jpeg>) dan penjelasan bahwa gateway menangani request selain upload/download foto. Dokumen ini memperjelas target dan selisih source; belum mengimplementasikan gateway atau mengubah deployment.
+Status: KANDIDAT TAHAP 2 (2026-10-07), mengikuti diagram yang diunggah pengguna di [arsi phbo.jpeg](<arsi phbo.jpeg>) dan penjelasan bahwa gateway menangani request selain upload/download foto. Dokumen ini memperjelas target dan selisih source. Implementasi gateway kiosk kandidat dan split session/upload tersedia; deployment production belum diubah. Lihat [kontrak, pengujian dan promotion](../api-gateway/README.md).
 
 ## Baseline teknologi untuk review (2026-10-07)
 
-Rekomendasi gateway adalah **NGINX OSS** sebagai proses/container kontrol khusus dengan konfigurasi routing, batas body JSON, rate limit, timeout, request ID dan log yang meredaksi akses sensitif. Auth/ownership bisnis tetap diperiksa API PhBo; gateway tidak menggantikan validasi media. Ini rekomendasi planning, belum deployment atau keputusan migrasi arsitektur.
+Rekomendasi gateway adalah **NGINX OSS** sebagai proses/container kontrol khusus dengan konfigurasi routing, batas body JSON, rate limit, timeout, request ID dan log yang meredaksi akses sensitif. Auth/ownership bisnis tetap diperiksa API PhBo; gateway tidak menggantikan validasi media. Implementasi kandidat NGINX tersedia untuk allowlist kiosk `/api/v1`; domain web/core/admin belum dipetakan dan deployment live belum berubah.
 
 NGINX web yang sekarang ada di `frontend/nginx.conf` masih meneruskan request API dan multipart upload melalui proses yang sama. Target membutuhkan jalur media yang melewati entrypoint/proses berbeda dari gateway kontrol; sekadar membuat `location /media` pada proses gateway yang sama tidak memenuhi pemisahan bytes pengguna. Domain, TLS, endpoint storage dan kapasitas diputuskan sebelum deployment, tanpa mengubah reverse proxy proyek lain.
 
@@ -108,7 +108,7 @@ Worker mengakses 9Router melalui provider abstraction yang sudah ada. Provider/m
 ## Struktur modul server target
 
 ```text
-api-gateway/                    # Usulan config NGINX OSS; belum dibuat
+api-gateway/                    # Config NGINX OSS kandidat tersedia
   routing/                     # kiosk/core/web control only
   access/                      # Auth policy dan rate limit kontrol
   observability/               # Request ID, redacted logs
@@ -132,9 +132,9 @@ Struktur adalah pembagian tanggung jawab, bukan instruksi memindahkan semua sour
 
 | Area | Source/catatan release yang ditemukan | Target diagram dan pekerjaan |
 | --- | --- | --- |
-| Gateway | Tidak dibuktikan sebagai layer terpisah pada review ini | Tambahkan NGINX OSS kontrol yang direkomendasikan dan jalur media terpisah; belum diimplementasikan |
+| Gateway | Proxy web live masih gabungan; kandidat dua proses NGINX sudah tersedia | Uji/promotion URL dan TLS; mapping web/core/admin tersendiri |
 | Domain route | `/api` web/shared dan `/api/v1` native kiosk | Susun mapping `kiosk/core/web`; jangan menghapus URL existing tanpa compatibility plan |
-| Session/upload | `POST /api/v1/photo-sessions` membuat sesi sekaligus upload | Pisah sesi kontrol dan upload media, atau adapter kompatibel; route target belum ada |
+| Session/upload | Endpoint gabungan legacy tetap ada; kandidat menambah `/api/v1/kiosk/sessions` dan `/api/v1/kiosk/session/:code/upload` | Kontrak idempotent diuji pada kandidat; migration/deployment live pending |
 | Signed media | Signed GET MinIO sudah ada | Gunakan untuk bypass download; presigned upload masih opsi baru |
 | Queue | Catatan release 2026-10-04: PostgreSQL dispatch; Redis untuk rate limits | Diagram menargetkan Redis `queue-classic` dan `queue-router`; perlu sprint/keputusan migrasi terpisah |
 | Job states | `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED` | Label Pending/Success/Failed pada diagram dipetakan ke state existing; jangan ubah enum diam-diam |
@@ -154,4 +154,4 @@ Acceptance gateway: request session/catalog/generation/status tercatat di gatewa
 
 ## Status review
 
-PASS untuk pembacaan diagram dan penyusunan planning yang konsisten dengan jalur kontrol/media. Gateway, route baru, presigned upload, perubahan queue, domain/infrastruktur, dan pengujian traffic belum diimplementasikan. Pengguna telah menentukan pemisahan request gateway dan transfer foto; detail implementasi yang belum diputuskan dicatat di atas.
+Implementasi kandidat gateway kiosk dan split session/upload sudah tersedia dengan pengujian DB/HTTP terisolasi. Domain/TLS public, promotion production, mapping web/core/admin, uji MinIO nyata, presigned upload dan migrasi Redis queue belum dilakukan. Endpoint legacy tetap kompatibel. Status pengujian serta batas recovery dijelaskan pada README gateway; tidak menyatakan desktop siap event.
