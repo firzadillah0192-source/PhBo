@@ -1,0 +1,33 @@
+name: photobooth-gateway
+services:
+  control:
+    image: nginx:1.28-alpine
+    container_name: photobooth-control-gateway
+    restart: unless-stopped
+    ports: ["${PHBO_BIND_ADDRESS:-0.0.0.0}:${PHBO_CONTROL_PORT:-20251}:8080"]
+    volumes:
+      - ${PHBO_GATEWAY_CONFIG_DIR:?Set release config directory}/control.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${PHBO_GATEWAY_CONFIG_DIR:?Set release config directory}/proxy-control.conf:/etc/nginx/conf.d/proxy-control.inc:ro
+    networks: [photobooth-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/gateway/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+  media:
+    image: nginx:1.28-alpine
+    container_name: photobooth-media-entry
+    restart: unless-stopped
+    ports: ["${PHBO_BIND_ADDRESS:-0.0.0.0}:${PHBO_MEDIA_PORT:-20252}:8080"]
+    volumes:
+      - ${PHBO_GATEWAY_CONFIG_DIR:?Set release config directory}/media.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [photobooth-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/media/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+networks:
+  photobooth-net:
+    external: true
+    name: photobooth-net

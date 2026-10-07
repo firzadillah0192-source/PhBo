@@ -566,3 +566,7 @@ Target numerik soak test, latency generation, capture transfer, dan throughput p
 ## Status dokumen dan publikasi
 
 Planning mencakup struktur lokal/server, kontrak API source dan gap, model data, state/recovery, UI tamu/operator, hardware, packaging, backlog, dan acceptance. Implementasi desktop, perubahan backend, deployment, serta uji fisik belum dilakukan. Publikasi dokumen ke repo tidak mengaktifkan fitur kiosk pada aplikasi live.
+
+## Update deployment 2026-10-07
+
+Gateway kontrol/media native sudah live dengan binding `0.0.0.0:20251/20252` sesuai origin IP LAN pada tunnel pengguna. Endpoint reserve/upload idempotent dan signed download MinIO di hostname storage baru lulus smoke test. Lihat [laporan deployment](GATEWAY_DEPLOYMENT.md). Catatan kandidat/historis di atas tidak menyatakan uji hardware atau kapasitas event selesai.

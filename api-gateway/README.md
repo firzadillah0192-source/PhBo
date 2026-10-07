@@ -1,6 +1,6 @@
 # Gateway kontrol dan jalur media PhBo — kandidat tahap 2
 
-Status: implementasi kandidat untuk API kiosk native `/api/v1`; belum dipasang di production. Web `/api`, admin, frontend dan deployment live tetap menggunakan jalur existing. Belum mengganti queue PostgreSQL, menambah desktop, atau menjalankan hardware.
+Status: API kiosk native `/api/v1` dan gateway sudah dipasang di production pada 2026-10-07. Lihat [laporan deployment](../docs/GATEWAY_DEPLOYMENT.md). Web `/api`, admin, frontend dan deployment live tetap menggunakan jalur existing. Queue PostgreSQL tetap aktif; desktop dan hardware belum dikerjakan.
 
 ## Jalur request
 
@@ -86,4 +86,4 @@ Referensi resmi: [Cloudflare proxied DNS](https://developers.cloudflare.com/dns/
 5. Arahkan client desktop ke dua base URL setelah tes lulus. Web existing tetap kompatibel; mapping `/api` web/core/admin memerlukan tahap compatibility sendiri, bukan wildcard proxy.
 6. Rollback: kembalikan client ke URL/release sebelumnya, hentikan entrypoint kandidat dan pulihkan image API sebelumnya. Tabel tambahan dapat tetap ada karena tidak mengubah tabel existing; jangan menghapus sesi/foto aktif sebagai rollback.
 
-Sampai checklist ini lulus, status promotion production PARTIAL. Tidak menjanjikan throughput event atau kesiapan desktop dari tes kandidat ini.
+Deployment native gateway sudah lulus validasi jaringan dan synthetic smoke test yang dicatat pada laporan deployment. Uji foto EOS 2000D, kapasitas event dan recovery desktop tetap pending. Checklist ini tetap digunakan untuk release berikutnya.

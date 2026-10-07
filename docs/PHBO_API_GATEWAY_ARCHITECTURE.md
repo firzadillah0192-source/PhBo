@@ -155,3 +155,7 @@ Acceptance gateway: request session/catalog/generation/status tercatat di gatewa
 ## Status review
 
 Implementasi kandidat gateway kiosk dan split session/upload sudah tersedia dengan pengujian DB/HTTP terisolasi. Domain/TLS public, promotion production, mapping web/core/admin, uji MinIO nyata, presigned upload dan migrasi Redis queue belum dilakukan. Endpoint legacy tetap kompatibel. Status pengujian serta batas recovery dijelaskan pada README gateway; tidak menyatakan desktop siap event.
+
+## Update deployment 2026-10-07
+
+Gateway kontrol/media native sudah live dengan binding `0.0.0.0:20251/20252` sesuai origin IP LAN pada tunnel pengguna. Endpoint reserve/upload idempotent dan signed download MinIO di hostname storage baru lulus smoke test. Lihat [laporan deployment](GATEWAY_DEPLOYMENT.md). Catatan kandidat/historis di atas tidak menyatakan uji hardware atau kapasitas event selesai.
