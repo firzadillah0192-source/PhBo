@@ -4,6 +4,8 @@ Status: DRAFT untuk keputusan produk dan proof of concept hardware. Dokumen ini 
 
 Dokumen utama planning backend dan UI desktop event. Semua struktur file, endpoint baru, skema lokal, dan pilihan teknologi di bawah adalah usulan implementasi, bukan fitur yang sudah tersedia. Dokumen ditulis dalam bahasa Indonesia untuk review di repo PhBo.
 
+Update arsitektur pengguna: lihat [diagram arsi phbo](<arsi phbo.jpeg>) dan [planning API gateway serta jalur foto](PHBO_API_GATEWAY_ARCHITECTURE.md). Request kontrol desktop menggunakan API gateway; upload/download bytes foto menggunakan jalur media tanpa melalui gateway. Kontrak endpoint yang tercantum sebagai source saat ini tetap dibedakan dari route target `kiosk/core/web`.
+
 Perangkat yang ditentukan pengguna: PC Windows, kamera Canon EOS 2000D terhubung ke PC melalui kabel data USB, printer Canon PIXMA G1370. Versi/arsitektur Windows dan koneksi printer belum ditentukan. Nama printer dicatat sesuai pengguna; pencarian dokumentasi resmi G1370 belum menemukan spesifikasi, sehingga nomor model/driver perlu diverifikasi, tanpa menggantinya dengan model lain.
 
 ## Tujuan dan batas lingkup
@@ -35,7 +37,10 @@ MVP diusulkan untuk satu komputer, satu kamera, satu printer, dan satu format ce
 ```text
 Kamera Canon <-> adapter kamera lokal
                        |
-                 Desktop kiosk UI <-> backend Photobooth <-> worker/provider
+                 Desktop kiosk UI <-> trusted orchestrator lokal
+                       |                     |
+                       |          kontrol JSON -> API gateway -> API PhBo
+                       |          bytes foto -> API media / MinIO (bypass gateway)
                        |
                  adapter cetak lokal <-> antrean OS <-> printer Canon
                        |
@@ -46,6 +51,7 @@ Pembagian tanggung jawab:
 
 - Desktop: live view, countdown, shutter, transfer foto, review/retake, penyimpanan lokal sementara, pemulihan sesi, antrean cetak, reset tamu, serta diagnostik operator.
 - Backend: validasi upload, katalog, generation, status job, ownership, dan hasil menggunakan kontrak yang sudah ada.
+- Gateway: hanya request kontrol/metadata. Trusted backend-client memisahkan control client dan media client; file foto tidak dikirim sebagai multipart/base64 melalui gateway. Request izin/URL media tetap lewat gateway.
 - Kamera/printer berada di komputer event; backend VPS tidak mengakses USB perangkat event.
 - Capture dan penyimpanan foto dibuat lokal. Generation online memerlukan backend/provider; kemampuan Classic offline merupakan scope tambahan yang perlu keputusan, bukan janji MVP.
 
@@ -136,6 +142,8 @@ desktop/                          # Paket baru; belum dibuat
       session-orchestrator.ts     # Urutan capture -> upload -> generation -> print
       device-supervisor.ts        # Proses adapter, heartbeat, recovery
       backend-client.ts           # TLS, auth, cookie jar/token, retry
+      control-client.ts           # JSON/session/catalog/generation melalui gateway
+      media-client.ts             # Upload/download bytes bypass gateway
       catalog-cache.ts
       capture-store.ts            # File aman dan checksum
       upload-outbox.ts            # Upload persisten dan rekonsiliasi
@@ -210,6 +218,8 @@ Reuse frontend dilakukan setelah menilai coupling komponen sekarang terhadap bro
 
 Backend desktop lokal adalah orchestrator dan adapter hardware, bukan server generation kedua. Server Photobooth tetap menjadi sumber otoritatif untuk katalog, izin mode, generation, quota, dan result.
 
+Target gateway/domain mengikuti dokumen arsitektur terpisah yang ditautkan di awal. Diagram pengguna menargetkan Redis `queue-classic`/`queue-router`, sementara catatan release repo mencatat PostgreSQL dispatch dan Redis rate limits. Planning desktop tidak otomatis mengganti queue. Perubahan dispatch perlu sprint terpisah.
+
 ### Jalur yang sudah ditemukan di Express
 
 ```text
@@ -275,10 +285,13 @@ Source result metadata dapat mengandung provider/model. Backend-client desktop m
 4. Recovery sesudah restart perlu akses sesi yang aman sampai expiry. Simpan credential akses melalui proteksi OS dan hapus saat masa retensi berakhir; claim token jangan dicetak ke log.
 5. Ukuran upload source harus diuji dengan JPEG EOS 2000D. Normalisasi/resizing untuk backend, jika diperlukan, menyimpan original lokal dan mengikuti batas API; jangan memperbesar upload limit tanpa uji memori, keamanan, dan kebutuhan.
 6. Rendition print saat ini bukan profil kertas PIXMA. Basic/Advanced belum memiliki dukungan rendition print pada endpoint ini; desktop dapat menyusun master menjadi lembar cetak lokal setelah profilnya diuji.
+7. Gateway tidak boleh menerima multipart upload endpoint gabungan saat ini. Target membutuhkan pemisahan create/read sesi (kontrol gateway) dan upload sesi (jalur media). Path `kiosk/session/{sessionCode}/upload` pada diagram pengguna belum ditemukan di source yang diperiksa; URL existing memerlukan compatibility mapping.
 
 ### Perubahan server minimum yang diusulkan
 
 Pada API terpilih, tambahkan idempotency ke create session sebelum menetapkan desktop siap event:
+
+Pemecahan sesi kontrol dan upload media harus mempersist operation/session ID sebelum transfer. Idempotency diperlukan untuk create session maupun upload/commit, bukan hanya generation. Detail mapping route dan izin media mengikuti `PHBO_API_GATEWAY_ARCHITECTURE.md`; daftar berikut menjelaskan kebutuhan pada kontrak existing, bukan instruksi melewatkan bytes foto melalui gateway.
 
 - Header `Idempotency-Key` pada upload sesi; scope key ke identity kiosk + event.
 - Fingerprint request berdasarkan selection dan hash file yang tervalidasi; key sama + isi berbeda -> 409 `IDEMPOTENCY_CONFLICT`.
