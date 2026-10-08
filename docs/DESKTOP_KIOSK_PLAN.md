@@ -1,8 +1,8 @@
 # Rencana desktop kiosk Photobooth AI
 
-Status: PLANNING diperbarui 2026-10-07 untuk tahap 1 (perapihan dokumen). Keputusan pengguna, rekomendasi teknologi, dan pekerjaan yang belum diuji dibedakan di bawah. Integrasi hardware dan deployment belum dilakukan.
+Status diperbarui 2026-10-08: gateway sudah dideploy pada tahap sebelumnya; scaffold desktop tersedia di `desktop/` dengan Electron + React/Vite, adapter C#/.NET dan jurnal SQLite. Pengguna menyetujui pengerjaan software di VPS serta menunda PoC fisik. Lihat [laporan scaffold](DESKTOP_SCAFFOLD_REPORT.md) untuk implementasi, hasil tes dan batas nyata. Bagian rancangan berikut tetap menjadi target lanjutan; bukan seluruhnya sudah tersedia.
 
-Dokumen utama planning backend dan UI desktop event. Semua struktur file, endpoint baru, skema lokal, dan pilihan teknologi di bawah adalah usulan implementasi, bukan fitur yang sudah tersedia. Dokumen ditulis dalam bahasa Indonesia untuk review di repo PhBo.
+Dokumen utama planning backend dan UI desktop event. Rancangan lengkap di bawah mencakup target yang belum tersedia; status implementasi per tahap dicatat terpisah dalam laporan scaffold dan gateway. Dokumen ditulis dalam bahasa Indonesia untuk review di repo PhBo.
 
 Update arsitektur pengguna: lihat [diagram arsi phbo](<arsi phbo.jpeg>) dan [planning API gateway serta jalur foto](PHBO_API_GATEWAY_ARCHITECTURE.md). Request kontrol desktop menggunakan API gateway; upload/download bytes foto menggunakan jalur media tanpa melalui gateway. Kontrak endpoint yang tercantum sebagai source saat ini tetap dibedakan dari route target `kiosk/core/web`.
 
@@ -16,13 +16,13 @@ Perangkat yang ditentukan pengguna: PC Windows dan kamera Canon EOS 2000D melalu
 | Printer | Adapter cetak Windows lintas merek; profil pertama Epson L8050, Canon dapat memakai profil terpisah | Permintaan pengguna; setiap model wajib test print |
 | Advanced | Satu foto pada lembar 4R, 4 × 6 inci (101,6 × 152,4 mm) | Baseline format; crop/borderless divalidasi fisik |
 | Classic | Dua strip 2 × 6 inci pada satu lembar 4R, dipotong manual | Baseline format; strip ini bukan ukuran 2R |
-| Desktop shell | Electron + React/Vite, proses adapter native C#/.NET | Rekomendasi untuk reuse frontend dan integrasi Windows; keputusan implementasi menunggu PoC/review |
-| State lokal | SQLite untuk jurnal; filesystem untuk foto; credential store Windows untuk secret | Rekomendasi; tidak mengganti database server |
+| Desktop shell | Electron + React/Vite, proses adapter native C#/.NET | Scaffold diimplementasikan; PoC fisik pending |
+| State lokal | SQLite untuk jurnal; filesystem untuk foto; credential store Windows untuk secret | SQLite metadata dan safeStorage terimplementasi; filesystem lokal untuk foto |
 | Server | API Express existing, PostgreSQL, worker/provider existing, MinIO | Mengikuti source/runtime; tidak melakukan migrasi backend |
-| Gateway | NGINX OSS untuk JSON kontrol; jalur media terpisah | Kandidat kiosk tahap 2 tersedia/diuji; belum deployment live |
+| Gateway | NGINX OSS untuk JSON kontrol; jalur media terpisah | Dideploy/diuji pada tahap gateway sebelumnya |
 | Queue | PostgreSQL tetap baseline aktif; Redis queue sesuai diagram sebagai tahap terpisah | Tidak dipindahkan pada tahap gateway |
 
-Keputusan teknologi yang direkomendasikan bukan klaim telah dipilih atau dibangun. Tahap ini menghasilkan dokumen review, tanpa scaffolding, perubahan API, atau deployment.
+Electron + React/Vite dan adapter C#/.NET sudah dipakai untuk scaffold yang disetujui pengguna. Kemampuan perangkat fisik dan profil cetak pada planning ini tetap harus diuji di PC event.
 
 ## Tujuan dan batas lingkup
 
@@ -79,7 +79,7 @@ Opsi desktop untuk dibandingkan setelah PoC hardware:
 | .NET desktop + UI native atau WebView | Kandidat jika fokus Windows dan integrasi native | Biaya reuse UI, deployment runtime, integrasi SDK dan cetak |
 | Tauri + React + adapter native | Alternatif shell dengan UI React | Binding SDK, packaging, mekanisme cetak, beban maintenance |
 
-Electron + React/Vite dengan adapter C#/.NET menjadi rekomendasi utama dalam planning. Opsi lain dipertahankan sebagai fallback jika PoC hardware/packaging gagal; implementasi framework menunggu review keputusan dan bukti PoC.
+Electron + React/Vite dengan adapter C#/.NET dipakai pada scaffold awal. Opsi lain tetap referensi bila PoC hardware gagal dan memerlukan keputusan arsitektur baru. PoC fisik ditunda sesuai permintaan pengguna; scaffold tidak mengklaim integrasi perangkat telah lulus.
 
 ## Integrasi kamera
 

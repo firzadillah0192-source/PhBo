@@ -1,0 +1,6 @@
+release/
+native/**/bin/
+native/**/obj/
+native/publish/
+*.sqlite
+*.secret
