@@ -1,5 +1,7 @@
 # Preview web kiosk
 
+Catatan historis tahap preview. Implementasi terkini sudah memiliki UI retro, login Google terproteksi, proses dan hasil backend; lihat [KIOSK_WEB_FLOW.md](KIOSK_WEB_FLOW.md).
+
 Tanggal: 2026-10-08. Status **PASS** untuk preview tampilan yang diminta; hardware/generation pada preview belum aktif.
 
 URL live: https://nxbooth.gennexbyte.com/kiosk

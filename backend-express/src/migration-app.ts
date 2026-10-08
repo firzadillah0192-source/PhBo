@@ -21,6 +21,7 @@ import type { NativeAdminServices } from './controllers/admin.controller.js';
 import { nativeAdminRoutes } from './routes/admin.routes.js';
 import type { NativeRateLimitService } from './services/native-rate-limit.service.js';
 import type { NativeKioskService } from './services/native-kiosk.service.js';
+import { kioskWebAccess } from './routes/kiosk-web.routes.js';
 import { nativeKioskRoutes } from './routes/native-kiosk.routes.js';
 
 export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService };
@@ -58,6 +59,15 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
   app.get('/health', (_req, res) => { res.json({ status: 'ok', service: 'nxbooth-express' }); });
   if(config.health)app.get('/api/health',async(_req,res)=>{res.json(await config.health!());});
   if(config.admin)app.use('/api/admin',nativeAdminRoutes(config.admin,config.uploadMaxBytes??12*1024*1024));
+  // Restricted web kiosk uses the existing signed account session and provider pipeline.
+  if(account){
+    app.use('/api/kiosk',kioskWebAccess(account));
+    app.use('/api/kiosk/web',customerCatalogRoutes(catalog));
+    app.use('/api/kiosk/web/account',customerAccountRoutes(account));
+    if(results)app.use('/api/kiosk/web',customerResultRoutes(results,account,config.limiter));
+    if(uploads)app.use('/api/kiosk/web',customerUploadRoutes(uploads,account,config.uploadMaxBytes??12*1024*1024));
+    if(generations)app.use('/api/kiosk/web',customerGenerationRoutes(generations,account));
+  }
   app.use('/api', customerCatalogRoutes(catalog));
   if (account) app.use('/api/account', customerAccountRoutes(account));
   if (account && results) app.use('/api', customerResultRoutes(results, account,config.limiter));

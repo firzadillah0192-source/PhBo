@@ -1,87 +1,89 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, {useEffect,useRef,useState} from 'react'
+import {kioskLogout,createGeneration,getGeneration,getResult,resultDownloadUrl,resultImageUrl,startKioskSession,uploadPhoto} from '../../kioskWebApi.js'
+import {startGenerationPolling} from '../../generationPolling.js'
+import {loadKioskWebCatalog,selectionOptions,readKioskWebJob,saveKioskWebJob,clearKioskWebJob,kioskWebError} from '../../kioskWebFlow.js'
+import {openKioskCamera,stopCamera,cameraError,captureCameraPhoto} from '../../kioskCamera.js'
 import './kiosk-preview.css'
-
-const modes = [
-  { id: 'CLASSIC', name: 'Classic', tagline: 'Pose. Smile. Repeat.', description: 'Tiga momen kecil, satu cerita. Pilih pose terbaikmu untuk photo strip.', format: '2 strip pada 1 lembar 4R', shots: 3, icon: 'strip' },
-  { id: 'BASIC', name: 'Basic', tagline: 'Your photo, a new look.', description: 'Satu foto personal dengan desain pilihan untuk dibawa pulang.', format: '1 foto · desain template', shots: 1, icon: 'portrait' },
-  { id: 'ADVANCED', name: 'Advanced', tagline: 'Step into another world.', description: 'Ubah satu pose menjadi pengalaman foto dengan tema pilihanmu.', format: '1 foto · hasil 4R', shots: 1, icon: 'world' },
-]
-
-function CameraIcon() {
-  return <svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M10 20h12l4-6h12l4 6h12v30H10z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/><circle cx="32" cy="35" r="10" stroke="currentColor" strokeWidth="2"/><circle cx="47" cy="26" r="2" fill="currentColor"/></svg>
-}
-function ModeArt({ type }) {
-  return <div className={`kv-art kv-art-${type}`} aria-hidden="true"><div className="kv-art-glow"/>{type === 'strip' ? <div className="kv-strips">{[0,1].map(n=><div className="kv-strip" key={n}><i/><i/><i/><small>NXBOOTH</small></div>)}</div> : <div className="kv-portrait"><div className="kv-silhouette"/><div className="kv-orbit"/><span>{type === 'world' ? '✦' : '✳'}</span></div>}</div>
-}
-
-export default function KioskPreview() {
-  const [mode, setMode] = useState('CLASSIC')
-  const [stage, setStage] = useState('choose')
-  const [photos, setPhotos] = useState([])
-  const [operator, setOperator] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const urls = useRef(new Set())
-  const input = useRef(null)
-  const choice = modes.find(m => m.id === mode)
-  const current = stage === 'choose' ? 0 : stage === 'capture' ? 1 : 2
-  useEffect(() => { document.title = 'NXBooth — Kiosk preview'; return () => { for (const url of urls.current) URL.revokeObjectURL(url) } }, [])
-  function reset() {
-    for (const url of urls.current) URL.revokeObjectURL(url)
-    urls.current.clear(); setPhotos([]); setStage('choose'); setError('')
-  }
-  async function choosePhotos(event) {
-    const files = Array.from(event.target.files || []); event.target.value = ''
-    if (!files.length || loading) return
-    setError('')
-    if (files.length > choice.shots - photos.length) { setError(`Pilih maksimal ${choice.shots - photos.length} foto lagi.`); return }
-    setLoading(true)
-    const pending = []
-    try {
-      for (const file of files) {
-        if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 12 * 1024 * 1024) throw new Error('Pilih foto JPEG atau PNG, maksimal 12 MB per foto.')
-        const url = URL.createObjectURL(file); urls.current.add(url); pending.push({url})
-        const image = new Image()
-        await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = () => reject(new Error('Foto tidak dapat dibaca. Pilih JPEG atau PNG yang valid.')); image.src = url })
-        if (!image.naturalWidth || image.naturalWidth * image.naturalHeight > 40000000) throw new Error('Resolusi foto terlalu besar. Pilih foto hingga 40 megapixel.')
-      }
-      setPhotos(previous => [...previous, ...pending])
-    } catch (e) {
-      for (const p of pending) { URL.revokeObjectURL(p.url); urls.current.delete(p.url) }
-      setError(e.message)
-    } finally { setLoading(false) }
-  }
-  function retake(index) {
-    const photo = photos[index]; URL.revokeObjectURL(photo.url); urls.current.delete(photo.url)
-    setPhotos(previous => previous.filter((_, i) => i !== index)); setStage('capture'); setError('')
-  }
-  async function fullscreen() {
-    try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen() }
-    catch { setError('Browser ini tidak menyediakan mode layar penuh.') }
-  }
-  return <div className="kv-app">
-    <header className="kv-header"><a className="kv-logo" href="/" aria-label="NXBooth beranda">NX<span>Booth</span><sup>EVENT STATION</sup></a><div className="kv-header-actions"><span className="kv-preview-dot">Preview web</span><button className="kv-icon-button" aria-label="Operator" onClick={() => setOperator(!operator)} aria-expanded={operator} aria-controls="kv-operator">☷ <span>Operator</span></button></div></header>
-    <main className="kv-main" id="kiosk-main">
-      <div className="kv-topline"><span className="kv-eyebrow">YOUR MOMENT STARTS HERE</span><nav aria-label="Tahap sesi" className="kv-steps">{['Pilih mode','Foto','Review'].map((label,i)=><span key={label} className={i === current ? 'is-current' : i < current ? 'is-done' : ''} aria-current={i === current ? 'step' : undefined}><b>{i < current ? '✓' : i + 1}</b>{label}</span>)}</nav></div>
-      {error && <div className="kv-error" role="alert">{error}</div>}
-      {stage === 'choose' ? <>
-        <div className="kv-intro"><div><h1>A little pose.<br/>A lasting <em>memory.</em></h1><p>Pilih pengalamanmu. Buat momen ini jadi sesuatu<br className="kv-desktop-break"/> yang bisa kamu bawa pulang.</p></div><div className="kv-session-note"><span>✦</span><p>One session.<br/><strong>All yours.</strong></p></div></div>
-        <div className="kv-mode-grid">{modes.map(item => <button key={item.id} className={`kv-mode-card ${mode === item.id ? 'is-selected' : ''}`} onClick={() => setMode(item.id)} aria-pressed={mode === item.id}>
-          <ModeArt type={item.icon}/><div className="kv-card-body"><div className="kv-card-heading"><h2>{item.name}</h2><span className="kv-radio"/></div><span className="kv-tagline">{item.tagline}</span><p>{item.description}</p><div className="kv-card-footer"><span>{item.shots} {item.shots > 1 ? 'poses' : 'pose'}</span><span>{item.format}</span></div></div>
-        </button>)}</div>
-        <div className="kv-bottom-action"><p><span aria-hidden="true">✧</span> Tidak perlu terburu-buru. Pilih yang paling kamu suka.</p><button className="kv-primary" onClick={() => setStage('capture')}>Mulai {choice.name} <span aria-hidden="true">→</span></button></div>
-      </> : <>
-        <div className="kv-stage-heading"><div><span className="kv-mode-label">{choice.name} / {choice.shots} {choice.shots > 1 ? 'poses' : 'pose'}</span><h1>{stage === 'capture' ? 'Ready for your close-up?' : 'Looking good.'}</h1><p>{stage === 'capture' ? 'Pilih foto dari perangkat untuk mencoba tampilan sesi.' : 'Periksa foto pilihanmu. Kamu bisa mengganti pose sebelum lanjut.'}</p></div><button className="kv-secondary" disabled={loading} onClick={reset}>← Ganti mode</button></div>
-        <div className="kv-capture-layout"><div className="kv-camera-area">{stage === 'review' && photos.length ? <div className={`kv-review-grid ${mode === 'CLASSIC' ? 'is-strip' : ''}`}>{photos.map((photo,i)=><figure key={photo.url}><img src={photo.url} alt={`Pose ${i + 1}`}/><figcaption>POSE {String(i + 1).padStart(2,'0')}<button onClick={() => retake(i)}>Ganti foto {i + 1}</button></figcaption></figure>)}</div> : <div className="kv-camera-placeholder"><div className="kv-camera-corners"/><CameraIcon/><h2>Area kamera</h2><p>Preview menggunakan foto dari perangkat.<br/>Live view kamera belum aktif.</p><span className="kv-camera-indicator"><i/> CAMERA PREVIEW</span></div>}</div>
-          <aside className="kv-session-sidebar"><span className="kv-eyebrow">SESI KAMU</span><h2>{choice.name}</h2><p>{choice.tagline}</p><div className="kv-photo-slots">{Array.from({length:choice.shots},(_,i)=><div key={i} className={photos[i] ? 'is-filled' : ''}>{photos[i] ? <img src={photos[i].url} alt={`Thumbnail pose ${i + 1}`}/> : <span>{String(i + 1).padStart(2,'0')}</span>}</div>)}</div><p className="kv-photo-count">{photos.length} dari {choice.shots} foto dipilih</p>
-          <input ref={input} type="file" accept="image/jpeg,image/png" multiple={choice.shots > 1} onChange={choosePhotos} aria-label="Pilih foto preview" className="kv-file-input" disabled={loading || photos.length === choice.shots}/>
-          {stage === 'capture' && <><button className="kv-primary" disabled={loading || photos.length === choice.shots} onClick={() => input.current.click()}>{loading ? 'Memeriksa foto…' : 'Pilih foto'} <span aria-hidden="true">＋</span></button><button className="kv-secondary" disabled={loading || photos.length !== choice.shots} onClick={() => setStage('review')}>Review foto →</button></>}
-          {stage === 'review' && <><button className="kv-primary" disabled>Proses foto</button><p className="kv-preview-explanation">Generation belum dihubungkan pada preview ini. Foto pilihanmu tidak dikirim ke server.</p><button className="kv-secondary" onClick={reset}>Sesi baru</button></>}
-          <div className="kv-format-note"><span>FORMAT</span><strong>{choice.format}</strong><small>Layout dan cetak fisik belum divalidasi.</small></div></aside></div>
-      </>}
-      <div className="kv-preview-banner"><span>PREVIEW</span><p>Ini tampilan awal kiosk. Foto hanya ditampilkan di browser; kamera USB, generation, dan printer belum aktif di halaman ini.</p></div>
-    </main>
-    <footer className="kv-footer"><span>MADE FOR MOMENTS, MADE FOR YOU.</span><span>NXBooth <i>✦</i> Event experience</span></footer>
-    {operator && <div className="kv-operator" id="kv-operator" role="dialog" aria-label="Panel operator preview"><div><h2>Panel operator <small>PREVIEW</small></h2><button onClick={() => setOperator(false)} aria-label="Tutup panel operator">×</button></div><p>Panel ini memperlihatkan status fitur, tanpa menyimpan konfigurasi atau credential.</p><dl><dt>Kamera USB Canon</dt><dd>Belum terhubung</dd><dt>Printer Windows</dt><dd>Belum terhubung</dd><dt>Generation</dt><dd>Belum diaktifkan di preview</dd></dl><button className="kv-secondary" onClick={fullscreen}>Layar penuh</button><button className="kv-secondary" disabled={loading} onClick={() => { reset(); setOperator(false) }}>Reset preview</button></div>}
-  </div>
+const modes=[
+ {id:'CLASSIC',name:'Classic',tagline:'Pose. Smile. Repeat.',description:'Beberapa pose dalam photo strip dengan frame pilihanmu.',format:'Photo strip',icon:'strip'},
+ {id:'BASIC',name:'Basic',tagline:'Your photo, a new look.',description:'Pilih template, ambil satu pose, dan buat hasil personal.',format:'1 foto · template',icon:'portrait'},
+ {id:'ADVANCED',name:'Advanced',tagline:'Step into another world.',description:'Pilih pengalaman dan ubah fotomu menjadi dunia baru.',format:'1 foto · pengalaman AI',icon:'world'}]
+function CameraIcon(){return <svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path d="M10 20h12l4-6h12l4 6h12v30H10z" stroke="currentColor" strokeWidth="2"/><circle cx="32" cy="35" r="10" stroke="currentColor" strokeWidth="2"/></svg>}
+function ModeArt({type}){return <div className={`kv-art kv-art-${type}`} aria-hidden="true">{type==='strip'?<div className="kv-strips">{[0,1].map(n=><div className="kv-strip" key={n}><i/><i/><i/><small>NXBOOTH</small></div>)}</div>:<div className="kv-portrait"><div className="kv-silhouette"/><div className="kv-orbit"/><span>✦</span></div>}</div>}
+export default function KioskPreview(){
+ const saved=useRef(readKioskWebJob()).current
+ const [mode,setMode]=useState(saved?.mode||'CLASSIC'),[stage,setStage]=useState(saved?'processing':'choose'),[photos,setPhotos]=useState([])
+ const [catalog,setCatalog]=useState(null),[catalogBusy,setCatalogBusy]=useState(true),[selection,setSelection]=useState(null),[styleId,setStyleId]=useState('')
+ const [operator,setOperator]=useState(false),[modal,setModal]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false)
+ const [job,setJob]=useState(saved?{job_id:saved.jobId,state:'QUEUED'}:null),[result,setResult]=useState(null),[pollRevision,setPollRevision]=useState(0)
+ const urls=useRef(new Set()),video=useRef(null),dialog=useRef(null),operation=useRef(false),mounted=useRef(false)
+ const [camera,setCamera]=useState({ready:false,source:'',error:''}),[cameraRevision,setCameraRevision]=useState(0)
+ const choice=modes.find(m=>m.id===mode),shots=mode==='CLASSIC'?(selection?.shot_count||0):1
+ const current=stage==='choose'?0:stage==='capture'?1:stage==='review'?2:stage==='result'?4:3
+ async function reloadCatalog(){setCatalogBusy(true);try{const c=await loadKioskWebCatalog();if(mounted.current){setCatalog(c);if(c.errors)setError('Sebagian katalog belum tersedia. Kamu bisa memuat ulang.')}}catch{if(mounted.current)setError('Katalog belum tersedia.')}finally{if(mounted.current)setCatalogBusy(false)}}
+ useEffect(()=>{mounted.current=true;const title=document.title;document.title='NXBooth — Kiosk';reloadCatalog();return()=>{mounted.current=false;document.title=title;for(const url of urls.current)URL.revokeObjectURL(url)}},[])
+ useEffect(()=>{
+  if(stage!=='capture')return
+  let cancelled=false,stream,disconnectTimer
+  setCamera({ready:false,source:'',error:''})
+  const reconnect=()=>{clearTimeout(disconnectTimer);disconnectTimer=setTimeout(()=>{if(!cancelled)setCameraRevision(n=>n+1)},250)}
+  const changed=()=>{if(stream?.getVideoTracks().some(t=>t.readyState==='ended'))reconnect()}
+  navigator.mediaDevices?.addEventListener?.('devicechange',changed)
+  openKioskCamera().then(active=>{
+   if(cancelled){stopCamera(active.stream);return}
+   stream=active.stream
+   for(const track of stream.getVideoTracks())track.addEventListener('ended',reconnect)
+   if(video.current){video.current.srcObject=stream;video.current.play().catch(()=>{})}
+   setCamera({ready:false,source:active.source,error:''})
+  }).catch(e=>{if(!cancelled)setCamera({ready:false,source:'',error:cameraError(e)})})
+  return()=>{cancelled=true;clearTimeout(disconnectTimer);navigator.mediaDevices?.removeEventListener?.('devicechange',changed);for(const track of stream?.getVideoTracks()||[])track.removeEventListener('ended',reconnect);stopCamera(stream)}
+ },[stage,cameraRevision])
+ useEffect(()=>{if(modal&&!dialog.current.open)dialog.current.showModal();else if(!modal&&dialog.current.open)dialog.current.close()},[modal])
+ useEffect(()=>{
+  if(!job?.job_id)return
+  let cancelled=false
+  const stop=startGenerationPolling({fetchStatus:()=>getGeneration(job.job_id),onStatus:async status=>{
+   if(cancelled)return
+   setJob(status);setError('')
+   if(status.state==='FAILED'){setStage('failed');setError('Proses gagal di backend. Tidak ada hasil yang dibuat.');return}
+   if(status.state==='COMPLETED'){
+    if(!status.result_id){setStage('failed');setError('Backend belum memberikan hasil foto.');return}
+    try{const metadata=await getResult(status.result_id);if(!cancelled){setResult({...metadata,result_id:status.result_id});setStage('result')}}catch(e){if(!cancelled){setStage('failed');setError(kioskWebError(e))}}
+   }else if(!['QUEUED','PROCESSING'].includes(status.state)){setStage('failed');setError('Status backend tidak dikenal.')}
+  },onError:e=>{if(cancelled)return;setError(kioskWebError(e));if([401,403,404,410].includes(e.status))setStage('failed')}})
+  return()=>{cancelled=true;stop()}
+ },[job?.job_id,pollRevision])
+ function reset(){if(operation.current)return;for(const url of urls.current)URL.revokeObjectURL(url);urls.current.clear();setPhotos([]);setJob(null);setResult(null);clearKioskWebJob();setSelection(null);setStage('choose');setError('')}
+ function openDesign(id){setMode(id);setError('');setModal(true)}
+ function selectDesign(item){setSelection(item);const compatible=(catalog?.styles||[]).filter(s=>!item.compatible_frame_style_ids||item.compatible_frame_style_ids.includes(s.id));setStyleId(compatible.find(s=>s.id==='natural')?.id||compatible[0]?.id||'');setModal(false);setStage('capture')}
+ async function takePhoto(){
+  if(operation.current||photos.length>=shots||!camera.ready)return
+  operation.current=true;setBusy(true);setError('')
+  try{const file=await captureCameraPhoto(video.current);if(mounted.current){const url=URL.createObjectURL(file);urls.current.add(url);setPhotos(p=>[...p,{url,file}])}}
+  catch(e){if(mounted.current)setError(e.message)}finally{operation.current=false;if(mounted.current)setBusy(false)}
+ }
+ function retake(index){if(operation.current)return;URL.revokeObjectURL(photos[index].url);urls.current.delete(photos[index].url);setPhotos(p=>p.filter((_,i)=>i!==index));setStage('capture');setError('')}
+ async function process(){if(operation.current||photos.length!==shots||!selection)return;operation.current=true;setBusy(true);setError('');setStage('uploading')
+  try{await startKioskSession();const ids=[];for(const photo of photos){if(!photo.uploadId){const upload=await uploadPhoto(photo.file);photo.uploadId=upload.upload_id}ids.push(photo.uploadId)}const options=selectionOptions(mode,selection,styleId,ids);const created=await createGeneration(ids[0],mode,mode==='BASIC'?selection.id:null,mode==='ADVANCED'?selection.id:null,options);saveKioskWebJob({jobId:created.job_id,mode});if(mounted.current){setJob(created);setStage('processing')}}
+  catch(e){if(mounted.current){setError(kioskWebError(e));setStage('review')}}finally{operation.current=false;if(mounted.current)setBusy(false)}
+ }
+ async function fullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{setError('Mode layar penuh tidak tersedia di browser ini.')}}
+ const styles=(catalog?.styles||[]).filter(s=>!selection?.compatible_frame_style_ids||selection.compatible_frame_style_ids.includes(s.id))
+ return <div className="kv-app kv-retro">
+  <header className="kv-header"><a className="kv-logo" href="/">NX<span>Booth</span><sup>EVENT STATION</sup></a><div className="kv-header-actions"><span className="kv-preview-dot">Web kiosk</span><button className="kv-icon-button" aria-label="Operator" onClick={()=>setOperator(!operator)}>☷ <span>Operator</span></button></div></header>
+  <main className="kv-main"><div className="kv-topline"><span className="kv-eyebrow">YOUR MOMENT STARTS HERE</span><nav aria-label="Tahap sesi" className="kv-steps">{['Desain','Foto','Review','Proses','Hasil'].map((label,i)=><span key={label} className={i===current?'is-current':i<current?'is-done':''} aria-current={i===current?'step':undefined}><b>{i<current?'✓':i+1}</b>{label}</span>)}</nav></div>
+   {error&&<div className="kv-error" role="alert">{error}</div>}
+   {stage==='choose'?<><div className="kv-intro"><div><h1>A little pose.<br/>A lasting <em>memory.</em></h1><p>Pilih mode dan desainmu. Buat momen ini jadi sesuatu yang bisa dibawa pulang.</p></div><div className="kv-session-note"><span>✦</span><p>One session.<br/><strong>All yours.</strong></p></div></div><div className="kv-mode-grid">{modes.map(item=><button key={item.id} className="kv-mode-card" onClick={()=>openDesign(item.id)}><ModeArt type={item.icon}/><div className="kv-card-body"><div className="kv-card-heading"><h2>{item.name}</h2><span>↗</span></div><span className="kv-tagline">{item.tagline}</span><p>{item.description}</p><div className="kv-card-footer"><span>Pilih desain →</span><span>{item.format}</span></div></div></button>)}</div><div className="kv-bottom-action"><p>Desain terbuka dalam popup di halaman yang sama.</p><span>Foto kamu, cerita kamu. ✦</span></div></>:null}
+   {['capture','review'].includes(stage)&&<><div className="kv-stage-heading"><div><span className="kv-mode-label">{choice.name} / {selection?.name} / {shots} pose</span><h1>{stage==='capture'?'Ready for your close-up?':'Looking good.'}</h1><p>{stage==='capture'?'Kamera dipilih otomatis. Lihat kamera, lalu ambil pose kamu.':'Periksa foto, lalu proses dengan desain pilihanmu.'}</p></div><button className="kv-secondary" disabled={busy} onClick={reset}>← Ganti desain</button></div><div className="kv-capture-layout"><div className="kv-camera-area">{stage==='review'?<div className={`kv-review-grid ${mode==='CLASSIC'?'is-strip':''}`}>{photos.map((p,i)=><figure key={p.url}><img src={p.url} alt={`Pose ${i+1}`}/><figcaption>POSE {i+1}<button onClick={()=>retake(i)}>Ganti foto {i+1}</button></figcaption></figure>)}</div>:<div className="kv-live-camera"><video ref={video} autoPlay playsInline muted aria-label="Preview kamera" onLoadedData={()=>setCamera(c=>({...c,ready:true}))} onPlaying={()=>setCamera(c=>({...c,ready:true}))}/><div className="kv-camera-caption" role="status">{camera.error||(!camera.ready?'Membuka kamera…':camera.source)}</div>{camera.error&&<button className="kv-secondary" onClick={()=>setCameraRevision(n=>n+1)}>Coba kamera lagi</button>}</div>}</div><aside className="kv-session-sidebar"><span className="kv-eyebrow">SESI KAMU</span><h2>{choice.name}</h2><p>{selection?.name}</p><div className="kv-photo-slots">{Array.from({length:shots},(_,i)=><div key={i}>{photos[i]?<img src={photos[i].url} alt={`Thumbnail pose ${i+1}`}/>:<span>{i+1}</span>}</div>)}</div><p className="kv-photo-count">{photos.length} dari {shots} foto</p>
+    {mode==='ADVANCED'&&<label className="kv-style-label">Gaya frame<select value={styleId} onChange={e=>setStyleId(e.target.value)} disabled={busy}>{styles.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>}
+    {stage==='capture'?<><button className="kv-primary" disabled={busy||photos.length===shots||!camera.ready} onClick={takePhoto}>{busy?'Mengambil foto…':'Ambil foto'} ●</button><button className="kv-secondary" disabled={busy||photos.length!==shots} onClick={()=>setStage('review')}>Review foto →</button></>:<><button className="kv-primary" onClick={process} disabled={busy||mode==='ADVANCED'&&!styleId}>Proses foto →</button><p className="kv-preview-explanation">Foto akan diunggah dan diproses oleh backend. Basic/Advanced mengikuti kredit akun.</p></>}
+    <div className="kv-format-note"><span>DESAIN</span><strong>{selection?.name}</strong><small>Printer fisik belum terhubung.</small></div></aside></div></>}
+   {['uploading','processing'].includes(stage)&&<section className="kv-process-window" aria-label="Proses foto"><div className="kv-window-bar"><span>NXBooth / Processing</span><span>□</span></div><div className="kv-process-body"><span className="kv-processing-star" aria-hidden="true">✦</span><h1>{stage==='uploading'?'Mengirim foto…':'Sedang membuat hasilmu.'}</h1><p role="status">{stage==='uploading'?'Mengunggah foto ke backend.':job?.state==='PROCESSING'?'PROCESSING — foto sedang diproses.':'QUEUED — pekerjaan menunggu giliran.'}</p><p>Tunggu di halaman ini. Status berasal dari backend.</p></div></section>}
+   {stage==='failed'&&<section className="kv-process-window"><div className="kv-window-bar">NXBooth / Status proses</div><div className="kv-process-body"><h1>Proses terhenti.</h1><p>Periksa status pekerjaan yang sama atau mulai sesi baru.</p><button className="kv-secondary" onClick={()=>{setStage('processing');setPollRevision(n=>n+1)}}>Periksa status lagi</button><button className="kv-secondary" onClick={reset}>Sesi baru</button></div></section>}
+   {stage==='result'&&result&&<section className="kv-result-window"><div className="kv-window-bar"><span>NXBooth / Your result</span><span>✦</span></div><div className="kv-result-body"><div><span className="kv-eyebrow">HASIL BACKEND</span><h1>Your moment,<br/><em>made yours.</em></h1><p>Hasil fotomu sudah siap.</p><a className="kv-primary" href={resultDownloadUrl(result.result_id)} download>Download foto ↓</a><button className="kv-secondary" onClick={reset}>Sesi baru</button><p>Download menyimpan hasil digital. Cetak fisik belum tersedia.</p></div><img src={resultImageUrl(result.result_id)} alt="Hasil foto dari backend" onError={()=>setError('Hasil belum dapat dimuat. Periksa koneksi atau gunakan download.')}/></div></section>}
+   <div className="kv-preview-banner"><span>WEB KIOSK</span><p>Kamera dipilih otomatis: Canon yang tersedia di browser, lalu kamera perangkat. Hasil diproses oleh backend.</p></div>
+  </main><footer className="kv-footer"><span>MADE FOR MOMENTS, MADE FOR YOU.</span><span>NXBooth ✦ Event experience</span></footer>
+  <dialog className="kv-design-dialog" ref={dialog} onCancel={e=>{e.preventDefault();setModal(false)}} aria-labelledby="kv-design-title"><div className="kv-window-bar"><span>{choice.name} / Choose your design</span><button aria-label="Tutup pilihan desain" onClick={()=>setModal(false)}>×</button></div><div className="kv-design-body"><span className="kv-eyebrow">PILIH DESAIN</span><h2 id="kv-design-title">Which world is yours?</h2><p>Pilih {mode==='CLASSIC'?'frame':mode==='BASIC'?'template':'pengalaman'} untuk sesi ini.</p>{catalogBusy?<p role="status">Memuat katalog…</p>:<div className="kv-design-grid">{(catalog?.[mode]||[]).map(item=><button key={item.id} onClick={()=>selectDesign(item)}><div className="kv-design-image">{(item.preview_url||item.thumbnail)?<img src={item.preview_url||item.thumbnail} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/>:<span>✦</span>}</div><strong>{item.name}</strong><small>{mode==='CLASSIC'?`${item.shot_count} pose`:'1 pose'}</small></button>)}</div>}{!catalogBusy&&!catalog?.[mode]?.length&&<p role="status">Belum ada desain tersedia untuk mode ini.</p>}<button className="kv-secondary" onClick={reloadCatalog} disabled={catalogBusy}>Muat ulang katalog</button></div></dialog>
+  {operator&&<div className="kv-operator" role="dialog" aria-label="Status kiosk"><div><h2>Status kiosk</h2><button aria-label="Tutup panel operator" onClick={()=>setOperator(false)}>×</button></div><dl><dt>Katalog backend</dt><dd>{catalog?'Terhubung':'Belum tersedia'}</dd><dt>Kamera</dt><dd>{camera.source||camera.error||'Belum dibuka'}</dd><dt>Printer</dt><dd>Belum terhubung di web</dd><dt>Status proses</dt><dd>{job?.state||'Belum dimulai'}</dd></dl><button className="kv-secondary" onClick={fullscreen}>Layar penuh</button><button className="kv-secondary" onClick={async()=>{try{await kioskLogout();window.dispatchEvent(new CustomEvent('kiosk:access-lost',{detail:{status:401}}))}catch{setError('Logout gagal. Coba lagi.')}}}>Logout operator</button><button className="kv-secondary" disabled={busy||stage==='processing'} onClick={()=>{reset();setOperator(false)}}>Reset sesi</button></div>}
+ </div>
 }

@@ -1,0 +1,14 @@
+import React,{useEffect,useState} from 'react'
+import {getKioskAccess,kioskGoogleLogin,kioskLogout} from '../../kioskWebApi.js'
+import GoogleSignInButton from '../customer/GoogleSignInButton.jsx'
+import './kiosk-preview.css'
+export default function KioskAccessGate({children}){
+ const [canContinue,setCanContinue]=useState(false),[allowed,setAllowed]=useState(false),[checking,setChecking]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState('')
+ async function verify(){const access=await getKioskAccess();if(access.allowed!==true)throw new Error('Akses kiosk tidak tersedia.');setAllowed(true)}
+ function failure(e){return e.errorCode==='KIOSK_FORBIDDEN'?'Akun ini belum memiliki akses kiosk. Gunakan akun Google yang diizinkan.':e.errorCode==='KIOSK_GOOGLE_REQUIRED'?'Login melalui Google untuk memverifikasi akses kiosk.':e.errorCode==='AUTHENTICATION_REQUIRED'?'Silakan login untuk membuka kiosk.':'Login atau koneksi gagal. Coba lagi.'}
+ useEffect(()=>{let active=true;getKioskAccess().then(value=>{if(active)setCanContinue(value.allowed===true)}).catch(e=>{if(active&&e.status!==401)setError(failure(e))}).finally(()=>{if(active)setChecking(false)});return()=>{active=false}},[])
+ async function signIn(action){if(busy)return;setBusy(true);setError('');try{await action();await verify()}catch(e){setError(failure(e))}finally{setBusy(false)}}
+ useEffect(()=>{if(!allowed)return;const handle=e=>{if([401,403].includes(e.detail?.status)){setAllowed(false);setCanContinue(false);setError('Akses sesi berakhir. Silakan login kembali.')}};window.addEventListener('kiosk:access-lost',handle);return()=>window.removeEventListener('kiosk:access-lost',handle)},[allowed])
+ if(allowed)return children
+ return <div className="kv-app kv-retro kv-login-stage"><a className="kv-logo" href="/">NX<span>Booth</span><sup>EVENT STATION</sup></a><section className="kv-login-window" role="dialog" aria-modal="true" aria-labelledby="kv-login-title"><div className="kv-window-bar"><span>NXBooth / Kiosk sign in</span><a href="/" aria-label="Kembali ke beranda">×</a></div><div className="kv-login-body"><span className="kv-eyebrow">OPERATOR ACCESS</span><h1 id="kv-login-title">Your booth.<br/><em>Your moments.</em></h1><p>Login Google dengan akun yang diizinkan untuk membuka kiosk.</p>{checking?<p role="status">Memeriksa sesi…</p>:<>{error&&<p className="kv-error" role="alert">{error}</p>}{canContinue&&<button className="kv-primary" disabled={busy} onClick={()=>signIn(async()=>{})}>Lanjutkan ke kiosk</button>}<GoogleSignInButton text="signin_with" disabled={busy} onCredential={credential=>signIn(()=>kioskGoogleLogin(credential))}/><button className="kv-secondary" disabled={busy} onClick={async()=>{setBusy(true);try{await kioskLogout();setCanContinue(false);setError('Silakan pilih akun Google yang diizinkan.')}catch(e){setError(failure(e))}finally{setBusy(false)}}}>Ganti akun / keluar</button></>}</div></section></div>
+}

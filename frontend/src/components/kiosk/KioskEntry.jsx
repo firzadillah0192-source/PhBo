@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import KioskAccessGate from './KioskAccessGate.jsx'
 import KioskPreview from './KioskPreview.jsx'
 
 export default function KioskEntry({ children }) {
@@ -8,5 +9,7 @@ export default function KioskEntry({ children }) {
     window.addEventListener('popstate', update)
     return () => window.removeEventListener('popstate', update)
   }, [])
-  return path.replace(/\/$/, '') === '/kiosk' ? <KioskPreview /> : children
+  const kiosk=path==='/kiosk'||path.startsWith('/kiosk/')
+  if(!kiosk)return children
+  return <KioskAccessGate><KioskPreview/></KioskAccessGate>
 }
