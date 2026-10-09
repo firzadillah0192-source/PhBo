@@ -27,7 +27,7 @@ test('kiosk requires a valid signed owner session; client email cannot authorize
 });
 test('kiosk upload/generation/result/session reject unauthorized before handlers, public catalog preserved',async()=>{
  for(const path of ['/api/kiosk/web/templates','/api/kiosk/web/results/result/image','/api/kiosk/web/generations/job'])await request(app).get(path).expect(401);
- for(const path of ['/api/kiosk/web/uploads','/api/kiosk/web/generations','/api/kiosk/web/kiosk/session','/api/kiosk/session']){
+ for(const path of ['/api/kiosk/web/uploads','/api/kiosk/web/results/result/claim','/api/kiosk/web/generations','/api/kiosk/web/kiosk/session','/api/kiosk/session']){
   await request(app).post(path).send({email:'firzadillah0192@gmail.com'}).expect(401);
   await request(app).post(path).set('Cookie',cookie('other')).send({email:'firzadillah0192@gmail.com'}).expect(403);
  }
@@ -48,3 +48,10 @@ test('Google entry grants HttpOnly kiosk proof bound to verified account session
  const cookies=signed.headers['set-cookie'] as unknown as string[];assert.ok(cookies.every(c=>c.includes('HttpOnly')&&c.includes('Secure')&&c.includes('SameSite=Lax')));assert.ok(cookies.some(c=>c.includes('Path=/api/kiosk')));
  await request(app).get('/api/kiosk/access').set('Cookie',cookies.map(c=>c.split(';')[0]).join('; ')).expect(200);
 });
+
+test('authorized kiosk claim delegates to owned result service with kiosk session identity',async()=>{
+ const token='q'.repeat(43),url='https://nxbooth.gennexbyte.com/r/'+token
+ const results={async createClaim(id:string,identity:{account:{id:string}},input:{kioskSessionId:string|null;refresh:boolean;reuseToken?:string|null}){assert.equal(id,'result-fixture');assert.equal(identity.account.id,'owner');assert.equal(typeof input.kioskSessionId,'string');assert.equal(input.refresh,false);assert.equal(input.reuseToken,token);return{claim_url:url,qr_payload:url,expires_at:new Date(Date.now()+86400000).toISOString()}}} as unknown as CustomerResultService
+ const claimApp=createMigrationApp(catalog,{corsOrigins:[]},accounts,results)
+ await request(claimApp).post('/api/kiosk/web/results/result-fixture/claim').set('Cookie',cookie('owner')).send({kiosk:true,reuse_token:token}).expect(200).expect(r=>assert.equal(r.body.qr_payload,url))
+})

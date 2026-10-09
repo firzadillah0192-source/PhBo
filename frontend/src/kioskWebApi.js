@@ -21,3 +21,4 @@ export async function getGeneration(id){const job=await kioskWebRequest('/web/ge
 export const getResult=id=>kioskWebRequest('/web/results/'+encodeURIComponent(id))
 export const resultImageUrl=id=>'/api/kiosk/web/results/'+encodeURIComponent(id)+'/image'
 export const resultDownloadUrl=id=>'/api/kiosk/web/results/'+encodeURIComponent(id)+'/download'
+export const createResultClaim=(id,reuseToken=null,refresh=false)=>kioskWebRequest('/web/results/'+encodeURIComponent(id)+'/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kiosk:true,...reuseToken?{reuse_token:reuseToken}:{},refresh})})
