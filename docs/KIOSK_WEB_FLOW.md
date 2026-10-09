@@ -39,9 +39,9 @@ Halaman utama, account, admin dan native `/api/v1` tidak diganti. Legacy subrout
 | Check | Hasil |
 | --- | --- |
 | TypeScript build backend + Vite build | **PASS** |
-| Frontend snapshot production | **87 PASS**, 0 fail |
+| Frontend snapshot production | **89 PASS**, 0 fail |
 | Timer 5/10 detik, cancellation dan elapsed deadline | **3 PASS** unit fixtures |
-| Seleksi Canon, fallback default/perangkat ketika Canon gagal, permission denial tanpa retry, cleanup stream | **5 PASS** unit fixtures |
+| Seleksi Canon, fallback default/perangkat ketika Canon gagal, permission denial tanpa retry, cleanup stream, normalisasi no-crop/minimum zoom, driver rejection tidak memblokir kamera | **7 PASS** unit fixtures |
 | Backend access + authorized controller routing + Google grant fixtures | **4 PASS**, 0 fail |
 | Browser fixtures 1440/390/320 px, source dan deployed bundle | **PASS** |
 | Capture otomatis 5 detik, popup tiap pose, Next 10 detik timeout/klik, retake 3→0 dan reset per pose, auto-process, submit error tanpa auto-loop, video kamera browser (fake media device), JPEG asli hasil canvas dikirim, tanpa file input, stream berhenti saat review, modal same-window, semua mode payload, Classic count, result image decode, retry/reload existing job, FAILED tanpa output, session revocation, logout, duplicate click | **PASS** |
@@ -58,8 +58,8 @@ Batas recovery: jika generation telah diterima tetapi response job ID hilang, pa
 
 ## Deployment dan source
 
-Release awal akses/proses `/srv/photobooth/releases/kiosk-flow-20261008T102632Z`; update kamera frontend `/srv/photobooth/releases/kiosk-flow-20261008T104019Z`; update capture/review otomatis `/srv/photobooth/releases/kiosk-flow-20261009T023143Z`.
-Images saat update otomatis: `photobooth-web:kiosk-flow-20261009T023143Z`; API existing `photobooth-express:credit-checkout-api-20261009T021554Z` dipertahankan.
+Release awal akses/proses `/srv/photobooth/releases/kiosk-flow-20261008T102632Z`; update kamera frontend `/srv/photobooth/releases/kiosk-flow-20261008T104019Z`; update capture/review otomatis `/srv/photobooth/releases/kiosk-flow-20261009T023143Z`; normalisasi preview webcam `/srv/photobooth/releases/kiosk-flow-20261009T023940Z`.
+Images saat update otomatis: `photobooth-web:kiosk-flow-20261009T023940Z`; API existing `photobooth-express:credit-checkout-api-20261009T021554Z` dipertahankan.
 
 Pada release awal hanya web/API container yang berubah. Update kamera dan update otomatis hanya mengganti web container; worker, gateway, image helper, database, Redis dan proyek lain tidak diubah. Tidak ada migration database atau secret baru. Google client ID dan konfigurasi sesi existing dipertahankan. Request ID middleware gateway tetap dibawa.
 
@@ -73,3 +73,13 @@ Validasi update otomatis: `npm test`, `npm run build`, `node frontend/scripts/ki
 Artefak screenshot/report update otomatis `/srv/photobooth/cache/kiosk-auto-check/` dan `/srv/photobooth/cache/kiosk-auto-deployed-check/`.
 
 Laporan [preview sebelumnya](KIOSK_WEB_PREVIEW.md) adalah catatan historis; UI/proses/access kini mengikuti dokumen ini.
+
+## Perbaikan live preview webcam (2026-10-09)
+
+Pengguna melaporkan preview laptop/webcam USB terasa zoom. Diff update countdown tidak mengubah constraints sumber video atau menambahkan zoom, sehingga penyebab fisik belum dapat direproduksi di VPS. Pengaturan sebelumnya memakai negosiasi/default browser.
+
+Perubahan `kioskCamera.js`: setiap request mengutamakan `resizeMode: none`. Setelah sumber final dipilih, hanya jika capability diiklankan, track meminta `resizeMode: none` secara exact dan zoom minimum yang didukung. Kamera tanpa kontrol tersebut tetap berfungsi; penolakan driver tidak menutup stream. Tidak memaksakan resolusi/aspect ratio baru atau mengubah pilihan Canon-first. [Capabilities browser](https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamTrack/getCapabilities) menentukan kontrol yang tersedia.
+
+Preview CSS memakai tinggi otomatis sesuai video, `object-fit: contain`, posisi tengah, tanpa transform, serta batas tinggi layar; minimum tinggi yang memaksa elemen video menjadi lebih besar dihapus. File hasil capture tetap memakai seluruh dimensi frame video.
+
+Validasi source dan deployed 1440/390/320 px memeriksa `getSettings().resizeMode === 'none'`, object-fit contain, transform none dan video berada di dalam container, kemudian menjalankan auto-capture/review/retake/process seperti biasa. Kamera browser adalah fake media device Chromium; ini belum memastikan persepsi zoom pada webcam pengguna. Acceptance webcam fisik setelah hard refresh masih **PENDING**. Bukti update ini di `/srv/photobooth/cache/kiosk-native-camera-check/` dan `/srv/photobooth/cache/kiosk-native-camera-deployed-check/`.

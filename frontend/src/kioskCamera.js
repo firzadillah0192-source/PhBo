@@ -1,11 +1,12 @@
 // Browser cameras only. Canon USB control through EDSDK belongs to the desktop adapter.
 export function stopCamera(stream) { stream?.getTracks().forEach(track => track.stop()) }
 const canon = device => /canon|eos webcam/i.test(device.label || '')
+const nativeVideo = options => ({...options,resizeMode:{ideal:'none'}})
 const denied = error => ['NotAllowedError', 'SecurityError'].includes(error?.name)
 export async function openKioskCamera(media = globalThis.navigator?.mediaDevices) {
  if (!media?.getUserMedia) throw new Error('Kamera membutuhkan browser yang mendukung kamera dan koneksi HTTPS.')
  let stream, originalError
- try { stream = await media.getUserMedia({video: {facingMode: {ideal: 'user'}}, audio: false}) }
+ try { stream = await media.getUserMedia({video: nativeVideo({facingMode: {ideal: 'user'}}), audio: false}) }
  catch (error) { if (denied(error)) throw error; originalError = error }
  let devices = []
  try { devices = (await media.enumerateDevices()).filter(d => d.kind === 'videoinput' && d.deviceId) } catch {}
@@ -14,17 +15,24 @@ export async function openKioskCamera(media = globalThis.navigator?.mediaDevices
  if (preferred && preferred.deviceId !== current) {
   // Release the default stream before opening another camera: some Windows drivers lock capture globally.
   stopCamera(stream); stream = null
-  try { stream = await media.getUserMedia({video: {deviceId: {exact: preferred.deviceId}}, audio: false}) }
+  try { stream = await media.getUserMedia({video: nativeVideo({deviceId: {exact: preferred.deviceId}}), audio: false}) }
   catch (error) { if (denied(error)) throw error; originalError = error }
  }
  if (!stream) {
   for (const device of devices.filter(d => !canon(d))) {
-   try { stream = await media.getUserMedia({video: {deviceId: {exact: device.deviceId}}, audio: false}); break }
+   try { stream = await media.getUserMedia({video: nativeVideo({deviceId: {exact: device.deviceId}}), audio: false}); break }
    catch (error) { if (denied(error)) throw error; originalError = error }
   }
  }
  if (!stream) throw originalError || new Error('Kamera tidak ditemukan. Hubungkan kamera perangkat, lalu coba lagi.')
  const track = stream.getVideoTracks()[0]
+ // Normalize only advertised capabilities; unsupported controls must not block capture.
+ try {
+  const capabilities=track?.getCapabilities?.() || {},constraints={}
+  if(capabilities.resizeMode?.includes('none'))constraints.resizeMode={exact:'none'}
+  if(Number.isFinite(capabilities.zoom?.min))constraints.advanced=[{zoom:capabilities.zoom.min}]
+  if(Object.keys(constraints).length)await track.applyConstraints(constraints)
+ } catch {}
  const selected = devices.find(d => d.deviceId === track?.getSettings().deviceId)
  return {stream, source: canon(selected || {label:track?.label}) ? 'Canon' : 'Kamera perangkat'}
 }

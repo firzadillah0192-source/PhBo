@@ -27,3 +27,17 @@ test('failed default camera tries an enumerated device',async()=>{
  const active=await openKioskCamera({enumerateDevices:async()=>[device('device','USB webcam')],getUserMedia:async c=>{if(!c.video.deviceId)throw Object.assign(new Error('busy'),{name:'NotReadableError'});return webcam}})
  assert.equal(active.stream,webcam)
 })
+test('selected webcam disables browser crop and resets supported zoom to minimum',async()=>{
+ const webcam=stream('webcam','Integrated'),applied=[]
+ webcam.track.getCapabilities=()=>({resizeMode:['none','crop-and-scale'],zoom:{min:1,max:4}})
+ webcam.track.applyConstraints=async c=>applied.push(c)
+ const active=await openKioskCamera({enumerateDevices:async()=>[device('webcam','Integrated')],getUserMedia:async c=>{assert.deepEqual(c.video.resizeMode,{ideal:'none'});return webcam}})
+ assert.equal(active.stream,webcam);assert.deepEqual(applied,[{resizeMode:{exact:'none'},advanced:[{zoom:1}]}])
+})
+test('unsupported or rejected camera normalization does not discard usable stream',async()=>{
+ const webcam=stream('webcam','Integrated')
+ webcam.track.getCapabilities=()=>({resizeMode:['none'],zoom:{min:1,max:4}})
+ webcam.track.applyConstraints=async()=>{throw new Error('driver rejected zoom')}
+ const active=await openKioskCamera({enumerateDevices:async()=>[],getUserMedia:async()=>webcam})
+ assert.equal(active.stream,webcam);assert.equal(webcam.track.stopped,false)
+})

@@ -41,6 +41,9 @@ try{
    const count=mode==='Classic'?2:1;assert.equal(await page.locator('input[type=file]').count(),0);assert.equal(await page.getByRole('button',{name:/Ambil foto|Review foto|Proses foto/}).count(),0)
    for(let i=0;i<count;i++){
     await page.waitForFunction(()=>document.querySelector('video')?.videoWidth>0&&document.querySelector('.kv-capture-countdown'))
+    const preview=await page.evaluate(()=>{const v=document.querySelector('video'),style=getComputedStyle(v),box=v.getBoundingClientRect(),parent=v.parentElement.getBoundingClientRect();return{fit:style.objectFit,transform:style.transform,resizeMode:v.srcObject.getVideoTracks()[0].getSettings().resizeMode,inside:box.left>=parent.left-1&&box.right<=parent.right+1&&box.top>=parent.top-1&&box.bottom<=parent.bottom+1}})
+    assert.equal(preview.fit,'contain');assert.equal(preview.transform,'none');assert.equal(preview.resizeMode,'none');assert.equal(preview.inside,true)
+    if(i===0&&mode==='Classic')await page.screenshot({path:`${output}/${width}-live-preview.png`,fullPage:true})
     await page.evaluate(()=>window.testCameraTrack=document.querySelector('video').srcObject.getVideoTracks()[0])
     await page.clock.fastForward(5000)
     await page.getByRole('dialog',{name:'How does it look?'}).waitFor()
