@@ -16,7 +16,7 @@
     "dev:classic": "node scripts/dev-classic.mjs",
     "start": "node --enable-source-maps dist/server.js",
     "worker": "tsx src/worker.ts",
-    "test": "tsx --test test/api.test.ts test/models.test.ts test/engines.test.ts test/candidate.test.mjs test/customer-catalog.test.ts test/customer-account.test.ts test/upload-image-engine.test.ts test/customer-generation.test.ts test/customer-generation-worker.test.ts test/native-runtime.test.ts test/native-generation-runner.test.ts test/native-object-storage.test.ts test/catalog-object-storage.test.ts test/generation-request.test.ts test/native-kiosk.test.ts test/postgres-generation-queue.test.ts test/native-signed-delivery.test.ts",
+    "test": "tsx --test test/api.test.ts test/models.test.ts test/engines.test.ts test/candidate.test.mjs test/customer-catalog.test.ts test/customer-account.test.ts test/upload-image-engine.test.ts test/customer-generation.test.ts test/customer-generation-worker.test.ts test/native-runtime.test.ts test/native-generation-runner.test.ts test/native-object-storage.test.ts test/catalog-object-storage.test.ts test/generation-request.test.ts test/native-kiosk.test.ts test/postgres-generation-queue.test.ts test/native-signed-delivery.test.ts test/analytics.test.ts test/kiosk-web-access.test.ts",
     "test:request-integration": "tsx --test test/generation-request.integration.test.ts",
     "test:kiosk": "tsx --test test/native-kiosk.test.ts",
     "test:kiosk-integration": "tsx --test test/generation-request.integration.test.ts",
@@ -48,6 +48,7 @@
     "minio": "^8.0.5",
     "multer": "^2.0.2",
     "pg": "^8.16.0",
+    "posthog-node": "5.55.0",
     "redis": "^5.12.1",
     "sharp": "^0.34.0",
     "zod": "^4.1.0"

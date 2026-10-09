@@ -1,7 +1,8 @@
+import {analyticsHeaders,trackApiOutcome,captureAnalyticsError} from './analytics.js'
 import {generationRequestKey,associateGenerationRequest,settleGenerationRequest} from './generationRequest.js'
 export async function kioskWebRequest(path,options={}){
- const response=await fetch('/api/kiosk'+path,{credentials:'include',cache:'no-store',...options});const body=await response.json().catch(()=>({}));
- if(!response.ok){const detail=body.detail||body;const error=new Error(detail.message||'Kiosk request failed');error.status=response.status;error.errorCode=detail.error_code||detail.code;if([401,403].includes(response.status)&&!['/access','/login/google'].includes(path))globalThis.window?.dispatchEvent(new CustomEvent('kiosk:access-lost',{detail:{status:response.status}}));throw error}return body
+ const response=await fetch('/api/kiosk'+path,{credentials:'include',cache:'no-store',...options,headers:{...analyticsHeaders(),...options.headers}});const body=await response.json().catch(()=>({}));
+ if(!response.ok){const detail=body.detail||body;const error=new Error(detail.message||'Kiosk request failed');error.status=response.status;error.errorCode=detail.error_code||detail.code;if([401,403].includes(response.status)&&!['/access','/login/google'].includes(path))globalThis.window?.dispatchEvent(new CustomEvent('kiosk:access-lost',{detail:{status:response.status}}));if(response.status>=500)captureAnalyticsError(error,{surface:'kiosk',route:path});throw error}trackApiOutcome(path,options.method||'GET',body,'kiosk');return body
 }
 export const kioskGoogleLogin=id_token=>kioskWebRequest('/login/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id_token})})
 export const kioskLogout=()=>kioskWebRequest('/logout',{method:'POST'})

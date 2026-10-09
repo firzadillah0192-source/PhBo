@@ -1,3 +1,4 @@
+import {installAnalytics} from './services/analytics.service.js';
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import helmet from 'helmet';
@@ -55,6 +56,7 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
   });
   app.use(express.json({ limit: '32kb' }));
   app.use(cookieParser());
+  installAnalytics(app);
   if (config.kiosk) app.use('/api/v1',nativeKioskRoutes(config.kiosk,catalog,config.uploadMaxBytes ?? 12*1024*1024));
   app.get('/health', (_req, res) => { res.json({ status: 'ok', service: 'nxbooth-express' }); });
   if(config.health)app.get('/api/health',async(_req,res)=>{res.json(await config.health!());});
@@ -86,6 +88,7 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
     // Do not log exceptions that may contain registry paths, credentials, or tokens.
     res.status(500).json({ error_code: 'INTERNAL_ERROR', message: 'The request could not be completed. Please try again.' });
   };
+  if(app.locals.posthogErrorCapture)app.use(app.locals.posthogErrorCapture);
   app.use(errors);
   return app;
 }

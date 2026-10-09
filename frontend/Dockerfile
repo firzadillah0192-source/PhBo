@@ -13,6 +13,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_PUBLIC_POSTHOG_PROJECT_TOKEN
+ARG VITE_PUBLIC_POSTHOG_HOST
 
 # Install dependencies first so this layer caches when only source changes.
 COPY package.json package-lock.json ./
@@ -21,7 +23,9 @@ RUN npm ci
 COPY index.html vite.config.js ./
 COPY src ./src
 COPY public ./public
-RUN VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID}" npm run build
+RUN VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID}" VITE_PUBLIC_POSTHOG_PROJECT_TOKEN="${VITE_PUBLIC_POSTHOG_PROJECT_TOKEN}" VITE_PUBLIC_POSTHOG_HOST="${VITE_PUBLIC_POSTHOG_HOST}" npm run build
+# Retain maps in the build stage for authenticated upload; do not serve them.
+RUN find dist -name "*.map" -delete
 
 # --- Stage 2: serve ---------------------------------------------------------
 FROM nginx:1.27-alpine

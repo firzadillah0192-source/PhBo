@@ -1,3 +1,4 @@
+import {analyticsHeaders,trackApiOutcome,captureAnalyticsError} from './analytics.js'
 /** Single frontend-to-backend API contract. Cookies carry guest/account/admin sessions. */
 
 const BASE = '/api'
@@ -31,10 +32,10 @@ async function request(path, options = {}) {
   const read = !options.method || options.method === 'GET'
   const nonce = read ? (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`) : null
   const url = BASE + path + (read ? `${path.includes('?') ? '&' : '?'}_request=${encodeURIComponent(nonce)}` : '')
-  const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options })
-  if (!response.ok) throw await parseError(response)
+  const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options,headers:{...analyticsHeaders(),...options.headers} })
+  if (!response.ok) {const error=await parseError(response);if(response.status>=500)captureAnalyticsError(error,{route:path,surface:'web'});throw error}
   const text = await response.text()
-  return text ? JSON.parse(text) : null
+  const data=text?JSON.parse(text):null;trackApiOutcome(path,options.method||'GET',data,'web');return data
 }
 
 export function getHealth() { return request('/health') }

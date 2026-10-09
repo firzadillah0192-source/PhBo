@@ -20,7 +20,7 @@ export function customerAccountController(service: CustomerAccountService): Reco
   };
   return {
     usage: async (req, res) => { res.json(service.usage(await resolve(req, res))); },
-    me: async (req, res) => { res.json(await service.me(await resolve(req, res))); },
+    me: async (req, res) => { const identity=await resolve(req,res);res.json({...await service.me(identity),analytics_id:identity.account?'phbo-account:'+identity.account.id:null}); },
     center: async (req, res) => { res.json(await service.center(await resolve(req, res))); },
     google: async (req, res) => {
       const input = z.object({ id_token: z.string().min(20).max(16384) }).parse(req.body);

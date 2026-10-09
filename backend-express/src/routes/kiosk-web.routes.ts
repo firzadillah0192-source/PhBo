@@ -21,15 +21,16 @@ export function kioskWebAccess(accounts:CustomerAccountService){
   res.json({allowed:true});
  });
  router.post('/logout',async(req,res)=>{await accounts.logout(req.cookies??{});res.clearCookie(accountCookie,{path:'/'});res.clearCookie(kioskAccessCookie,{path:'/api/kiosk'});res.json({allowed:false});});
- router.use(async(req,_res,next)=>{
+ router.use(async(req,res,next)=>{
   const cookie=req.cookies?.[accountCookie];
   if(!accounts.signer.unsign(cookie))throw new AppError(401,'AUTHENTICATION_REQUIRED','Sign in to enter kiosk.');
   const identity=await accounts.resolve(req.cookies??{});
   if(!identity.account)throw new AppError(401,'AUTHENTICATION_REQUIRED','Sign in to enter kiosk.');
   if(identity.account.email.trim().toLowerCase()!==bootstrapKioskEmail)throw new AppError(403,'KIOSK_FORBIDDEN','This account does not have kiosk access.');
   if(accounts.signer.unsign(req.cookies?.[kioskAccessCookie])!==kioskProof(cookie))throw new AppError(403,'KIOSK_GOOGLE_REQUIRED','Sign in with Google to authorize kiosk.');
+  res.locals.kioskAccountId=identity.account.id;
   next();
  });
- router.get('/access',(_req,res)=>res.json({allowed:true}));
+ router.get('/access',(_req,res)=>res.json({allowed:true,analytics_id:'phbo-account:'+res.locals.kioskAccountId}));
  return router;
 }
