@@ -18,7 +18,7 @@ if action=='prepare':
  stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ');release=Path('/srv/photobooth/releases')/('kiosk-flow-'+stamp);release.mkdir()
  frontend=release/'frontend';shutil.copytree(snapshot,frontend,ignore=shutil.ignore_patterns('node_modules','dist','.vite','.env*'))
  shutil.copytree(SOURCE/'frontend/src/components/kiosk',frontend/'src/components/kiosk',dirs_exist_ok=True)
- for file in ['src/kioskWebApi.js','src/kioskWebFlow.js','src/kioskWebFlow.test.js','src/kioskCamera.js','src/kioskCamera.test.js','scripts/kiosk-flow-check.mjs','public/fonts/baloo2-extrabold.ttf']:
+ for file in ['src/kioskWebApi.js','src/kioskWebFlow.js','src/kioskWebFlow.test.js','src/kioskCamera.js','src/kioskCamera.test.js','src/kioskCountdown.js','src/kioskCountdown.test.js','scripts/kiosk-flow-check.mjs','public/fonts/baloo2-extrabold.ttf']:
   dest=frontend/file;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(SOURCE/'frontend'/file,dest)
  (frontend/'node_modules').symlink_to(REPO/'frontend/node_modules')
  data=release/'backend/app/data';data.mkdir(parents=True)

@@ -1,6 +1,6 @@
 # Kiosk web: proses, UI retro, dan login Google
 
-Update 2026-10-08. URL live: https://nxbooth.gennexbyte.com/kiosk
+Update 2026-10-09. URL live: https://nxbooth.gennexbyte.com/kiosk
 
 Status implementasi **PASS** untuk jalur aplikasi dan akses backend yang diuji. Acceptance login Google dengan akun pengguna dan generation AI production masih **PENDING**; tidak ada login impersonation atau paid generation production selama pengujian ini.
 
@@ -13,10 +13,13 @@ Status implementasi **PASS** untuk jalur aplikasi dan akses backend yang diuji. 
 - UI memakai palet cream, orange, yellow, mint/pink/sky, font Baloo 2, garis tebal dan shadow sesuai tema retro web existing. Font existing direuse beserta OFL.
 - Memilih Classic/Basic/Advanced membuka **modal desain di halaman yang sama**, bukan window/tab browser baru. Modal memakai title bar ala window, backdrop, keyboard/focus native dialog, tombol close/Escape. SSO mengikuti widget Google existing.
 - Katalog berasal dari backend. Classic mengambil jumlah pose `shot_count` dari layout aktual; Basic memilih template, Advanced memilih experience dan frame style kompatibel.
-- Kamera otomatis → live preview → Ambil foto (JPEG dari video kamera) → review/retake → transfer foto backend → generation → polling `QUEUED/PROCESSING/COMPLETED/FAILED` → preview result + download. Tombol Proses foto sudah terhubung, bukan disabled preview lagi.
+- Kamera otomatis → live preview/countdown **5 detik** → foto otomatis (JPEG dari video kamera) → **popup review tiap pose** → Next/Retake → transfer foto backend otomatis setelah semua pose → generation → polling `QUEUED/PROCESSING/COMPLETED/FAILED` → preview result + download. Tidak ada tombol shutter, review atau proses manual dalam jalur normal.
 - Basic/Advanced mengikuti quota/credit/account/provider existing. Kegagalan tidak menghasilkan gambar placeholder atau foto asli yang dilaporkan sebagai hasil AI.
 - Double submit dicegah dengan lock synchronous; generation memakai Idempotency-Key existing; upload yang telah diterima direuse pada retry dalam sesi UI yang sama. Setelah job ID diterima, refresh/login ulang dapat melanjutkan polling pekerjaan itu, tanpa generation baru. State yang disimpan hanya ID job dan mode, bukan foto/token/signed URL.
-- **Tidak ada pilihan upload/file picker di kiosk.** Foto hanya diambil langsung dari kamera. Transfer bytes foto ke backend tetap dilakukan internal saat tombol Proses ditekan.
+- Popup review menampilkan take terakhir. **Next (10)** menghitung mundur 10 detik; klik melanjutkan langsung, timeout melanjutkan otomatis. Untuk Classic, pose berikutnya kembali memakai countdown 5 detik. Setelah review pose terakhir, backend diproses otomatis.
+- **Retake (3)** berarti tiga kali kesempatan mengulang **per pose** (take awal + maksimal tiga retake). Klik mengurangi sisa kesempatan dan mengulang countdown 5 detik; sisa nol membuat tombol disabled. Kesempatan kembali tiga saat lanjut ke pose berikutnya. Pose yang diterima tetap tersimpan.
+- Keputusan Next/Retake/timeout dilindungi lock berdasarkan foto yang direview sehingga tidak memulai dua pose/proses. Countdown dibatalkan saat tahap berubah, kamera terputus atau komponen unmount. Error pengiriman masuk panel retry manual, tanpa loop request otomatis. Countdown tidak digunakan untuk memalsukan status generation.
+- **Tidak ada pilihan upload/file picker di kiosk.** Foto hanya diambil langsung dari kamera. Transfer bytes foto ke backend tetap dilakukan internal setelah review pose terakhir diterima lewat Next atau timeout.
 - Browser meminta izin kamera, lalu memprioritaskan input berlabel Canon/EOS Webcam bila tersedia. Jika tidak terdeteksi atau tidak dapat dibuka, kamera perangkat dipakai. Izin yang ditolak tidak diprompt berulang; UI meminta pengguna mengizinkan akses lalu mencoba lagi. Kamera dilepas ketika review, proses, reset, logout atau unmount. Track yang berakhir mencoba membuka kamera kembali.
 - Deteksi ini memakai sumber video yang diekspos browser, bukan enumerasi perangkat USB Canon/EDSDK. EOS 2000D USB belum diuji sebagai browser video source. Adapter Canon desktop dan printer Windows tetap pending fisik. Browser membutuhkan HTTPS dan izin pengguna; lihat [MDN enumerateDevices](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/enumerateDevices).
 - Logout operator mengakhiri sesi dan mengunci kiosk lagi.
@@ -36,11 +39,12 @@ Halaman utama, account, admin dan native `/api/v1` tidak diganti. Legacy subrout
 | Check | Hasil |
 | --- | --- |
 | TypeScript build backend + Vite build | **PASS** |
-| Frontend snapshot production | **79 PASS**, 0 fail |
+| Frontend snapshot production | **87 PASS**, 0 fail |
+| Timer 5/10 detik, cancellation dan elapsed deadline | **3 PASS** unit fixtures |
 | Seleksi Canon, fallback default/perangkat ketika Canon gagal, permission denial tanpa retry, cleanup stream | **5 PASS** unit fixtures |
 | Backend access + authorized controller routing + Google grant fixtures | **4 PASS**, 0 fail |
 | Browser fixtures 1440/390/320 px, source dan deployed bundle | **PASS** |
-| Shutter dari video kamera browser (fake media device), JPEG asli hasil canvas dikirim, tanpa file input, stream berhenti saat review, modal same-window, semua mode payload, Classic count, result image decode, retry/reload existing job, FAILED tanpa output, session revocation, logout, duplicate click | **PASS** |
+| Capture otomatis 5 detik, popup tiap pose, Next 10 detik timeout/klik, retake 3→0 dan reset per pose, auto-process, submit error tanpa auto-loop, video kamera browser (fake media device), JPEG asli hasil canvas dikirim, tanpa file input, stream berhenti saat review, modal same-window, semua mode payload, Classic count, result image decode, retry/reload existing job, FAILED tanpa output, session revocation, logout, duplicate click | **PASS** |
 | Public HTTPS login popup dan widget Google sungguhan ter-render | **PASS** (tanpa login akun pribadi) |
 | API production anonymous access/catalog/upload/generation/result | **PASS**, semuanya 401 |
 | Homepage dan admin login existing | **PASS**, smoke render |
@@ -54,16 +58,18 @@ Batas recovery: jika generation telah diterima tetapi response job ID hilang, pa
 
 ## Deployment dan source
 
-Release awal akses/proses `/srv/photobooth/releases/kiosk-flow-20261008T102632Z`; update kamera-only frontend `/srv/photobooth/releases/kiosk-flow-20261008T104019Z`.
-Images `photobooth-web:kiosk-flow-20261008T104019Z` dan `photobooth-express:kiosk-flow-20261008T102632Z`.
+Release awal akses/proses `/srv/photobooth/releases/kiosk-flow-20261008T102632Z`; update kamera frontend `/srv/photobooth/releases/kiosk-flow-20261008T104019Z`; update capture/review otomatis `/srv/photobooth/releases/kiosk-flow-20261009T023143Z`.
+Images saat update otomatis: `photobooth-web:kiosk-flow-20261009T023143Z`; API existing `photobooth-express:credit-checkout-api-20261009T021554Z` dipertahankan.
 
-Pada release awal hanya web/API container yang berubah. Update kamera hanya mengganti web container; worker, gateway, image helper, database, Redis dan proyek lain tidak diubah. Tidak ada migration database atau secret baru. Google client ID dan konfigurasi sesi existing dipertahankan. Request ID middleware gateway tetap dibawa.
+Pada release awal hanya web/API container yang berubah. Update kamera dan update otomatis hanya mengganti web container; worker, gateway, image helper, database, Redis dan proyek lain tidak diubah. Tidak ada migration database atau secret baru. Google client ID dan konfigurasi sesi existing dipertahankan. Request ID middleware gateway tetap dibawa.
 
-- UI: `frontend/src/components/kiosk/`, `kioskWebApi.js`, `kioskWebFlow.js`, `kioskCamera.js`.
+- UI: `frontend/src/components/kiosk/`, `kioskWebApi.js`, `kioskWebFlow.js`, `kioskCamera.js`, `kioskCountdown.js`.
 - Backend: `backend-express/src/routes/kiosk-web.routes.ts`, mount di `migration-app.ts`.
-- Tests: `backend-express/test/kiosk-web-access.test.ts`, `frontend/src/kioskWebFlow.test.js`, `frontend/scripts/kiosk-flow-check.mjs`.
+- Tests: `backend-express/test/kiosk-web-access.test.ts`, `frontend/src/kioskWebFlow.test.js`, `kioskCamera.test.js`, `kioskCountdown.test.js`, `frontend/scripts/kiosk-flow-check.mjs`.
 - Release: `scripts/deploy_kiosk_flow.py prepare|deploy|status|rollback`. Prepare mendukung pemasangan flow pertama di atas preview, serta update frontend dengan guard backend yang identik (image API dipertahankan). Build memakai snapshot/image live; patch backend hanya menambahkan guard/mount supaya fitur live lainnya dipertahankan.
 
-Artefak screenshot/report `/srv/photobooth/cache/kiosk-flow-check/` dan `/srv/photobooth/cache/kiosk-flow-deployed-check/`.
+Validasi update otomatis: `npm test`, `npm run build`, `node frontend/scripts/kiosk-flow-check.mjs` (source dan deployed, clock browser dipercepat untuk 5/10 detik), `python3 scripts/deploy_kiosk_flow.py prepare|deploy|status`, serta `/api/health`. Tidak ada backend/controller yang diubah pada update otomatis; 4 tes auth adalah validasi release awal.
+
+Artefak screenshot/report update otomatis `/srv/photobooth/cache/kiosk-auto-check/` dan `/srv/photobooth/cache/kiosk-auto-deployed-check/`.
 
 Laporan [preview sebelumnya](KIOSK_WEB_PREVIEW.md) adalah catatan historis; UI/proses/access kini mengikuti dokumen ini.
