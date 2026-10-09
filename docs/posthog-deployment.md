@@ -1,6 +1,6 @@
 # PhBo PostHog activation — 2026-10-09
 
-Status: PASS for production SDK activation and app health; dashboard display/source-map symbolication remain unverified.
+Status: PASS for production SDK activation, app health, dashboard creation and saved-query execution. Real business-event coverage is PARTIAL; source-map symbolication remains unverified.
 
 PhBo uses the existing Gennexbyte PostHog project as explicitly selected by the user. Events use `app: phbo`, while Gennexbyte uses `app: gennexbyte`. Browser SDK persistence is named `phbo` with cross-subdomain cookies disabled, so independent signed identities do not overwrite Gennexbyte analytics state. Referrer/campaign persistence and unused feature flag evaluation are disabled. Replay, generic autocapture and surveys remain disabled; photos, prompts, email, claim tokens, request bodies and original exception messages are excluded.
 
@@ -13,7 +13,8 @@ The deployment overlays only analytics onto the exact active photo-management so
 - Nine focused backend SDK/auth tests PASS, including real SDK local-collector transport and exception sanitization.
 - Browser SDK collector PASS: verified identity reuse, logout reset, sensitive-data exclusion, and per-app persistence isolation.
 - Kiosk regression PASS at 1440/390/320 pixels locally and against deployed static assets. Camera, Google and backend responses use fixtures; no physical device test, real Google impersonation or paid generation was performed.
-- Actual production API SDK emitted `phbo_runtime_verified` with `is_test: true`; `/batch/` returned HTTP 200. This is a diagnostic event, not a business conversion. Dashboard indexing/display is not claimed.
+- Actual production API SDK emitted `phbo_runtime_verified` with `is_test: true`; `/batch/` returned HTTP 200. Subsequent authenticated MCP queries confirmed this event was indexed. It is a diagnostic event, not a business conversion.
+- Authenticated MCP confirmed project 654547 matches both app ingestion tokens. Five Gennexbyte and seven PhBo dashboard queries ran successfully and were verified again after saving. Marked diagnostic events are excluded; PhBo operational charts remain empty pending usage. See [dashboard evidence](posthog-dashboards.md).
 - Web/API/gateway health PASS, `/kiosk` publicly reachable. Database, Redis, storage and queue checks are healthy.
 
 ## Deployment
@@ -28,4 +29,4 @@ Evidence is in this release directory: frontend-tests.log, frontend-build.log, a
 
 ## Remaining roadmap
 
-Confirm Events in PostHog with filters `app = phbo` and `app = gennexbyte`; diagnostic events have `is_test = true`. Existing Gennexbyte conversion dashboard remains intact. Creating/querying new PhBo dashboards requires authenticated PostHog access, which is unavailable in this session. Source-map upload, replay and surveys remain separate work. Worker terminal events are observed by API polling; this integration does not independently instrument worker job completion or export worker logs.
+Observe real web/kiosk activity and verify generation funnel correlation when operational events arrive. Both app dashboards are created and their saved queries verified; the original wizard daily contact insight is reused and now filters by app and marked tests. Other legacy tiles are unchanged. Source-map upload, replay and surveys remain separate work. Worker terminal events are observed by API polling; this integration does not independently instrument worker job completion or export worker logs.

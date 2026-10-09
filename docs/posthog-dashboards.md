@@ -1,6 +1,15 @@
 # Shared PostHog dashboard specification
 
-Status: PREPARED, not created or verified in PostHog. On 2026-10-09, `codex mcp list --json` reported the configured PostHog MCP as `not_logged_in`. SDK delivery acceptance is documented separately in [deployment verification](posthog-deployment.md); it does not prove that dashboard queries return indexed events.
+Status: PASS for dashboard creation and saved-query execution on 2026-10-09; PARTIAL for real business-event coverage. MCP OAuth is connected. Both application ingestion tokens were matched to project 654547 without displaying their values. SDK deployment evidence remains in [deployment verification](posthog-deployment.md).
+
+- [Gennexbyte — Traffic and Contact](https://us.posthog.com/project/654547/dashboard/2189875): five insight tiles.
+- [PhBo — Web and Kiosk](https://us.posthog.com/project/654547/dashboard/2189878): seven insight tiles.
+
+All 12 native queries ran successfully before saving. Both saved dashboards were then run with `dashboard-insights-run` and `refresh: force_blocking`; every tile returned successfully without query warnings. Persisted app/test filters and non-overlapping layouts were read back and checked. [Saved definitions and IDs](posthog-dashboard-definitions.json) contain no credentials or customer records.
+
+Indexed records currently include Gennexbyte browser activity, marked Gennexbyte backend contact/error diagnostics and marked PhBo SDK diagnostics. No PhBo operational events, non-test persisted contact submission or non-test exception were observed at setup. PhBo charts therefore remain empty pending usage; this does not establish an end-to-end production generation conversion. Unmarked browser verification traffic may remain in the Gennexbyte charts, so the small current visitor/funnel counts must not be treated as customer results. No production form submission, paid generation or hardware operation was triggered during dashboard setup.
+
+The governed catalog is empty. Insight descriptions mark these definitions as provisional; none is presented as approved. The existing contact daily trend `0CxbXsWB` was reused with explicit app/test filters and retains membership in the original wizard dashboard. Other legacy starter/wizard tiles remain unchanged and may show different counts because their original filters differ.
 
 Use one project and two dashboards. Apply the event property `app` to every insight, including funnels and error queries. Exclude events where `is_test` equals boolean `true`; retain events where the property is absent. Default range: last 30 days, daily interval. Never add frontend and backend versions of the same action together.
 
@@ -32,7 +41,7 @@ Filter: `app = phbo`.
 | Kiosk download clicks | `phbo_result_download_clicked`, total count, filter `surface = kiosk` | Clicks, not confirmed downloads or physical prints |
 | Application exceptions | `$exception`, breakdown by `surface` | API/frontend exceptions; independent worker failures are not instrumented |
 
-Inspect actual `surface` values before saving the web funnel. The unique-job tiles require a supported unique-property aggregation or a verified SQL insight; do not silently replace them with event counts. Do not infer throughput, exact success percentage, event revenue, printing speed or session completion from these existing events.
+The web/kiosk `surface` contract was checked against the deployed source; operational PhBo values are not yet present in indexed records. Unique-job tiles use native TrendsQuery custom aggregation `uniqExact(properties.job_id)`, which ran successfully; counts are not replaced with event totals. Multi-series and exception charts show legends. Do not infer throughput, exact success percentage, event revenue, printing speed or session completion from these existing events.
 
 ## Creation and verification after MCP login
 

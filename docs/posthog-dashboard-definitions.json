@@ -1,0 +1,673 @@
+{
+  "project_id": 654547,
+  "verified_on": "2026-10-09",
+  "timezone": "UTC",
+  "status": "PASS for dashboard creation and saved query execution; PARTIAL for real business-event coverage",
+  "dashboards": [
+    {
+      "app": "gennexbyte",
+      "id": 2189875,
+      "url": "https://us.posthog.com/project/654547/dashboard/2189875",
+      "filters": {
+        "date_from": "-30d",
+        "properties": [
+          {
+            "key": "app",
+            "type": "event",
+            "value": "gennexbyte",
+            "operator": "exact"
+          },
+          {
+            "key": "is_test",
+            "type": "event",
+            "value": "true",
+            "operator": "is_not"
+          }
+        ]
+      },
+      "tiles": [
+        {
+          "tile_id": 13341621,
+          "insight_id": 12686077,
+          "short_id": "pPxf3VVx",
+          "name": "Gennexbyte — Daily visitors",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "$pageview",
+                  "math": "dau"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "gennexbyte"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "tile_id": 13341623,
+          "insight_id": 12680960,
+          "short_id": "0CxbXsWB",
+          "name": "Gennexbyte — Daily contact submissions",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "contact_form_submitted",
+                  "math": "total"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "gennexbyte"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "tile_id": 13341624,
+          "insight_id": 12686078,
+          "short_id": "hGFS0wI3",
+          "name": "Gennexbyte — Contact conversion funnel",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "FunnelsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "contact_form_submit_started"
+                },
+                {
+                  "kind": "EventsNode",
+                  "event": "contact_form_submitted"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "gennexbyte"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "funnelsFilter": {
+                "funnelOrderType": "ordered",
+                "funnelWindowInterval": 1,
+                "funnelWindowIntervalUnit": "hour",
+                "funnelVizType": "steps"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 6
+          }
+        },
+        {
+          "tile_id": 13341625,
+          "insight_id": 12686079,
+          "short_id": "bnav0PXS",
+          "name": "Gennexbyte — Contact form failures",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "contact_form_submit_failed",
+                  "math": "total"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "gennexbyte"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 6
+          }
+        },
+        {
+          "tile_id": 13341626,
+          "insight_id": 12686080,
+          "short_id": "bdXmfkhb",
+          "name": "Gennexbyte — Application exceptions",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "$exception",
+                  "math": "total"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "gennexbyte"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "breakdownFilter": {
+                "breakdowns": [
+                  {
+                    "property": "surface",
+                    "type": "event"
+                  }
+                ]
+              },
+              "trendsFilter": {
+                "display": "ActionsLineGraph",
+                "showLegend": true
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 12
+          }
+        }
+      ]
+    },
+    {
+      "app": "phbo",
+      "id": 2189878,
+      "url": "https://us.posthog.com/project/654547/dashboard/2189878",
+      "filters": {
+        "date_from": "-30d",
+        "properties": [
+          {
+            "key": "app",
+            "type": "event",
+            "value": "phbo",
+            "operator": "exact"
+          },
+          {
+            "key": "is_test",
+            "type": "event",
+            "value": "true",
+            "operator": "is_not"
+          }
+        ]
+      },
+      "tiles": [
+        {
+          "tile_id": 13341627,
+          "insight_id": 12686081,
+          "short_id": "KCFlizmt",
+          "name": "PhBo — Daily visitors",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "$pageview",
+                  "math": "dau"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "phbo"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "tile_id": 13341628,
+          "insight_id": 12686082,
+          "short_id": "ywXkZywJ",
+          "name": "PhBo — Web generation funnel",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "FunnelsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_upload_succeeded"
+                },
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_generation_accepted"
+                },
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_generation_completed"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "phbo"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                },
+                {
+                  "key": "surface",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "web"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "funnelsFilter": {
+                "funnelOrderType": "ordered",
+                "funnelWindowInterval": 1,
+                "funnelWindowIntervalUnit": "hour",
+                "funnelVizType": "steps"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          }
+        },
+        {
+          "tile_id": 13341629,
+          "insight_id": 12686083,
+          "short_id": "y8m1hiDI",
+          "name": "PhBo — Accepted jobs",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_generation_queued",
+                  "math": "hogql",
+                  "math_hogql": "uniqExact(properties.job_id)"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "phbo"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 6
+          }
+        },
+        {
+          "tile_id": 13341630,
+          "insight_id": 12686084,
+          "short_id": "V0rgpJIT",
+          "name": "PhBo — Observed job outcomes",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_generation_status_completed",
+                  "math": "hogql",
+                  "math_hogql": "uniqExact(properties.job_id)"
+                },
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_generation_status_failed",
+                  "math": "hogql",
+                  "math_hogql": "uniqExact(properties.job_id)"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "phbo"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph",
+                "showLegend": true
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 6
+          }
+        },
+        {
+          "tile_id": 13341631,
+          "insight_id": 12686085,
+          "short_id": "LHGz1V8d",
+          "name": "PhBo — Kiosk captures and retakes",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_photo_captured",
+                  "math": "total"
+                },
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_photo_retake",
+                  "math": "total"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "phbo"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                },
+                {
+                  "key": "surface",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "kiosk"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph",
+                "showLegend": true
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 0,
+            "y": 12
+          }
+        },
+        {
+          "tile_id": 13341632,
+          "insight_id": 12686086,
+          "short_id": "jHItcwnp",
+          "name": "PhBo — Kiosk download clicks",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "phbo_result_download_clicked",
+                  "math": "total"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "phbo"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                },
+                {
+                  "key": "surface",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "kiosk"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "trendsFilter": {
+                "display": "ActionsLineGraph"
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 6,
+            "x": 6,
+            "y": 12
+          }
+        },
+        {
+          "tile_id": 13341633,
+          "insight_id": 12686087,
+          "short_id": "D06JlGBM",
+          "name": "PhBo — Application exceptions",
+          "query": {
+            "kind": "InsightVizNode",
+            "source": {
+              "kind": "TrendsQuery",
+              "series": [
+                {
+                  "kind": "EventsNode",
+                  "event": "$exception",
+                  "math": "total"
+                }
+              ],
+              "properties": [
+                {
+                  "key": "app",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": "phbo"
+                },
+                {
+                  "key": "is_test",
+                  "type": "event",
+                  "operator": "is_not",
+                  "value": "true"
+                }
+              ],
+              "dateRange": {
+                "date_from": "-30d"
+              },
+              "interval": "day",
+              "breakdownFilter": {
+                "breakdowns": [
+                  {
+                    "property": "surface",
+                    "type": "event"
+                  }
+                ]
+              },
+              "trendsFilter": {
+                "display": "ActionsLineGraph",
+                "showLegend": true
+              }
+            }
+          },
+          "layout": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 18
+          }
+        }
+      ]
+    }
+  ]
+}
