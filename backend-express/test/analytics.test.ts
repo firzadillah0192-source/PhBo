@@ -15,6 +15,25 @@ test('analytics exceptions cannot turn successful request into failure',async()=
  app.post('/api/uploads',(_req,res)=>res.status(201).json({upload_id:'upload-test'}));
  await request(app).post('/api/uploads').set('X-POSTHOG-DISTINCT-ID','browser-test').expect(201);
 });
+for(const base of ['/api','/api/kiosk/web'])test(`mounted ${base} routes capture acceptance and terminal polling once`,async()=>{
+ const events:any[]=[];const app=express();app.use(express.json());
+ installAnalytics(app,{capture:(e:any)=>events.push(e),captureException:()=>{}} as any);
+ const router=express.Router();
+ router.post('/generations',(_req,res)=>res.status(202).json({job_id:`mounted-${base}`,state:'QUEUED'}));
+ router.get('/generations/:id',(_req,res)=>res.json({job_id:`mounted-${base}`,state:'COMPLETED'}));
+ app.use(base,router);
+ await request(app).post(base+'/generations?private=secret').set('X-POSTHOG-DISTINCT-ID','browser-mounted').send({image:'secret-photo'}).expect(202);
+ await request(app).get(base+'/generations/job?_request=secret').set('X-POSTHOG-DISTINCT-ID','browser-mounted').expect(200);
+ await request(app).get(base+'/generations/job?_request=secret').set('X-POSTHOG-DISTINCT-ID','browser-mounted').expect(200);
+ const queued=events.filter(e=>e.event==='phbo_generation_queued');
+ const completed=events.filter(e=>e.event==='phbo_generation_status_completed');
+ assert.equal(queued.length,1);assert.equal(completed.length,1);
+ assert.equal(queued[0].properties.surface,base.includes('kiosk')?'kiosk':'web');
+ assert.equal(queued[0].properties.route,base+'/generations');
+ assert.equal(completed[0].properties.route,base+'/generations/:id');
+ assert.equal(completed[0].distinctId,'browser-mounted');
+ assert.doesNotMatch(JSON.stringify(events),/secret/);
+});
 test('server exception sanitizer removes sensitive message and locals',()=>{
  const event=safeAnalyticsEvent({properties:{$exception_list:[{type:'Error',value:'private-photo',stacktrace:{frames:[{filename:'app.js?token=private',lineno:8,vars:{email:'private'}}]}}],email:'private'}});
  assert.equal(event.properties.$exception_list[0].stacktrace.frames[0].lineno,8);assert.doesNotMatch(JSON.stringify(event),/private|vars/);

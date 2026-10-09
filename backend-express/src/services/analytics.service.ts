@@ -24,18 +24,21 @@ const safeId=(value:unknown)=>typeof value==='string'&&/^[A-Za-z0-9._:-]{1,128}$
 export function installAnalytics(app:Express,sdk:Pick<PostHog,'capture'|'captureException'>|null=backendAnalytics()){
  if(!sdk)return;
  app.use((req:Request,res:Response,next)=>{
+  // Express rewrites req.path inside mounted routers. Capture the public path
+  // before dispatch so /api and /api/kiosk/web responses remain observable.
+  const path=(req.originalUrl||req.url).split('?')[0];
   const distinct=safeId(req.get('X-POSTHOG-DISTINCT-ID')),session=safeId(req.get('X-POSTHOG-SESSION-ID'));
   const send=res.json.bind(res);
   res.json=(body:any)=>{
    const sent=send(body);
-   const accountId=body?.account?.id||(/\/account\/(login|signup|google)$/.test(req.path)?body?.id:null);
+   const accountId=body?.account?.id||(/\/account\/(login|signup|google)$/.test(path)?body?.id:null);
    const distinctId=safeId(body?.analytics_id)||(accountId?'phbo-account:'+accountId:distinct);
-   if(!distinctId||!req.path.startsWith('/api/')||req.path.startsWith('/api/admin/'))return sent;
-   const properties={surface:req.path.startsWith('/api/kiosk')?'kiosk':'web',route:analyticsRoute(req.path),method:req.method,status:res.statusCode,...session?{$session_id:session}:{}};
+   if(!distinctId||!path.startsWith('/api/')||path.startsWith('/api/admin/'))return sent;
+   const properties={surface:path.startsWith('/api/kiosk')?'kiosk':'web',route:analyticsRoute(path),method:req.method,status:res.statusCode,...session?{$session_id:session}:{}};
    try{
     if(!['GET','HEAD','OPTIONS'].includes(req.method))sdk.capture({distinctId,event:'phbo_api_request_finished',properties});
-    if(req.method==='POST'&&req.path.endsWith('/generations')&&res.statusCode===202)sdk.capture({distinctId,event:'phbo_generation_queued',properties:{...properties,job_id:body.job_id,state:body.state}});
-    if(req.method==='GET'&&/\/generations\/[^/]+$/.test(req.path)&&['COMPLETED','FAILED'].includes(body?.state)&&!terminal.has(body.job_id)){
+    if(req.method==='POST'&&path.endsWith('/generations')&&res.statusCode===202)sdk.capture({distinctId,event:'phbo_generation_queued',properties:{...properties,job_id:body.job_id,state:body.state}});
+    if(req.method==='GET'&&/\/generations\/[^/]+$/.test(path)&&['COMPLETED','FAILED'].includes(body?.state)&&!terminal.has(body.job_id)){
      if(terminal.size>2000)terminal.clear();terminal.add(body.job_id);sdk.capture({distinctId,event:'phbo_generation_status_'+body.state.toLowerCase(),properties:{...properties,job_id:body.job_id,state:body.state}});
     }
    }catch{}

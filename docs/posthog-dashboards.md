@@ -13,6 +13,10 @@ The governed catalog is empty. Insight descriptions mark these definitions as pr
 
 Use one project and two dashboards. Apply the event property `app` to every insight, including funnels and error queries. Exclude events where `is_test` equals boolean `true`; retain events where the property is absent. Default range: last 30 days, daily interval. Never add frontend and backend versions of the same action together.
 
+## Follow-up: missing generate counts
+
+The user subsequently generated a photo. Browser upload/acceptance/completion events are indexed and the refreshed PhBo web funnel now returns 1 → 1 → 1. A backend mounted-router analytics defect was reproduced, fixed and deployed; see [router correction and evidence](posthog-router-fix.md). Accepted and outcome tiles now combine browser/server observation events with distinct `job_id` aggregation, so the same job is counted once across sources. They currently show one accepted and one completed job, excluding marked diagnostics. Setup-time empty-data statements above describe the original verification snapshot, not the current PhBo dashboard.
+
 ## Gennexbyte analytics
 
 Filter: `app = gennexbyte`.
@@ -35,8 +39,8 @@ Filter: `app = phbo`.
 | --- | --- | --- |
 | Daily visitors | `$pageview`, unique persons per day | Browser activity across web and kiosk routes |
 | Web generation funnel | `phbo_upload_succeeded` → `phbo_generation_accepted` → `phbo_generation_completed`, filter `surface = web`, ordered unique-person funnel, 1-hour window | User progression; not exact per-job conversion |
-| Accepted jobs | `phbo_generation_queued`, unique `job_id` per day | Server acceptance; do not add browser acceptance counts |
-| Observed completed/failed jobs | `phbo_generation_status_completed` and `phbo_generation_status_failed`, unique `job_id` per event per day | Terminal states observed by API polling, not direct worker completion telemetry |
+| Accepted jobs | `phbo_generation_accepted` OR `phbo_generation_queued`, unique `job_id` per day across both | Browser/server acceptance observations deduplicated by job ID |
+| Observed completed/failed jobs | Browser `phbo_generation_completed`/`phbo_generation_failed` OR corresponding API `phbo_generation_status_completed`/`phbo_generation_status_failed`, unique `job_id` per outcome per day | Browser/API observed terminal states deduplicated across sources; not direct worker completion telemetry |
 | Kiosk captures and retakes | `phbo_photo_captured` and `phbo_photo_retake`, total count, filter `surface = kiosk` | Captures include repeated attempts; neither count represents finished sessions |
 | Kiosk download clicks | `phbo_result_download_clicked`, total count, filter `surface = kiosk` | Clicks, not confirmed downloads or physical prints |
 | Application exceptions | `$exception`, breakdown by `surface` | API/frontend exceptions; independent worker failures are not instrumented |

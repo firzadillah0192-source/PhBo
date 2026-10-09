@@ -20,6 +20,7 @@ The deployment overlays only analytics onto the exact active photo-management so
 ## Deployment
 
 API image: `photobooth-express:posthog-20261009`.
+Follow-up active API image: `photobooth-express:posthog-router-fix-20261009`, correcting analytics for mounted Express routers. See [fix evidence](posthog-router-fix.md). The image above is the original activation/rollback image.
 Web image: `photobooth-web:posthog-isolated-20261009`.
 Override: `/srv/photobooth/releases/posthog-20261009/compose.posthog.yml`, appended to existing PhBo Compose stack. Rollback override retains preceding photo-management images. Only API/web containers were replaced; worker, database, Redis, gateways, image helper, network, ports and Gennexbyte containers were retained. Existing API runtime environment values were compared with merged Compose before startup. The existing image-engine key was supplied from the running API environment without printing or altering it. Compose config was validated before startup.
 
