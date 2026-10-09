@@ -7,7 +7,7 @@ export function initializeAnalytics(){
  if(!token||!host){if(env.DEV)throw new Error('VITE_PUBLIC_POSTHOG_PROJECT_TOKEN and VITE_PUBLIC_POSTHOG_HOST required by PostHog are missing or un-configured.');return null}
  if(active)return posthog
  try{
-  posthog.init(token,{api_host:host,defaults:'2026-05-30',autocapture:false,capture_pageview:false,capture_pageleave:false,disable_session_recording:true,disable_surveys:true,capture_exceptions:true,person_profiles:'identified_only',before_send:event=>{const safe=sanitizeAnalyticsEvent(event);return safe?{...safe,properties:{...safe.properties,token}}:null}})
+  posthog.init(token,{api_host:host,persistence_name:'phbo',cross_subdomain_cookie:false,save_referrer:false,save_campaign_params:false,advanced_disable_feature_flags:true,advanced_disable_feature_flags_on_first_load:true,defaults:'2026-05-30',autocapture:false,capture_pageview:false,capture_pageleave:false,disable_session_recording:true,disable_surveys:true,capture_exceptions:true,person_profiles:'identified_only',before_send:event=>{const safe=sanitizeAnalyticsEvent(event);return safe?{...safe,properties:{...safe.properties,token}}:null}})
   active=true
   analyticsPageview()
   window.addEventListener('popstate',analyticsPageview)
