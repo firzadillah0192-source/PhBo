@@ -26,7 +26,7 @@ Surrounding features that already exist (do not rebuild, do not break): Admin co
 - **API + worker** `backend-express/`: Express 5 + TypeScript, Prisma 7, route -> controller -> service -> model. Production entrypoints are `migration-server.ts` / `migration-worker.ts` (container `photobooth-express`, `photobooth-express-worker`). Do not use upstream `server.ts` / `/api/v1` for production work unless asked. Read `backend-express/MIGRATION.md` and `CUTOVER.md` first.
 - **Image helper** `backend-express/python-worker/` (container `photobooth-image-helper`, private): upload normalization/HEIC, Classic compositor, print preparation. It does NOT generate Basic images and owns no routes or credits.
 - **Legacy FastAPI** `backend/`: no longer serves production. Still holds SQL migrations (`backend/migrations/`) and data (`backend/app/data/`) the Express runtime depends on. Do not delete or "clean up".
-- **Data**: PostgreSQL (metadata and file references only, never image bytes), Redis (queue delivery / rate limit), MinIO (images, results). PostgreSQL is the source of truth for jobs and credits; Redis only delivers work.
+- **Data**: PostgreSQL (metadata and file references only, never image bytes), Redis (queue delivery / rate limit), MinIO (images, results). MinIO is the pre-existing container `aistor-server` (host port 9000, bucket `nxbooth-production`, restart policy `unless-stopped`); the API and worker refuse to start while it is down. If `photobooth-express` restart-loops, check `aistor-server` first. PostgreSQL is the source of truth for jobs and credits; Redis only delivers work.
 - **AI provider**: NineRouter behind the Express provider abstraction (`AI_PROVIDER=9router`). Never hard-code a vendor. Never expose prompts, model IDs or provider names to customers.
 - Generation states: `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`. Frontend polls real backend state; never fake completion.
 
@@ -46,8 +46,21 @@ This VPS hosts other projects (notably `gennexbyte-*` containers and its compose
 - Our containers are `photobooth-*` on network `photobooth-net`. Postgres and Redis publish no host ports. Gateways listen on 20251 / 20252, web on 3000.
 - Before Docker work inspect `docker ps`, `docker compose ls`, networks, volumes, `ss -lntup`, `free -h`, `df -h`. Run `docker compose config` before any `up`.
 - Never run `docker system prune`, never `docker compose down -v`, never remove unknown volumes or images, never restart the Docker daemon.
-- **The running stack is not what `docker compose up` on this repo would produce.** The `photobooth` compose project is stacked from ~35 override files in `/srv/photobooth/releases/` and `/tmp`, and images are built by patching changed files onto the currently running image (`scripts/deploy_*.py`). Repo source can differ from what is live. Never run plain `docker compose up/down/build` from `/opt/photobooth`. Deploys use the matching `scripts/deploy_*.py` (copy the latest one as the pattern), keep a rollback override, and **require explicit user approval each time**.
+- **The running stack is not what `docker compose up` on this repo would produce.** The `photobooth` compose project is stacked from ~35 override files in `/srv/photobooth/releases/` and `/tmp`, and images are built by patching changed files onto the currently running image (`scripts/deploy_*.py`). Repo source can differ from what is live. Never run plain `docker compose up/down/build` from `/opt/photobooth`. Deploys use a `scripts/deploy_*.py` (copy `deploy_startup_stage.py` as the pattern), keep a rollback override, and **require explicit user approval each time**.
+- **Compose definitions must live in `/srv/photobooth/releases/`, never `/tmp`** (a reboot wiped nine `/tmp` overrides and left express undeployable). `express`, `express-worker` and `image-helper` are defined by the persistent snapshot `/srv/photobooth/releases/express-base/compose.express-base.json`, generated and checked by `scripts/snapshot_express_compose.py generate|validate`. Run `validate` before any express deploy; it must print `PASS`. Regenerate the snapshot after any change to those containers' mounts, env, command or healthcheck. The snapshot holds no secrets (placeholders only); the deploy script supplies `EXPRESS_IMAGE_ENGINE_KEY` from the live helper.
 - After any deploy verify: `docker compose ps`, container logs, health endpoint, and a real request through the web port. Restart-looping containers are a failure, even if others are healthy.
+
+## Working with more than one agent
+
+This repo is worked on by Claude Code and Codex, taking turns, and by the human owner. Assume another agent's work may be in flight. These rules apply to every agent:
+
+- **Start by reading state:** `git status`, `git log -5`, `docker ps`, and the newest dirs in `/srv/photobooth/releases/`. Uncommitted changes you did not make belong to someone else: do not revert, reformat, stash, or commit them.
+- **Commit only your own files, by explicit path** (`git add <paths>`, never `git add -A` / `git commit -a`). Commit only when asked. Never push, force-push, reset, rebase, or delete branches unless asked. `main` and `origin/main` have diverged before; run `git fetch` and compare before proposing a merge.
+- **Never deploy while another release is in flight** (a fresh dir in `/srv/photobooth/releases/`, or containers started minutes ago that you did not start). One deploy at a time; ask the owner if unsure.
+- **Do not duplicate work:** if files related to your task are modified or untracked and not yours, tell the owner and work around them.
+- **Leave a handoff in your final report:** what you changed and committed, what you deliberately left uncommitted or undeployed, the live release/image tags if you deployed, and open issues. The next agent has no memory of your session; the repo, git history, and `/srv/photobooth/releases/*/manifest.json` are the only shared memory.
+- **Permissions:** approval given in chat may not unlock a blocked tool call (production reads/deploys can be denied by the tool's own settings). If denied, do not work around it: finish what you can, state exactly what is blocked and what command the owner can run.
+- Keep this file tool-neutral: rules for all agents go here, not in `CLAUDE.md`.
 
 ## Working method
 
@@ -67,6 +80,8 @@ This VPS hosts other projects (notably `gennexbyte-*` containers and its compose
 | `backend-express/python-worker/` | `python -m pytest test_*.py` (needs the Python deps in `requirements-classic*.txt`) |
 | `backend/` (legacy) | `pytest` in `backend/tests` |
 | `desktop/` | `npm test`; `npm run test:ui` |
+
+Deploy tooling: `python3 -I scripts/snapshot_express_compose.py validate` (express compose snapshot equals running containers); `python3 -I scripts/deploy_startup_stage.py prepare|deploy|rollback|status` (latest release; `prepare` builds and validates without touching production).
 
 ## Docs map
 
