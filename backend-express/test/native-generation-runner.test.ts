@@ -48,7 +48,7 @@ test('BASIC returns the AI edit unchanged without post-generation landmark rejec
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0].input, source);
     assert.deepEqual(calls[0].template, { bytes: source, width: 120, height: 180 });
-    assert.deepEqual(result.canvas, { width: 120, height: 180 });
+    assert.deepEqual((result as { canvas?: unknown }).canvas, { width: 120, height: 180 });
     assert.equal(calls[0].model, 'private/image-model');
     assert.match(calls[0].prompt, /Space Commander/);
     assert.match(calls[0].prompt, /subtle template-dominant facial resemblance/);

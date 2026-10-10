@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { migrationConfigSchema } from './config/migration-env.js';
 import { migrationContainer } from './migration-container.js';
 import { nativeGenerationQueue } from './services/native-generation-queue.js';
+import { failedStage, startupStage } from './lib/startup-stage.js';
 import { NativeWorkerLoop } from './services/native-worker-loop.service.js';
 
 const config=migrationConfigSchema.parse(process.env);
@@ -16,6 +17,6 @@ const previewLoop=new NativeWorkerLoop(previews,id=>services.previews.process(id
 let stopping=false;
 function stop(){if(stopping)return;stopping=true;customerLoop.stop();previewLoop.stop();}
 process.on('SIGINT',stop);process.on('SIGTERM',stop);
-try{await db.$connect();await services.storageReady();await services.queueReady();await db.nxWorkerLease.count();console.log('NXBooth native candidate worker started');await Promise.all([customerLoop.run(),previewLoop.run()]);}
-catch{console.error('Native candidate worker startup failed');process.exitCode=1;}
+try{await startupStage('database',()=>db.$connect());await startupStage('storage',()=>services.storageReady());await startupStage('queue',()=>services.queueReady());await startupStage('schema',()=>db.nxWorkerLease.count());console.log('NXBooth native candidate worker started');await Promise.all([customerLoop.run(),previewLoop.run()]);}
+catch(error){console.error(`Native candidate worker startup failed at stage: ${failedStage(error)}`);process.exitCode=1;}
 finally{await customers.close();await previews.close();await services.close();await db.$disconnect();}

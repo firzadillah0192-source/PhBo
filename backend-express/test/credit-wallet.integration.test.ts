@@ -112,7 +112,7 @@ test('Real worker completion and Express result routes enforce post-result charg
     let withUsage = true, calls = 0;
     const worker = new CustomerGenerationWorkerService(model, { async generate(job) {
       calls++; const run = await runs.start(job,'synthetic-provider','gpt-image-2.5');
-      const generated = { bytes: png, provider:'synthetic-provider', model:'gpt-image-2.5', meta: withUsage ? { usage: { input_text_tokens:3000,input_image_tokens:3000,output_image_tokens:400,cached_text_tokens:2000,cached_image_tokens:1000 } } : {} };
+      const generated = { bytes: png, provider:'synthetic-provider', model:'gpt-image-2.5', meta: (withUsage ? { usage: { input_text_tokens:3000,input_image_tokens:3000,output_image_tokens:400,cached_text_tokens:2000,cached_image_tokens:1000 } } : {}) as never };
       await runs.finish(run,job,generated); return {...generated,canvas:{width:32,height:32}};
     } },directory);
     const paid = await createJob(); assert.equal((await accountModel.wallet(account.id)).free_remaining,50);
@@ -123,7 +123,7 @@ test('Real worker completion and Express result routes enforce post-result charg
     const results = new CustomerResultService(new CustomerResultModel(db),{resultsDir:directory,claimHours:1,publicOrigin:'http://localhost',production:false});
     const app = createMigrationApp({} as never,{corsOrigins:[]},accounts,results);
     const signedIn = await request(app).post('/api/account/login').send({email:account.email,password}).expect(200);
-    const cookie = (signedIn.headers['set-cookie'] as string[]).map(value=>value.split(';')[0]).join('; ');
+    const cookie = (signedIn.headers['set-cookie'] as unknown as string[]).map(value=>value.split(';')[0]).join('; ');
     await request(app).get(`/api/results/${result.id}/image`).set('Cookie',cookie).expect(200).expect(response=>assert.equal(response.headers['content-type'],'image/png'));
     await request(app).get(`/api/results/${result.id}/image`).expect(404);
     // Real stored 9Router aggregate counters: usable without text/image split.
