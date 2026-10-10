@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg font-sans text-text antialiased;
+  }
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-primary;
+  }
+}
+
+@layer components {
+  /* Type ramp — matches the Figma text styles */
+  .t-display { @apply font-display text-5xl font-extrabold leading-[56px]; }
+  .t-h1 { @apply font-display text-4xl font-bold leading-[44px]; }
+  .t-h2 { @apply font-display text-[28px] font-bold leading-9; }
+  .t-h3 { @apply font-display text-[22px] font-bold leading-[30px]; }
+  .t-h4 { @apply font-display text-lg font-semibold leading-[26px]; }
+  .t-body-l { @apply text-lg leading-7; }
+  .t-body { @apply text-base leading-6; }
+  .t-label { @apply text-base font-semibold leading-6; }
+  .t-body-s { @apply text-sm leading-5; }
+  .t-caption { @apply text-xs leading-4; }
+  .t-label-s { @apply text-sm font-semibold leading-5; }
+  .t-label-xs { @apply text-xs font-semibold leading-4; }
+  .t-mono { @apply font-mono text-[13px] leading-5; }
+}
