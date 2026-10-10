@@ -5,9 +5,9 @@ description: Build and validate responsive React/Vite UI for the Photobooth AI i
 
 # React Frontend
 
-Use React + Vite. Preserve the primary workflow: upload, validate, choose one template, generate, process, preview, and download. Keep the main action obvious and the UI image-first, premium, dark, clean, modern, responsive, and accessible.
+Use React + Vite (`frontend/`, tests via `npm test`, build via `npm run build`). The app has three modes (Classic, Basic, Advanced), kiosk and customer flows; preserve the existing linear flow of each: input photo(s), validate, choose, generate, process, preview, download/claim. Keep the main action obvious and the UI image-first, premium, dark, clean, modern, responsive, and accessible.
 
-Directional routes are `/`, `/create`, `/templates`, `/generate/:jobId`, and `/result/:resultId`; adjust only when needed while preserving a clear linear flow. Upload UX must show a selected image preview, validation state, useful errors, and retry/change controls. Do not proceed silently with invalid images.
+Follow the existing routing in `src/customerRoute.js` and `src/App.jsx`; do not rename routes casually. Upload UX must show a selected image preview, validation state, useful errors, and retry/change controls. Do not proceed silently with invalid images.
 
 Generation is asynchronous. Poll actual backend state for `QUEUED`, `PROCESSING`, `COMPLETED`, and `FAILED`; do not use timers to fake completion. Centralize API access, use the configured API base URL, and match backend contracts exactly. Prefer local state/context; do not add a state library without demonstrated need.
 
