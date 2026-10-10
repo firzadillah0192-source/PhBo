@@ -1,0 +1,53 @@
+{
+  "id": "classic-wedding-jawa-002",
+  "name": "Janur Harmoni",
+  "canvas_width": 1200,
+  "canvas_height": 3600,
+  "shot_count": 3,
+  "print_profile": "classic-strip-2x6-v1",
+  "slots": [
+    {
+      "x": 60,
+      "y": 106,
+      "width": 1080,
+      "height": 826,
+      "fit": "cover"
+    },
+    {
+      "x": 60,
+      "y": 960,
+      "width": 1080,
+      "height": 826,
+      "fit": "cover"
+    },
+    {
+      "x": 60,
+      "y": 1814,
+      "width": 1080,
+      "height": 826,
+      "fit": "cover"
+    }
+  ],
+  "theme_slug": "wedding-jawa",
+  "theme_name": "Wedding Jawa",
+  "event_personalization": true,
+  "branding": {
+    "text": "NXBooth",
+    "font": "CormorantGaramond SemiBold",
+    "color": "#fff6dc"
+  },
+  "event_name_font": "GreatVibes-Regular.ttf",
+  "date_font": "CormorantGaramond.ttf",
+  "timezone": "Asia/Jakarta",
+  "preview_sample": {
+    "event_name": "Sarah & Arif",
+    "date": "10 Oktober 2026",
+    "qr_is_example": true
+  },
+  "footer_bounds": {
+    "x": 160,
+    "y": 2710,
+    "width": 880,
+    "height": 800
+  }
+}

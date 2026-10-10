@@ -1,5 +1,37 @@
 # Photobooth API contract — Sprint 2 mode foundation
 
+## Current Express Classic event contract (2026-10-10)
+
+Production uses `backend-express/src/migration-app.ts`; historical mode notes
+below describe earlier versions. The following Classic contract applies to the
+website, authenticated web kiosk, and native kiosk.
+
+`GET /api/classic/layouts` and `/api/kiosk/web/classic/layouts` expose
+`requires_event_name: true` for reviewed layouts whose server-owned
+`layout_config_json.event_personalization` is `true`. The existing floral ID
+remains compatible. Each revised layout has `shot_count: 3` and a sample
+`preview_url`. The blank processing overlay contains NXBooth branding but no
+event name, date, or QR. Native `GET /api/kiosk/frames` includes these layouts.
+
+`POST /api/generations` and `/api/kiosk/web/generations` accept
+`{mode: "CLASSIC", layout_id, upload_id, capture_upload_ids, event_name, captured_at}`.
+The first upload must match `upload_id`; exactly three distinct owned captures
+are required for these layouts. `event_name` is trimmed/NFC-normalized, 1–80
+characters, with control characters rejected. `captured_at` is an ISO timestamp
+with timezone, captured when the first accepted photo is taken. It must fall
+within one hour before, or one minute after, the first upload creation time.
+If omitted, the server uses the first upload time. The event name is required
+before generation; these fields are rejected for non-personalized layouts and
+AI modes. Native generation uses the corresponding camelCase fields
+`eventName` and `capturedAt` alongside `frameId` and `photoIds`.
+
+Python adds the event name with bundled Great Vibes, the WIB date with bundled
+Cormorant Garamond, and a secure QR for that specific result. Preview and output
+use the same fonts and renderer. The result stays exactly 1200 × 3600 px at
+600 DPI; the print rendition stays 600 × 1800 px at 300 DPI. The embedded claim
+expires after 14 days and is revoked when the result is deleted. Existing
+wallet behavior and AI generation are unchanged by the template revision.
+
 The existing `/api` contract stays in place. Both modes use the same upload,
 job queue, polling, result and download endpoints. Client code lives in
 `frontend/src/api.js`, request/response schemas in `backend/app/schemas.py`.

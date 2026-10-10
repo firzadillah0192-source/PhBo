@@ -1,5 +1,5 @@
 import type { CustomerCatalogModel } from '../models/customer-catalog.model.js';
-import { CatalogAssetError, CatalogAssetsService } from './catalog-assets.service.js';
+import { CatalogAssetError, CatalogAssetsService, requiresEventName } from './catalog-assets.service.js';
 import { AppError } from '../lib/errors.js';
 
 const missing = (message: string) => new AppError(404, 'CATALOG_ASSET_NOT_FOUND', message);
@@ -60,7 +60,7 @@ export class CustomerCatalogService {
         const config = await this.assets.validateLayout(row);
         layouts.push({ id: row.id, slug: row.slug, name: row.name, canvas_width: row.canvas_width,
           canvas_height: row.canvas_height, shot_count: row.shot_count, slots: config.slots,
-          preview_url: `/api/classic/layouts/${row.id}/preview`, enabled: row.active, sort_order: row.sort_order, requires_event_name: row.id === 'classic-floral-event-001',
+          preview_url: `/api/classic/layouts/${row.id}/preview`, enabled: row.active, sort_order: row.sort_order, requires_event_name: requiresEventName(row),
           theme_slug: config.theme_slug || 'classic-originals', theme_name: config.theme_name || 'Classic Originals' });
       } catch (error) { if (!(error instanceof CatalogAssetError)) throw error; }
     }

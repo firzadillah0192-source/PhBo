@@ -1,6 +1,6 @@
 import type { NxGenerationJob } from '@prisma/client';
 import { AppError } from '../lib/errors.js';
-import { CatalogAssetError, type CatalogAssetsService } from './catalog-assets.service.js';
+import { CatalogAssetError, requiresEventName, type CatalogAssetsService } from './catalog-assets.service.js';
 import type { CustomerUploadService } from './customer-upload.service.js';
 import type { CustomerGenerationModel } from '../models/customer-generation.model.js';
 import type { CustomerIdentity } from './customer-account.service.js';
@@ -54,12 +54,13 @@ export class CustomerGenerationService {
         catch (error) { if (error instanceof AppError) throw new AppError(422, 'CLASSIC_CAPTURE_UNAVAILABLE', 'A capture is unavailable'); throw error; }
       }
       snapshot = { version: 1,mode: 'CLASSIC',layout: await this.assets.freezeLayout(layout) };
-      if (layout.id === 'classic-floral-event-001') {
-        if (kiosk) throw new AppError(422, 'CLASSIC_LAYOUT_INVALID', 'Event personalization is available in the web studio.');
+      if (requiresEventName(layout)) {
         if (!input.event_name) throw new AppError(422, 'EVENT_NAME_REQUIRED', 'Isi nama event sebelum mengambil foto.');
         const capturedAt = input.captured_at ? new Date(input.captured_at) : source.upload.created_at;
         if (capturedAt.getTime() > source.upload.created_at.getTime() + 60000 || capturedAt.getTime() < source.upload.created_at.getTime() - 3600000) throw new AppError(422, 'CAPTURE_TIME_INVALID', 'Waktu pengambilan foto tidak valid. Ambil foto kembali.');
         snapshot.personalization = { event_name: input.event_name.normalize('NFC'), captured_at: capturedAt.toISOString(), claim_token: randomBytes(32).toString('base64url') };
+      } else if (input.event_name || input.captured_at) {
+        throw new AppError(422, 'CLASSIC_PERSONALIZATION_UNAVAILABLE', 'Frame ini belum mendukung nama event.');
       }
     } else {
       const experience = await this.model.experience(input.experience_id!);

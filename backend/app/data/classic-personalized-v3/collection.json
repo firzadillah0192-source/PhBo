@@ -1,0 +1,1862 @@
+{
+  "version": 3,
+  "status": "PASS",
+  "frames": [
+    {
+      "id": "classic-birthday-001",
+      "name": "Balon Confetti",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Ulang Tahun Naya",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-birthday-002",
+      "name": "Pastel Anak",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Ulang Tahun Naya",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-birthday-003",
+      "name": "Colorful Pop",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Ulang Tahun Naya",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-birthday-004",
+      "name": "Birthday Elegance",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "birthday",
+      "theme_name": "Ulang Tahun",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Ulang Tahun Naya",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-adha-001",
+      "name": "Geometri Islami",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-adha-002",
+      "name": "Lentera Malam",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-adha-003",
+      "name": "Lengkung Harmoni",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-adha-004",
+      "name": "Earth Tone",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-adha",
+      "theme_name": "Eid Adha",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-fitri-001",
+      "name": "Ketupat Anyaman",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-fitri-002",
+      "name": "Bulan Sabit",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-fitri-003",
+      "name": "Floral Silaturahmi",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-eid-fitri-004",
+      "name": "Silaturahmi Gold",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "eid-fitri",
+      "theme_name": "Eid Fitri",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Silaturahmi Keluarga",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-frame-001",
+      "name": "Classic Frame 1",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "classic-originals",
+      "theme_name": "Classic Originals",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-frame-002",
+      "name": "Classic Frame 2",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "classic-originals",
+      "theme_name": "Classic Originals",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-frame-003",
+      "name": "Classic Frame 3",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "classic-originals",
+      "theme_name": "Classic Originals",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-khitan-001",
+      "name": "Ceria Anak",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Khitan Adam",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-khitan-002",
+      "name": "Royal Blue",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Khitan Adam",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-khitan-003",
+      "name": "Petualangan",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Khitan Adam",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-khitan-004",
+      "name": "Tradisional",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "khitan",
+      "theme_name": "Khitan",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Khitan Adam",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-betawi-001",
+      "name": "Kembang Kelapa",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-betawi-002",
+      "name": "Gigi Balang",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-betawi-003",
+      "name": "Betawi Cerah",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-betawi-004",
+      "name": "Floral Betawi",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-betawi",
+      "theme_name": "Wedding Betawi",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-jawa-001",
+      "name": "Batik Klasik",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-jawa-002",
+      "name": "Janur Harmoni",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-jawa-003",
+      "name": "Pendopo",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-jawa-004",
+      "name": "Jawa Cream",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-jawa",
+      "theme_name": "Wedding Jawa",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-minang-001",
+      "name": "Songket Merah",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-minang-002",
+      "name": "Suntiang Gold",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-minang-003",
+      "name": "Gonjong",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-minang-004",
+      "name": "Minang Red Gold",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-minang",
+      "theme_name": "Wedding Padang / Minang",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-sunda-001",
+      "name": "Melati Putih",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#18283e"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-sunda-002",
+      "name": "Siger Elegance",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-sunda-003",
+      "name": "Floral Hijau",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    },
+    {
+      "id": "classic-wedding-sunda-004",
+      "name": "Sunda Gold",
+      "canvas_width": 1200,
+      "canvas_height": 3600,
+      "shot_count": 3,
+      "print_profile": "classic-strip-2x6-v1",
+      "slots": [
+        {
+          "x": 60,
+          "y": 106,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 960,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        },
+        {
+          "x": 60,
+          "y": 1814,
+          "width": 1080,
+          "height": 826,
+          "fit": "cover"
+        }
+      ],
+      "theme_slug": "wedding-sunda",
+      "theme_name": "Wedding Sunda",
+      "event_personalization": true,
+      "branding": {
+        "text": "NXBooth",
+        "font": "CormorantGaramond SemiBold",
+        "color": "#fff6dc"
+      },
+      "event_name_font": "GreatVibes-Regular.ttf",
+      "date_font": "CormorantGaramond.ttf",
+      "timezone": "Asia/Jakarta",
+      "preview_sample": {
+        "event_name": "Sarah & Arif",
+        "date": "10 Oktober 2026",
+        "qr_is_example": true
+      },
+      "footer_bounds": {
+        "x": 160,
+        "y": 2710,
+        "width": 880,
+        "height": 800
+      }
+    }
+  ],
+  "failed": []
+}

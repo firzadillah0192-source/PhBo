@@ -468,7 +468,9 @@ function CustomerApp() {
       const ids = captures.map((item) => item.upload_id)
       setUpload(first)
       updateCustomerFlow({ mode: 'CLASSIC', layoutId: selectedLayoutId, uploadId: first.upload_id, captureUploadIds: ids, stage: 'processing' })
-      const created = await createGeneration(first.upload_id, 'CLASSIC', null, null, { layoutId: selectedLayoutId, captureUploadIds: ids, ...(selectedLayoutId === 'classic-floral-event-001' ? { eventName: readCustomerFlow()?.classicEventName, capturedAt: readCustomerFlow()?.classicCapturedAt } : {}) })
+      const flow = readCustomerFlow()
+      const needsEventName = layouts.find(item => item.id === selectedLayoutId)?.requires_event_name
+      const created = await createGeneration(first.upload_id, 'CLASSIC', null, null, { layoutId: selectedLayoutId, captureUploadIds: ids, ...(needsEventName && flow?.classicEventLayoutId === selectedLayoutId ? { eventName: flow.classicEventName, capturedAt: flow.classicCapturedAt } : {}) })
       setJob(created)
       setStage('processing')
       updateCustomerFlow({ jobId: created.job_id, stage: 'processing' })
