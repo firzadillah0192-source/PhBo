@@ -1,0 +1,38 @@
+name: photobooth-gateway-tests
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: photobooth-gateway-test-postgres
+    environment:
+      POSTGRES_USER: gateway_test
+      POSTGRES_PASSWORD: disposable-test-only
+      POSTGRES_DB: nxbooth_express_gateway_test
+    tmpfs: [/var/lib/postgresql/data]
+    networks: [photobooth-gateway-network]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_test -d nxbooth_express_gateway_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  api-tests:
+    image: node:24-bookworm-slim
+    container_name: photobooth-gateway-test-api
+    working_dir: /app/backend-express
+    volumes:
+      - ../:/app
+      # Dependencies are provided by an existing install; source remains isolated.
+      - /opt/photobooth/backend-express/node_modules:/opt/photobooth/backend-express/node_modules:ro
+    environment:
+      TEST_DATABASE_URL: postgresql://gateway_test:disposable-test-only@postgres:5432/nxbooth_express_gateway_test
+      PHBO_CONTROL_TEST_URL: http://control:8080
+      PHBO_MEDIA_TEST_URL: http://media:8080
+    command: ["./node_modules/.bin/tsx", "--test", "test/generation-request.integration.test.ts"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks:
+      photobooth-gateway-network:
+        aliases: [photobooth-api]
+networks:
+  photobooth-gateway-network:
+    external: true
+    name: photobooth-gateway-network

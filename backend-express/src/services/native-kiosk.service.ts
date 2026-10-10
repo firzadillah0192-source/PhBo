@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
 import { code, token, hash, equal } from '../lib/tokens.js';
 import { AppError } from '../lib/errors.js';
 import { legacyId } from './customer-credentials.service.js';
@@ -60,6 +61,44 @@ export class NativeKioskService {
       expiresAt: session.expires_at, expired: false, claimed: Boolean(session.claimed_at),
       generationLimit: guest.ai_quota_total, remainingGeneration: Math.max(0,guest.ai_quota_total-guest.ai_quota_used-guest.ai_quota_reserved),
       classicUnlimited: true,...permissions,createdAt: session.created_at };
+  }
+  async reserve(body: unknown, keyValue: unknown) {
+    // The trusted desktop creates and persists this 32-byte random secret before
+    // sending anything. Replay needs no plaintext secret stored in the database.
+    const input = z.object({ event: eventSlug.optional(),claimToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict().parse(body);
+    const key = requestKey.parse(keyValue), eventId = input.event ? await this.model.event(input.event) : null;
+    const claimHash = hash(input.claimToken);
+    const id = await this.model.reserveOnce({ id: legacyId(),code: code(),eventId,guestId: legacyId(),claimHash,
+      expiresAt: new Date(Date.now()+Math.min(this.config.ttlSeconds,this.uploads.config.retentionHours*3600)*1000),limit: this.config.generationLimit },
+      hash(this.config.apiKey),key,hash(JSON.stringify({ event: input.event ?? null,claimHash })));
+    const session = await this.model.byId(id);
+    if (!session) throw new AppError(404,'SESSION_NOT_FOUND','Photo session unavailable');
+    if (session.expires_at <= new Date()) throw new AppError(410,'SESSION_EXPIRED','Photo session expired');
+    return { id: session.id,code: session.public_code,status: session.status,expiresAt: session.expires_at,
+      uploadPath: `/api/v1/kiosk/session/${session.public_code}/upload` };
+  }
+  async authorizeTransfer(codeValue: unknown, grant: unknown) {
+    const publicId = publicCode.parse(codeValue);
+    const secret = z.string().regex(/^[A-Za-z0-9_-]{43}$/).parse(grant);
+    const session = await this.model.find(publicId);
+    if (!session || !equal(hash(secret),session.claim_token_hash)) throw new AppError(403,'UPLOAD_FORBIDDEN','Upload grant does not own this session');
+    if (session.expires_at <= new Date()) throw new AppError(410,'SESSION_EXPIRED','Photo session expired');
+    if (!['UPLOADING','ACTIVE'].includes(session.status)) throw new AppError(409,'KIOSK_UPLOAD_CONFLICT','Session unavailable');
+    return session;
+  }
+  async transfer(codeValue: unknown, grant: unknown, files: Express.Multer.File[], body: unknown, keyValue: unknown) {
+    z.object({}).strict().parse(body ?? {});
+    const session = await this.authorizeTransfer(codeValue,grant), key = requestKey.parse(keyValue);
+    if (files.length < 1 || files.length > 4) throw new AppError(400,'PHOTO_COUNT','Provide 1 to 4 photos');
+    const fingerprint = hash(JSON.stringify(files.map(file => ({ sha256: createHash('sha256').update(file.buffer).digest('hex'),mime: file.mimetype,name: file.originalname }))));
+    const ready = await this.model.uploadOnce(session.public_code,session.claim_token_hash,key,fingerprint,async current => {
+      const identity = await this.identity(current), ids: string[] = [];
+      // Read event slug from the reserved event, never from multipart input.
+      const eventSlug = current.event_id ? await this.model.eventSlug(current.event_id) : undefined;
+      for (const file of files) ids.push((await this.uploads.create(file,identity,eventSlug)).upload_id);
+      return ids;
+    });
+    return this.info(ready);
   }
   async create(files: Express.Multer.File[], body: unknown) {
     const input = z.object({ event: eventSlug.optional() }).strict().parse(body ?? {});

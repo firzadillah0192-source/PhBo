@@ -1,0 +1,33 @@
+# Candidate entrypoints only: does not change the current web proxy.
+# For isolated tests, create the network and provide an API alias there first.
+name: photobooth-gateway-candidate
+services:
+  control:
+    image: nginx:1.28-alpine
+    container_name: photobooth-control-gateway-candidate
+    ports: ["${PHBO_BIND_ADDRESS:-127.0.0.1}:${PHBO_CONTROL_PORT:-20251}:8080"]
+    volumes:
+      - ./control.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./proxy-control.conf:/etc/nginx/conf.d/proxy-control.inc:ro
+    networks: [photobooth-gateway-network]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/gateway/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+  media:
+    image: nginx:1.28-alpine
+    container_name: photobooth-media-entry-candidate
+    ports: ["${PHBO_BIND_ADDRESS:-127.0.0.1}:${PHBO_MEDIA_PORT:-20252}:8080"]
+    volumes:
+      - ./media.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [photobooth-gateway-network]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/media/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+networks:
+  photobooth-gateway-network:
+    external: true
+    name: photobooth-gateway-network
