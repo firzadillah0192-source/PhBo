@@ -4,6 +4,42 @@ import type { NxExperience, NxFrameStyle, NxOrnament } from '@prisma/client';
 import { generationInput, validateAdvancedSelection } from '../src/services/customer-generation-input.js';
 import { composeAdvancedPrompt, composeBasicPrompt, STYLE_PRINCIPLE, COMPOSITION_RULES, BRANDING_RULES } from '../src/services/advanced-prompt.service.js';
 import { AdminUsageService } from '../src/services/admin-usage.service.js';
+import { requiresEventName } from '../src/services/catalog-assets.service.js';
+import { CustomerGenerationService } from '../src/services/customer-generation.service.js';
+
+test('Themed personalization freezes the name/time/claim for web and native kiosk jobs',async()=>{
+  const timestamp=new Date('2026-10-10T07:00:00.000Z');
+  const layout={id:'classic-wedding-jawa-001',active:true,shot_count:3,layout_config_json:'{"event_personalization":true}'};
+  let writes=0,saved:any,context:any;
+  const model={layout:async()=>layout,findRequest:async()=>null,createOnce:async(data:any,_request:any,kiosk:any)=>{writes++;saved=data;context=kiosk;return {job:{...data,created_at:timestamp},reused:false}}};
+  const uploads={owned:async(id:string)=>({upload:{id,created_at:timestamp}})};
+  const assets={validateLayout:async()=>{},freezeLayout:async()=>layout};
+  const service=new CustomerGenerationService(model as never,uploads as never,assets as never,{enqueue:async()=>{}});
+  const identity={account:null,guest:{id:'guest'},clearAccount:false,newGuest:null,sessionId:null} as never;
+  const body={mode:'CLASSIC',upload_id:'a',layout_id:layout.id,capture_upload_ids:['a','b','c'],event_name:'Pernikahan Sarah & Arif',captured_at:'2026-10-10T06:59:00.000Z'};
+  await assert.rejects(service.create({...body,event_name:undefined},identity,'missing'),(error:any)=>error.code==='EVENT_NAME_REQUIRED');
+  await assert.rejects(service.create({...body,captured_at:'2020-01-01T00:00:00.000Z'},identity,'bad-time'),(error:any)=>error.code==='CAPTURE_TIME_INVALID');
+  assert.equal(writes,0);
+  for(const kiosk of [undefined,{id:'kiosk-session',guestId:'guest'}]){
+    await service.create(body,identity,'request-'+writes,kiosk);
+    const snapshot=JSON.parse(saved.engine_config_json);
+    assert.equal(snapshot.personalization.event_name,body.event_name);assert.equal(snapshot.personalization.captured_at,body.captured_at);
+    assert.match(snapshot.personalization.claim_token,/^[A-Za-z0-9_-]{43}$/);assert.deepEqual(context,kiosk);
+  }
+  layout.layout_config_json='{}';
+  await assert.rejects(service.create(body,identity,'legacy'),(error:any)=>error.code==='CLASSIC_PERSONALIZATION_UNAVAILABLE');
+  assert.equal(writes,2);
+});
+
+test('Personalization is enabled by reviewed metadata across themed frames, not by an ID prefix', () => {
+  assert.equal(requiresEventName({ id:'classic-wedding-jawa-001',layout_config_json:'{"event_personalization":true}' }),true);
+  assert.equal(requiresEventName({ id:'classic-birthday-001',layout_config_json:'{}' }),false);
+  assert.equal(requiresEventName({ id:'classic-floral-event-001',layout_config_json:'{}' }),true);
+  const body={mode:'CLASSIC',upload_id:'a',layout_id:'classic-wedding-jawa-001',capture_upload_ids:['a','b','c'],event_name:'Pernikahan Sarah & Arif',captured_at:'2026-10-10T07:00:00.000Z'};
+  assert.equal(generationInput.safeParse(body).success,true);
+  for(const name of ['', 'A\nB', 'x'.repeat(81)])assert.equal(generationInput.safeParse({...body,event_name:name}).success,false);
+  assert.equal(generationInput.safeParse({...body,mode:'BASIC',template_id:'t'}).success,false);
+});
 
 test('native generation accepts the three current contracts and rejects mixed selections', () => {
   const valid = [

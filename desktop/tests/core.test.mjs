@@ -10,6 +10,22 @@ import {Bridge} from '../shared/bridge.mjs';
 import {Runtime} from '../shared/runtime.mjs';
 import {ControlClient,MediaClient,origins} from '../shared/clients.mjs';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
+test('Personalized desktop sessions validate and persist event names before capture',async()=>{
+ const root=await mkdtemp('/srv/photobooth/tmp/desktop-event-');let saved=[];
+ const journal={all:()=>saved,save:async s=>{saved=[structuredClone(s)]},prints:()=>[]};
+ const device={call:async(_method,{captureId})=>{const path=join(root,captureId+'.png');await writeFile(path,png);return {path,simulated:true}}};
+ const runtime=new Runtime({journal,bridge:device,assets:root,apiKey:'fixture',secrets:{persistent:false}});
+ runtime.catalog.CLASSIC=[{id:'classic-birthday-001',shots:3,requiresEventName:true}];
+ try{
+  for(const name of [undefined,'','A\nB','x'.repeat(81)])await assert.rejects(runtime.start('CLASSIC','classic-birthday-001',name),/EVENT_NAME_REQUIRED/);
+  await runtime.start('CLASSIC','classic-birthday-001','  Ulang Tahun Naya  ');
+  assert.equal(runtime.session.eventName,'Ulang Tahun Naya');assert.equal(saved[0].eventName,'Ulang Tahun Naya');
+  await runtime.capture();assert.ok(Number.isFinite(Date.parse(runtime.session.captures[0].capturedAt)));
+  await runtime.retake();await runtime.capture();assert.equal(runtime.session.captures.length,1);
+  const restored=new Runtime({journal,bridge:device,assets:root,secrets:{persistent:false}});
+  assert.equal(restored.session.eventName,'Ulang Tahun Naya');assert.equal(restored.session.captures[0].capturedAt,runtime.session.captures[0].capturedAt);
+ }finally{await rm(root,{recursive:true,force:true})}
+});
 const temp=()=>mkdtemp(join(tmpdir(),'nxbooth-test-'));
 const dll=resolve('native/KioskBridge/bin/Release/net10.0/KioskBridge.dll');
 const bridge=(root,sim=true)=>new Bridge(process.env.PHBO_DOTNET||'dotnet',[dll,'--root',root,...sim?['--simulated']:[]]);

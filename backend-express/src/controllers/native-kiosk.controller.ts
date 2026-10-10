@@ -23,7 +23,7 @@ export function nativeKioskController(service: NativeKioskService, catalog: Cust
     generate: async (req,res) => { res.status(202).json({ data: await service.generate(req.body,credential(req),req.get('Idempotency-Key')) }); },
     status: async (req,res) => { res.json({ data: await service.status(req.params.id,credential(req)) }); },
     history: async (req,res) => { res.json({ data: await service.history(req.params.code,credential(req)) }); },
-    frames: async (_req,res) => { res.json({ data: (await catalog.layouts()).filter(row => !row.requires_event_name) }); },
+    frames: async (_req,res) => { res.json({ data: await catalog.layouts() }); },
     frame: async (req,res) => { res.json({ data: await service.frame(req.params.id,catalog) }); },
     templates: async (_req,res) => { res.json({ data: (await catalog.templates()).templates }); },
     experiences: async (_req,res) => { res.json({ data: (await catalog.experiences()).experiences }); },

@@ -15,7 +15,9 @@ const selection = z.object({ sessionCode: publicCode, mode: z.enum(['CLASSIC','B
   photoIds: z.array(z.string().regex(/^[a-f0-9]{32}$/)).min(1).max(4).optional(),
   frameId: z.string().min(1).max(128).nullish(), templateId: z.string().min(1).max(128).nullish(),
   experienceId: z.string().min(1).max(128).nullish(), frameStyleId: z.string().min(1).max(128).nullish(),
-  ornamentIds: z.array(z.string().min(1).max(128)).max(20).default([]) }).strict();
+  ornamentIds: z.array(z.string().min(1).max(128)).max(20).default([]),
+  eventName: z.string().trim().min(1).max(80).regex(/^[^\p{Cc}\p{Cf}]+$/u).optional(),
+  capturedAt: z.string().datetime().optional() }).strict();
 
 export class NativeKioskService {
   constructor(private readonly model: NativeKioskModel, private readonly uploads: CustomerUploadService,
@@ -183,7 +185,8 @@ export class NativeKioskService {
     const job = await this.generations.create({ mode: input.mode, upload_id: photos[0],
       layout_id: input.frameId, template_id: input.templateId, experience_id: input.experienceId,
       frame_style_id: input.frameStyleId, ornament_ids: input.ornamentIds,
-      capture_upload_ids: input.mode === 'CLASSIC' ? photos : [] },identity,requestKey.parse(key),{ id: session.id, guestId: session.guest_id });
+      capture_upload_ids: input.mode === 'CLASSIC' ? photos : [],
+      event_name: input.eventName, captured_at: input.capturedAt },identity,requestKey.parse(key),{ id: session.id, guestId: session.guest_id });
     return this.generationObject(await this.generations.status(job.job_id,identity),session);
   }
   async status(id: string, credential: unknown) {

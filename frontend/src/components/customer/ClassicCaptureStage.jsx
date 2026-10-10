@@ -34,6 +34,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
   const [message, setMessage] = useState('')
   const [eventName, setEventName] = useState(saved?.classicEventLayoutId === layout.id ? saved.classicEventName || '' : '')
   const eventReady = !layout.requires_event_name || (eventName.trim().length > 0 && !/[\p{Cc}\p{Cf}]/u.test(eventName))
+  const [eventConfirmed, setEventConfirmed] = useState(!layout.requires_event_name || (sameSession && uploadsRef.current.length > 0 && eventReady))
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -191,6 +192,18 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
       if (mountedRef.current) { setMessage(error?.message || 'Could not upload the photographs. Please try again.'); setBusy(false); setPhase('idle') }
     } finally { runningRef.current = false }
   }
+  if (!eventConfirmed) return (
+    <section className="photo-stage classic-capture customer-stage-enter">
+      <header className="stage-heading">
+        <button className="customer-inline-button stage-back" onClick={onBack}>← Change frame</button>
+        <p className="customer-kicker">Photo Booth · {layout.shot_count} photos</p>
+        <h1>Nama event.</h1>
+      </header>
+      <div className="classic-event-details"><label htmlFor="classic-event-name">Nama event<input id="classic-event-name" value={eventName} maxLength={80} placeholder="Misalnya: Pernikahan Sarah & Arif" onChange={event => { setEventName(event.target.value); updateCustomerFlow({ classicEventName: event.target.value.trim(), classicEventLayoutId: layout.id }); setMessage('') }} autoComplete="off" required aria-describedby="classic-event-help" /></label><p id="classic-event-help">Tanggal otomatis (WIB). QR untuk download foto.</p></div>
+      <div className="camera-actions"><button className="customer-solid-button" disabled={!eventReady || opening} onClick={() => { updateCustomerFlow({ classicEventName: eventName.trim(), classicEventLayoutId: layout.id }); setEventConfirmed(true); window.scrollTo({ top: 0, behavior: 'auto' }) }}>Lanjut ambil foto →</button></div>
+      <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>Preview frame · {layout.name}<br />{layout.shot_count} foto dalam satu strip</figcaption></figure>
+    </section>
+  )
   return (
     <section className="photo-stage classic-capture customer-stage-enter">
       <header className="stage-heading">
@@ -201,8 +214,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
         <p className="classic-retake-allowance">{retakes} of {CLASSIC_RETAKE_LIMIT} retakes remaining for this session</p>
         <p className="classic-review-guidance">Review each photo for 10 seconds. Next continues automatically.</p>
       </header>
-      {layout.requires_event_name && <div className="classic-event-details"><label htmlFor="classic-event-name">Nama event<input id="classic-event-name" value={eventName} maxLength={80} disabled={busy || completed > 0} placeholder="Misalnya: Pernikahan Sarah & Arif" onChange={event => { setEventName(event.target.value); updateCustomerFlow({ classicEventName: event.target.value.trim(), classicEventLayoutId: layout.id }); setMessage('') }} autoComplete="off" required aria-describedby="classic-event-help" /></label><p id="classic-event-help">Tanggal mengikuti waktu pengambilan foto dalam WIB. QR akan membuka hasil foto untuk di-download.</p></div>}
-      <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>Preview frame · {layout.name}<br />{layout.shot_count} foto dalam satu strip</figcaption></figure>
+      {layout.requires_event_name ? <p className="classic-event-summary">{eventName.trim()}{completed === 0 && !busy && <button className="customer-inline-button" onClick={() => { stopCamera(); setEventConfirmed(false); window.scrollTo({ top: 0, behavior: 'auto' }) }}>Ubah nama event</button>}</p> : <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>Preview frame · {layout.name}<br />{layout.shot_count} foto dalam satu strip</figcaption></figure>}
       <div className="camera-stage classic-camera-stage">
         {camera ? <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setReady(true)} aria-label="Live camera preview" /> : <button type="button" className="camera-idle" onClick={openCamera} disabled={busy || opening}><span className="camera-lens" aria-hidden="true"><i /></span><strong>{opening ? 'Opening camera…' : 'Open the camera'}</strong></button>}
         {reviewPhoto && <img className="classic-shot-preview" src={reviewPhoto.url} alt={'Photo ' + (reviewPhoto.shot + 1) + ' for review'} />}

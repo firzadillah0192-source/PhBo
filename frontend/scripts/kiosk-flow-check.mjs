@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import {mkdir,writeFile} from 'node:fs/promises'
+import {readFile} from 'node:fs/promises'
+const personalized=process.env.KIOSK_PERSONALIZED==='1'
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright')
 const base=process.env.KIOSK_BASE||'http://127.0.0.1:5198',output=process.env.KIOSK_OUTPUT||'/srv/photobooth/cache/kiosk-flow-check';await mkdir(output,{recursive:true})
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')
@@ -15,7 +17,7 @@ try{
    else if(path==='/api/kiosk/access'){status=allowed?200:401;body=allowed?{allowed:true}:{detail:{error_code:'AUTHENTICATION_REQUIRED'}}}
    else if(!allowed){status=403;body={detail:{error_code:'KIOSK_FORBIDDEN'}}}
    else if(path.endsWith('/templates'))body={templates:[{id:'template-1',name:'Space Commander',basic_available:true}]}
-   else if(path.endsWith('/classic/layouts'))body=[{id:'frame-1',name:'Two poses',shot_count:2}]
+   else if(path.endsWith('/classic/layouts'))body=[personalized?{id:'frame-1',name:'Three poses',shot_count:3,requires_event_name:true,preview_url:base+'/fixture-frame.png'}:{id:'frame-1',name:'Two poses',shot_count:2}]
    else if(path.endsWith('/experiences'))body={experiences:[{id:'exp-1',name:'World One'}]}
    else if(path.endsWith('/advanced/frame-styles'))body=[{id:'natural',name:'Natural'}]
    else if(path.endsWith('/account/usage'))body={ai_remaining:100}
@@ -29,6 +31,7 @@ try{
    else{status=404;body={}}
    await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)})
   })
+  if(personalized)await context.route('**/fixture-frame.png',async route=>route.fulfill({contentType:'image/png',body:await readFile('../backend/app/data/classic-personalized-v3/classic-wedding-jawa-001/preview.png')}))
   const page=await context.newPage();await page.clock.install();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/kiosk',{waitUntil:'networkidle'})
   await page.getByRole('button',{name:'Ganti akun / keluar'}).waitFor();assert.equal(await page.locator('.kv-mode-grid').count(),0)
   await page.evaluate(()=>window.googleCallback({credential:'synthetic-denied-google-token'}));await page.getByRole('alert').waitFor()
@@ -38,8 +41,15 @@ try{
   for(const mode of ['Basic','Classic','Advanced']){
    const beforePosts=posts,beforeUploads=uploads,beforeClaims=claims;claimFail=mode==='Advanced';await page.getByRole('button',{name:new RegExp('^'+mode+' ')}).click();await page.getByRole('dialog',{name:'Which world is yours?'}).waitFor();assert.equal(context.pages().length,1);assert.equal(new URL(page.url()).pathname,'/kiosk')
    if(mode==='Basic')await page.screenshot({path:`${output}/${width}-design-modal.png`,fullPage:true})
-   await page.getByRole('button',{name:mode==='Basic'?'Space Commander 1 pose':mode==='Classic'?'Two poses 2 pose':'World One 1 pose'}).click()
-   const count=mode==='Classic'?2:1;assert.equal(await page.locator('input[type=file]').count(),0);assert.equal(await page.getByRole('button',{name:/Ambil foto|Review foto|Proses foto/}).count(),0)
+   await page.getByRole('button',{name:mode==='Basic'?'Space Commander 1 pose':mode==='Classic'?(personalized?'Three poses 3 pose':'Two poses 2 pose'):'World One 1 pose'}).click()
+   if(mode==='Classic'&&personalized){
+    await page.getByRole('heading',{name:'Nama event kamu.'}).waitFor();assert.equal(await page.locator('video').count(),0)
+    const start=page.getByRole('button',{name:'Mulai foto →',exact:true});assert.equal(await start.isDisabled(),true)
+    await page.getByLabel('Nama event').fill('Pernikahan Sarah & Arif');await page.waitForFunction(()=>document.querySelector('.kv-event-details img')?.naturalWidth===1200)
+    const frame=await page.locator('.kv-event-details img').evaluate(img=>({fit:getComputedStyle(img).objectFit,height:img.naturalHeight,width:img.naturalWidth}));assert.deepEqual(frame,{fit:'contain',height:3600,width:1200})
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);await page.screenshot({path:`${output}/${width}-event-details.png`,fullPage:true});await start.click()
+   }
+   const count=mode==='Classic'?(personalized?3:2):1;assert.equal(await page.locator('input[type=file]').count(),0);assert.equal(await page.getByRole('button',{name:/Ambil foto|Review foto|Proses foto/}).count(),0)
    for(let i=0;i<count;i++){
     await page.waitForFunction(()=>document.querySelector('video')?.videoWidth>0&&document.querySelector('.kv-capture-countdown'))
     const preview=await page.evaluate(()=>{const v=document.querySelector('video'),style=getComputedStyle(v),box=v.getBoundingClientRect(),parent=v.parentElement.getBoundingClientRect();return{fit:style.objectFit,transform:style.transform,resizeMode:v.srcObject.getVideoTracks()[0].getSettings().resizeMode,inside:box.left>=parent.left-1&&box.right<=parent.right+1&&box.top>=parent.top-1&&box.bottom<=parent.bottom+1}})
@@ -80,7 +90,7 @@ try{
     await page.clock.fastForward(86400000);await page.getByText('Link QR sudah kedaluwarsa.',{exact:true}).waitFor();assert.equal(await page.locator('.kv-result-qr svg').count(),0);await page.getByRole('button',{name:'Buat QR baru',exact:true}).click();await page.getByRole('img',{name:'QR hasil foto',exact:true}).waitFor();assert.equal(claimPayloads.at(-1).refresh,true)
    }
    assert.equal(posts-beforePosts,1);assert.equal(uploads-beforeUploads,count);assert.equal(payloads.at(-1).mode,mode.toUpperCase());assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true)
-   if(mode==='Classic')assert.equal(payloads.at(-1).capture_upload_ids.length,2)
+   if(mode==='Classic'){assert.equal(payloads.at(-1).capture_upload_ids.length,count);if(personalized){assert.equal(payloads.at(-1).event_name,'Pernikahan Sarah & Arif');assert.ok(Number.isFinite(Date.parse(payloads.at(-1).captured_at)))}}
    await page.screenshot({path:`${output}/${width}-${mode}-result.png`,fullPage:true});await page.getByRole('button',{name:'Sesi baru',exact:true}).click()
   }
   submitFails=true;await page.getByRole('button',{name:/^Basic /}).click();await page.getByRole('button',{name:'Space Commander 1 pose'}).click();await page.waitForFunction(()=>document.querySelector('video')?.videoWidth>0&&document.querySelector('.kv-capture-countdown'));await page.clock.fastForward(5000);await page.getByRole('dialog',{name:'How does it look?'}).waitFor();await page.clock.fastForward(10000);await page.getByRole('heading',{name:'Foto belum dapat diproses.'}).waitFor();const rejectedPosts=posts;await page.clock.fastForward(30000);assert.equal(posts,rejectedPosts,'Submission failure must not auto-loop generation requests');await page.getByRole('button',{name:'Sesi baru',exact:true}).click();submitFails=false;

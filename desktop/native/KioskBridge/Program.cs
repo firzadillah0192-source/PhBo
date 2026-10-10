@@ -31,7 +31,14 @@ while (await Console.In.ReadLineAsync() is { } line) {
         var p = req.GetProperty("params");
         object result;
         switch (method) {
-            case "devices.status": result = new { simulated, camera = simulated ? (fixture == null ? "FIXTURE_REQUIRED" : "READY") : "CAMERA_NOT_CONNECTED", printer = simulated ? "SIMULATED" : "PRINTER_NOT_CONNECTED" }; break;
+            case "devices.status":
+                result = simulated ? new { simulated, camera = fixture == null ? "FIXTURE_REQUIRED" : "READY", printer = "SIMULATED" } :
+                    OperatingSystem.IsWindows() ? new { simulated, camera = "BROWSER_WEBCAM", printing = WindowsPrinter.Status() } :
+                    (object)new { simulated, camera = "CAMERA_NOT_CONNECTED", printer = "PRINTER_NOT_CONNECTED" };
+                break;
+            case "printer.plan":
+                result = new { rectangles = PrintLayout.Plan(Required(p, "profile"), p.GetProperty("width").GetInt32(), p.GetProperty("height").GetInt32()), paper = new[] { 400, 600 } };
+                break;
             case "camera.setFixture":
                 if (!simulated) throw new Exception("CAMERA_NOT_CONNECTED");
                 var source = Path.GetFullPath(Required(p, "path"));
@@ -50,10 +57,11 @@ while (await Console.In.ReadLineAsync() is { } line) {
                 await using (var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write)) await output.WriteAsync(bytes);
                 result = new { captureId, path = target, simulated = true }; break;
             case "printer.submit":
-                if (!simulated) throw new Exception("PRINTER_NOT_CONNECTED");
+                if (!simulated && !OperatingSystem.IsWindows()) throw new Exception("PRINTER_NOT_CONNECTED");
                 var jobId = SafeId(Required(p, "jobId"));
                 var asset = Inside(Required(p, "path"));
                 if (!IsImage(await File.ReadAllBytesAsync(asset))) throw new Exception("INVALID_IMAGE");
+                if (!simulated) { result = WindowsPrinter.Submit(asset, jobId, root, Required(p, "profile")); break; }
                 if (!prints.Add(jobId)) throw new Exception("PRINT_ALREADY_SUBMITTED");
                 result = new { jobId, status = "SIMULATED", simulated = true }; break;
             default: throw new Exception("METHOD_UNSUPPORTED");

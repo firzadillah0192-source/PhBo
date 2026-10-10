@@ -15,7 +15,7 @@ export const getUsage=()=>kioskWebRequest('/web/account/usage')
 export const startKioskSession=()=>kioskWebRequest('/web/kiosk/session',{method:'POST'})
 export function uploadPhoto(file){const body=new FormData();body.append('file',file);return kioskWebRequest('/web/uploads',{method:'POST',body})}
 export async function createGeneration(uploadId,mode,templateId,experienceId,options={}){
- const body={upload_id:uploadId,mode,...mode==='CLASSIC'?{layout_id:options.layoutId,capture_upload_ids:options.captureUploadIds}:mode==='BASIC'?{template_id:templateId}:{experience_id:experienceId,frame_style_id:options.frameStyleId,ornament_ids:options.ornamentIds||[]}};
+ const body={upload_id:uploadId,mode,...mode==='CLASSIC'?{layout_id:options.layoutId,capture_upload_ids:options.captureUploadIds,...options.eventName?{event_name:options.eventName,captured_at:options.capturedAt}:{}}:mode==='BASIC'?{template_id:templateId}:{experience_id:experienceId,frame_style_id:options.frameStyleId,ornament_ids:options.ornamentIds||[]}};
  const key=generationRequestKey(body);const job=await kioskWebRequest('/web/generations',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify(body)});associateGenerationRequest(key,job.job_id);return job
 }
 export async function getGeneration(id){const job=await kioskWebRequest('/web/generations/'+encodeURIComponent(id));settleGenerationRequest(id,job.state);return job}

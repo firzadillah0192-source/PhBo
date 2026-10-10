@@ -26,11 +26,12 @@ try{
     await page.waitForFunction(()=>document.querySelector('.classic-selected-frame img')?.naturalHeight===3600)
     assert.equal(await selected.evaluate(img=>getComputedStyle(img).objectFit),'contain')
     assert.equal(await selected.evaluate(img=>img.getBoundingClientRect().height),360)
-    assert.equal(await page.getByRole('button',{name:'Choose 3 photos'}).isDisabled(),true)
+    assert.equal(await page.getByRole('button',{name:'Lanjut ambil foto →'}).isDisabled(),true)
     await page.getByLabel('Nama event',{exact:true}).fill('Uji Preview')
-    assert.equal(await page.getByRole('button',{name:'Choose 3 photos'}).isDisabled(),false)
+    assert.equal(await page.getByRole('button',{name:'Lanjut ambil foto →'}).isDisabled(),false)
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
     await selected.scrollIntoViewIfNeeded();await page.screenshot({path:output+'/selected-'+width+'.png'})
+    await page.getByRole('button',{name:'Lanjut ambil foto →'}).click();assert.equal(await page.locator('.classic-selected-frame').count(),0);await page.getByRole('button',{name:'Choose 3 photos'}).waitFor();
     await page.getByRole('button',{name:'Change frame'}).click();await card.waitFor();assert.deepEqual(errors,[])
     checks.push({width,wholeStripInPicker:true,selectedPreview:true,requiredName:true,changeFrame:true,noOverflow:true});await page.close()
   }

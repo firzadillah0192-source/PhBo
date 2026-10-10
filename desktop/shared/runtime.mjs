@@ -6,16 +6,16 @@ import { inspectImage } from './image.mjs';
 import { ControlClient, MediaClient } from './clients.mjs';
 
 export class Runtime {
-  constructor({journal,bridge,assets,origins,apiKey='',secrets,onChange=()=>{}}) {
-    Object.assign(this,{journal,bridge,assets,origins,apiKey,secrets,onChange});
+  constructor({journal,bridge,assets,origins,apiKey='',secrets,printer=null,onChange=()=>{}}) {
+    Object.assign(this,{journal,bridge,assets,origins,apiKey,secrets,printer,onChange});
     this.session=journal.all().find(s=>s.phase!=='FINISHED')||null;this.busy=false;
     this.catalog={CLASSIC:[],BASIC:[],ADVANCED:[]};this.device={camera:'UNKNOWN',printer:'UNKNOWN'};
   }
   async initialize() {
-    try{this.device=await this.bridge.call('devices.status');}catch{this.device={camera:'ADAPTER_UNAVAILABLE',printer:'ADAPTER_UNAVAILABLE',simulated:false};}
+    try{this.device=await this.bridge.call('devices.status');if(this.device.printing)this.device={...this.device,...this.device.printing};}catch{this.device={camera:'ADAPTER_UNAVAILABLE',printer:'ADAPTER_UNAVAILABLE',simulated:false};}
     if(this.apiKey)try { const c=new ControlClient(this.origins,this.apiKey);
       const [frames,templates,experiences]=await Promise.all([c.catalog('frames'),c.catalog('templates'),c.catalog('experiences')]);
-      this.catalog={CLASSIC:frames.map(f=>({id:f.id,name:f.name,shots:f.shot_count})),BASIC:templates.map(t=>({id:t.id,name:t.name,shots:1})),ADVANCED:experiences.map(e=>({id:e.id,name:e.name,shots:1}))};
+      this.catalog={CLASSIC:frames.map(f=>({id:f.id,name:f.name,shots:f.shot_count,requiresEventName:f.requires_event_name===true})),BASIC:templates.map(t=>({id:t.id,name:t.name,shots:1})),ADVANCED:experiences.map(e=>({id:e.id,name:e.name,shots:1}))};
     }catch{this.connectionError='CATALOG_UNAVAILABLE';}
     return this.state();
   }
@@ -25,16 +25,19 @@ export class Runtime {
     let result=null;
     if(s?.resultFile){const b=await readFile(join(this.assets,s.resultFile));result=`data:${inspectImage(b).mime};base64,${b.toString('base64')}`;}
     return {configured:!!this.apiKey,credentialPersistence:this.secrets.persistent,device:this.device,busy:this.busy,catalog:this.catalog,connectionError:this.connectionError,
-      session:s?{id:s.id,phase:s.phase,mode:s.mode,shots:s.shots,captures:previews,result,error:s.error,jobStatus:s.jobStatus,prints:this.journal.prints(s.id)}:null};
+      session:s?{id:s.id,phase:s.phase,mode:s.mode,shots:s.shots,captures:previews,result,error:s.error,jobStatus:s.jobStatus,prints:this.journal.prints(this.printer&&s.resultId?'web:'+s.resultId:s.id)}:null};
   }
   async exclusive(fn){if(this.busy)throw new Error('OPERATION_BUSY');this.busy=true;this.onChange();try{return await fn();}finally{this.busy=false;this.onChange();}}
   async save(){await this.journal.save(this.session);this.onChange();}
   async setFixture(path){await this.bridge.call('camera.setFixture',{path});this.device=await this.bridge.call('devices.status');return this.state();}
-  async start(mode,selectionId){return this.exclusive(async()=>{
+  async start(mode,selectionId,eventName){return this.exclusive(async()=>{
     if(this.session && this.session.phase!=='FINISHED')throw new Error('SESSION_ACTIVE');
     const choice=this.catalog[mode]?.find(x=>x.id===selectionId);
     if(!['CLASSIC','BASIC','ADVANCED'].includes(mode)||this.apiKey&&!choice)throw new Error('SELECTION_REQUIRED');
+    const name=eventName?.trim().normalize('NFC');
+    if(choice?.requiresEventName&&(!name||name.length>80||/[\p{Cc}\p{Cf}]/u.test(name)))throw new Error('EVENT_NAME_REQUIRED');
     this.session={id:newId(),mode,selectionId:choice?.id||null,shots:choice?.shots||(mode==='CLASSIC'?3:1),phase:'CAPTURING',captures:[],keys:{reserve:newId(),upload:newId(),generate:newId()}};
+    if(choice?.requiresEventName)this.session.eventName=name;
     await this.save();return this.state();
   });}
   async capture(){return this.exclusive(async()=>{
@@ -43,7 +46,14 @@ export class Runtime {
     const file=id+(result.path.endsWith('.png')?'.png':'.jpg');
     // Only accept the predetermined asset path; never trust a process-provided arbitrary path.
     if(result.path!==join(this.assets,file))throw new Error('CAPTURE_PATH_INVALID');
-    const info=inspectImage(await readFile(result.path));s.captures.push({id,file,...info,simulated:result.simulated});
+    const info=inspectImage(await readFile(result.path));s.captures.push({id,file,...info,simulated:result.simulated,capturedAt:new Date().toISOString()});
+    if(s.captures.length===s.shots)s.phase='REVIEWING';await this.save();return this.state();
+  });}
+  async captureBytes(bytes){return this.exclusive(async()=>{
+    const s=this.session;if(!s||s.phase!=='CAPTURING'||s.captures.length>=s.shots)throw new Error('CAPTURE_NOT_ALLOWED');
+    const info=inspectImage(bytes),id=newId(),file=id+(info.mime==='image/png'?'.png':'.jpg');
+    await writeFile(join(this.assets,file),bytes,{flag:'wx',mode:0o600});
+    s.captures.push({id,file,...info,simulated:false,source:'browser-webcam',capturedAt:new Date().toISOString()});
     if(s.captures.length===s.shots)s.phase='REVIEWING';await this.save();return this.state();
   });}
   async retake(){return this.exclusive(async()=>{const s=this.session;if(!s||!['CAPTURING','REVIEWING'].includes(s.phase)||!s.captures.length)throw new Error('RETAKE_NOT_ALLOWED');s.captures.pop();s.phase='CAPTURING';await this.save();return this.state();});}
@@ -61,7 +71,7 @@ export class Runtime {
       if(!s.photoIds){const captures=[];for(const c of s.captures){const bytes=await readFile(join(this.assets,c.file));if(inspectImage(bytes).sha256!==c.sha256)throw new Error('CAPTURE_CHANGED');captures.push({id:c.id,bytes});}
         const upload=await media.upload(s.remote.uploadPath,captures,secret.token,s.keys.upload);s.photoIds=upload.photos.map(p=>p.id);await this.save();}
       if(!secret.cookie){await control.claim(s.remote.code,secret.token);if(!secret.cookie)throw new Error('CLAIM_COOKIE_MISSING');}
-      if(!s.job){const selection=s.mode==='CLASSIC'?{frameId:s.selectionId}:s.mode==='BASIC'?{templateId:s.selectionId}:{experienceId:s.selectionId};
+      if(!s.job){const selection=s.mode==='CLASSIC'?{frameId:s.selectionId,...s.eventName?{eventName:s.eventName,capturedAt:s.captures[0].capturedAt}:{}}:s.mode==='BASIC'?{templateId:s.selectionId}:{experienceId:s.selectionId};
         s.job=await control.generate({sessionCode:s.remote.code,mode:s.mode,photoIds:s.photoIds,...selection},s.keys.generate);await this.save();}
       s.phase='PROCESSING';s.jobStatus=s.job.status;await this.save();
       // Poll only real backend states; leave slow work resumable after five minutes.
@@ -72,7 +82,7 @@ export class Runtime {
           if(!job.resultId)throw new Error('RESULT_MISSING');
           const delivery=await control.resultUrl(job.resultId);const bytes=await media.download(delivery.url,secret.cookie);
           const info=inspectImage(bytes);s.resultFile=newId()+(info.mime==='image/png'?'.png':'.jpg');await writeFile(join(this.assets,s.resultFile),bytes,{flag:'wx',mode:0o600});
-          s.resultHash=info.sha256;s.phase='RESULT_READY';await this.save();return this.state();
+          s.resultId=job.resultId;s.resultHash=info.sha256;s.phase='RESULT_READY';await this.save();return this.state();
         }
         if(!['QUEUED','PROCESSING'].includes(job.status))throw new Error('JOB_STATUS_INVALID');
         await new Promise(resolve=>setTimeout(resolve,2000));
@@ -82,8 +92,12 @@ export class Runtime {
   });}
   async print(){return this.exclusive(async()=>{const s=this.session;if(!s||s.phase!=='RESULT_READY')throw new Error('RESULT_REQUIRED');if(this.journal.prints(s.id).length)throw new Error('PRINT_ALREADY_SUBMITTED');
     if(inspectImage(await readFile(join(this.assets,s.resultFile))).sha256!==s.resultHash)throw new Error('RESULT_CHANGED');
+    if(this.printer&&s.resultId){
+      await this.printer.submit({resultId:s.resultId,profile:s.mode==='CLASSIC'?'classic-two-strips-4r':'photo-4r',base64:(await readFile(join(this.assets,s.resultFile))).toString('base64')});
+      return this.state();
+    }
     const id=newId();await this.journal.print(id,s.id,'SUBMITTING');
-    try{const r=await this.bridge.call('printer.submit',{jobId:id,path:join(this.assets,s.resultFile)});if(r.status!=='SIMULATED')throw new Error('PRINT_STATUS_UNSUPPORTED');await this.journal.print(id,s.id,'SIMULATED');}
+    try{const r=await this.bridge.call('printer.submit',{jobId:id,path:join(this.assets,s.resultFile),profile:s.mode==='CLASSIC'?'classic-two-strips-4r':'photo-4r'});if(!['SIMULATED','ACCEPTED'].includes(r.status))throw new Error('PRINT_STATUS_UNSUPPORTED');await this.journal.print(id,s.id,r.status);}
     catch(e){await this.journal.print(id,s.id,'UNKNOWN');throw e;}return this.state();
   });}
   async finish(){return this.exclusive(async()=>{if(!this.session)throw new Error('SESSION_REQUIRED');this.session.phase='FINISHED';await this.save();this.session=null;return this.state();});}
