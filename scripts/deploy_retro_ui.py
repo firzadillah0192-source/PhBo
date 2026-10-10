@@ -1,6 +1,6 @@
-"""Release: unified retro typography + side decoration for photobooth-web (web only).
+"""Release: account center / result / button typography for photobooth-web (web only).
 
-Patches only the diff of commit 99946e3 over the frontend source that is currently live, so uncommitted work
+Patches only the diff of commit 0bf5fff over the frontend source that is currently live, so uncommitted work
 from other agents in /opt/photobooth/frontend is never shipped. Reuses the compose chain the live web container
 was started with (its labels) and appends a web-only image override. Usage: deploy_retro_ui.py prepare|deploy|rollback|status
 """
@@ -9,9 +9,8 @@ from pathlib import Path
 
 ROOT = Path('/opt/photobooth')
 POINTER = Path('/srv/photobooth/releases/.retro-ui-current')
-BASE_COMMIT, NEW_COMMIT = '861d1b8', '99946e3'
-FILES = ['src/retro.css', 'src/retro-decor.css', 'src/main.jsx', 'src/components/home/landing.css', 'src/components/home/home.css',
-         'src/components/customer/classicFrames.css', 'src/components/customer/publicResult.css']
+BASE_COMMIT, NEW_COMMIT = '99946e3', '0bf5fff'
+FILES = ['src/retro.css', 'src/customer.css']
 
 
 def run(args, **kw):
