@@ -14,7 +14,7 @@ export async function extendCatalogFixture(sql: pg.Client) {
 }
 export async function extendApplicationFixture(sql: pg.Client) {
   const root = fileURLToPath(new URL('../../backend/migrations/', import.meta.url));
-  for (const file of ['003_control_plane.sql', '005_preview_factory.sql', '008_provider_usage_operations.sql', '010_provider_router_telemetry.sql', '015_native_worker_leases.sql','019_generation_snapshots_worker_attempts.sql']) {
+  for (const file of ['003_control_plane.sql', '005_preview_factory.sql', '008_provider_usage_operations.sql', '010_provider_router_telemetry.sql', '015_native_worker_leases.sql','017_native_kiosk_photo_claims.sql','019_generation_snapshots_worker_attempts.sql']) {
     await sql.query(await readFile(join(root, file), 'utf8'));
   }
 }

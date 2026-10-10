@@ -45,13 +45,12 @@ try {
     for (const theme of [...new Set(frames.map((frame) => frame.theme_name))]) {
       await page.getByRole('navigation', { name: 'Frame themes' }).getByRole('button', { name: theme, exact: false }).click()
       assert.equal(await page.locator('.classic-layout-card').count(), 4)
-      assert.equal(await page.getByRole('button', { name: /Continue to camera/ }).isEnabled(), false)
+      assert.equal(await page.locator('.selection-dock').count(), 0)
       await page.waitForFunction(() => [...document.querySelectorAll('.classic-layout-card img')].filter((image) => image.getBoundingClientRect().top < innerHeight).every((image) => image.complete && image.naturalWidth > 0))
     }
     await page.screenshot({ path: resolve(output, `${engine}-${item.name}.png`), fullPage: true })
     const chosen = frames.find((frame) => frame.theme_slug === 'birthday' && frame.shot_count === 3)
     await page.locator('.classic-layout-card').filter({ hasText: chosen.name }).click()
-    await page.getByRole('button', { name: /Continue to camera/ }).click()
     await page.locator('.classic-capture').waitFor()
     assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('photobooth:active-customer-flow')).layoutId), chosen.id)
     await page.reload({ waitUntil: 'networkidle' })

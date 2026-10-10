@@ -52,7 +52,7 @@ the local face-fitting engine or its model assets.
 | Current frontend/API feature | Express candidate state | Required migration work |
 | --- | --- | --- |
 | `/api/health` | `/health` process liveness | Preserve dependency-aware health contract |
-| `/api/templates` | Native published template registry and preview | Template selection feeds a private NineRouter prompt for Basic |
+| `/api/templates` | Native published registry and preview for fifteen Basic variants: man, woman, and hijab woman for Space Commander, Cyberpunk Neon, Aviation Captain, Royal Nusantara, and Arctic Expedition | Template selection feeds a private NineRouter prompt for Basic |
 | `/api/experiences` | Native published DB catalog, thumbnails and Admin editing | Live-provider review remains manual |
 | `/api/classic/layouts` | Native existing IDs, 35 reviewed masters, metadata and compositor | Physical camera/device acceptance remains manual |
 | `/api/advanced/frame-styles`, `/ornaments` | Native presets, Admin editing and compatibility checks | Experience content review remains manual |
@@ -138,7 +138,7 @@ does not silently revert those concurrent product changes to the original propos
 ### AI-only Basic update — 2026-10-03
 
 The Native Express candidate now routes both BASIC and ADVANCED through
-`NativeAIProvider`. Basic keeps the one-template customer contract, builds its
+`NativeAIProvider`. Basic builds its
 prompt from the registered template name/description, and snapshots the configured
 server-side model with the queued job. The local Python face-fitting route and its
 Express bridge call were removed. BASIC and ADVANCED both reserve one credit and

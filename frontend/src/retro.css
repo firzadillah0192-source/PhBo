@@ -1,0 +1,394 @@
+@font-face {
+  font-family: 'Baloo 2'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('/fonts/baloo2-bold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Baloo 2'; font-style: normal; font-weight: 800; font-display: swap;
+  src: url('/fonts/baloo2-extrabold.ttf') format('truetype');
+}
+
+/* Customer theme. Existing admin and kiosk surfaces keep their own styles. */
+.customer-app.retro-app {
+  --paper: #fff4dd; --white: #fffdf7; --ink: #26201a; --graphite: #40382f;
+  --neutral: #f1e3c4; --muted: #665b4c; --accent: #ac3515;
+  --sun: #ffda50; --orange: #ff693b; --rose: #ffbdd0; --sky: #abddfa; --mint: #c4e5b4;
+  --cool: var(--sky); --warm: #ffba87; --nature: #749368; --night: #26201a;
+  --font-display: 'Baloo 2', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --retro-border: 2px solid var(--ink); --retro-shadow: 5px 5px 0 var(--ink);
+  color: var(--ink); background: var(--paper); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overflow: clip; line-height: 1.6;
+}
+.retro-app ::selection { color: var(--ink); background: var(--sun); }
+.retro-app :is(button, a, input, select, textarea) { touch-action: manipulation; }
+.retro-app :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 5px;
+}
+.retro-app :is(h1, h2)[tabindex='-1']:focus, .retro-app main:focus { outline: none; }
+.retro-app :is(h1, h2, h3) { font-family: var(--font-display); font-weight: 800; letter-spacing: -.025em; }
+.retro-app :is(h1, h2) em { color: var(--accent); font-style: normal; font-weight: inherit; }
+.retro-app :is(p, small) { text-wrap: pretty; }
+.studio-skip { position: fixed; top: 10px; left: 16px; z-index: 100; transform: translateY(-160%); padding: 10px 18px; border: 2px solid #26201a; border-radius: 8px; color: #26201a; background: #ffda50; }
+.studio-skip:focus { transform: none; }
+.retro-app .customer-nav, .retro-app .customer-nav.landing-nav {
+  position: sticky; top: 0; min-height: 84px; padding: 12px max(24px, calc((100vw - 1160px) / 2));
+  border-bottom: var(--retro-border); background: var(--paper); color: var(--ink); backdrop-filter: none;
+}
+.retro-app .customer-logo { display: inline-flex; align-items: center; gap: 9px; padding: 0; font-family: var(--font-display); font-size: 29px; font-weight: 800; letter-spacing: -.035em; white-space: nowrap; }
+.retro-app .studio-logo-icon { flex: 0 0 auto; color: var(--ink); }
+.retro-app .customer-logo:hover { color: var(--accent); }
+.retro-app .landing-nav-links { gap: 24px; }
+.retro-app .landing-nav-links a { min-height: 44px; color: var(--ink); font-size: 13px; font-weight: 650; }
+.retro-app .landing-nav-links a:hover { text-decoration: underline; text-underline-offset: 5px; }
+.retro-app .customer-account, .retro-app .landing-nav .customer-account { gap: 14px; }
+.retro-app :is(.customer-account-trigger, .landing-nav-cta, .studio-back, .customer-outline-button, .customer-solid-button, .landing-primary, .landing-secondary) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+  min-height: 46px; padding: 10px 18px; border: var(--retro-border); border-radius: 9px;
+  background: var(--white); color: var(--ink); box-shadow: 3px 3px 0 var(--ink);
+  font-size: 13px; font-weight: 750; letter-spacing: 0; line-height: 1.4; text-decoration: none;
+  transition: transform 130ms ease, box-shadow 130ms ease, background 130ms ease;
+}
+.retro-app :is(.landing-primary, .landing-nav-cta, .customer-solid-button) { background: var(--orange) !important; color: var(--ink) !important; border-color: var(--ink); }
+.retro-app :is(.landing-primary, .landing-secondary) { min-height: 54px; padding: 13px 23px; }
+.retro-app :is(.customer-account-trigger, .landing-nav-cta, .studio-back, .customer-outline-button, .customer-solid-button, .landing-primary, .landing-secondary):hover:not(:disabled) { transform: translate(-1px, -2px); box-shadow: 4px 5px 0 var(--ink); background: var(--sun); }
+.retro-app :is(.customer-account-trigger, .landing-nav-cta, .studio-back, .customer-outline-button, .customer-solid-button, .landing-primary, .landing-secondary):active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.retro-app button:disabled { opacity: .6; box-shadow: none; transform: none; }
+.retro-app .customer-mode-nav { display: flex; gap: 3px; padding: 4px; border: var(--retro-border); border-radius: 10px; background: var(--white); }
+.retro-app .customer-mode-nav button { min-height: 38px; padding: 8px 13px; border-radius: 5px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.retro-app .customer-mode-nav button::after { display: none; }
+.retro-app .customer-mode-nav button:hover { background: var(--neutral); }
+.retro-app .customer-mode-nav button.is-active { color: var(--ink); background: var(--sun); }
+.retro-app .customer-credit { padding: 5px 10px; border: var(--retro-border); border-radius: 6px; background: var(--mint); font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0; }
+.retro-app .customer-account-popover { top: calc(100% + 14px); max-height: calc(100svh - 110px); overflow-y: auto; padding: 24px; border: var(--retro-border); border-radius: 12px; background: var(--white); box-shadow: var(--retro-shadow); backdrop-filter: none; }
+.retro-app .customer-account-popover h2 { font-size: 30px; font-weight: 800; }
+.retro-app .customer-account-popover :is(p, small, label) { font-size: 12px; }
+.retro-app :is(.customer-account-popover input, .account-profile-fields input, .account-preference select) { border: var(--retro-border); border-radius: 6px; color: var(--ink); background: var(--white); font-size: 14px; }
+.retro-app :is(.customer-avatar, .account-avatar) { color: var(--ink); background: var(--rose); border: var(--retro-border); }
+.retro-app .customer-account-menu button { min-height: 44px; border-radius: 6px; }
+.retro-app .customer-account-menu button:hover { background: var(--sun); }
+.retro-app .customer-inline-button {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+  padding: 9px 13px !important; border: var(--retro-border) !important; border-radius: 7px;
+  background: var(--white) !important; color: var(--ink) !important; font-size: 12px !important;
+  letter-spacing: 0; box-shadow: 2px 2px 0 var(--ink); transition: transform 130ms, box-shadow 130ms;
+}
+.retro-app .customer-inline-button:hover:not(:disabled) { background: var(--sun) !important; }
+.retro-app .customer-inline-button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; }
+.retro-app .landing-container { width: calc(100% - 64px); max-width: 1160px; }
+.retro-app .landing-section { padding-block: 64px; scroll-margin-top: 100px; }
+.retro-app .landing-eyebrow, .retro-app .customer-kicker { color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 500; letter-spacing: .09em; text-transform: uppercase; }
+.retro-app .landing-hero { grid-template-columns: 1.05fr 1fr; gap: 48px; min-height: 630px; padding-block: 64px 55px; }
+.retro-app .landing-hero-copy { padding: 0; }
+.retro-app .landing-hero .landing-eyebrow { display: inline-flex; gap: 8px; align-items: center; margin-bottom: 22px; padding: 5px 12px; border: var(--retro-border); border-radius: 6px; background: var(--mint); color: var(--ink); }
+.retro-spark { font-size: 21px; line-height: 1; }
+.retro-app .landing-hero h1 { font-family: var(--font-display); font-size: clamp(40px, 4.8vw, 66px); font-weight: 800; line-height: 1.05; letter-spacing: -.035em; }
+.retro-app .landing-hero h1 em { color: var(--ink); font-style: normal; font-weight: 800; background: linear-gradient(transparent 60%, var(--sun) 60%, var(--sun) 93%, transparent 93%); }
+.retro-app .landing-intro { max-width: 430px; margin: 24px 0; color: var(--muted); font-size: 16px; line-height: 1.75; }
+.retro-app .landing-actions { gap: 14px; }
+.retro-app .landing-hero-note { color: var(--muted); font-size: 12px; }
+.retro-app .landing-hero-note span { color: var(--ink); padding-right: 5px; }
+.retro-app .landing-hero-art { aspect-ratio: 1; max-height: none; border: var(--retro-border); border-radius: 14px; background: var(--sky); box-shadow: 7px 7px 0 var(--ink); }
+.retro-window-bar { position: absolute; z-index: 3; top: 0; inset-inline: 0; display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 10px 13px; border-bottom: 2px solid #26201a; border-radius: 12px 12px 0 0; background: #fffdf7; color: #26201a; font: 10px ui-monospace, monospace; }
+.retro-window-bar>span:first-child { letter-spacing: 3px; color: #ac3515; }
+.retro-app .landing-scenery { inset: 42px 0 0; border-radius: 0 0 12px 12px; background: radial-gradient(#26201a25 1px, transparent 1px) 0 0 / 16px 16px, var(--sky); }
+.retro-app .landing-scenery::after { display: none; }
+.retro-app .landing-scenery>span { position: absolute; left: 6%; top: 7%; color: var(--white); font-size: 110px; line-height: 1; -webkit-text-stroke: 2px var(--ink); }
+.retro-app .landing-reel { top: 18%; right: 7%; width: 53%; transform: rotate(5deg); }
+.retro-app .landing-reel-stage { aspect-ratio: 4/5; border: var(--retro-border); border-radius: 7px; background: var(--white); box-shadow: 4px 4px 0 var(--ink); }
+.retro-app .landing-reel-photo { background: var(--white); }
+.retro-app .landing-reel-controls { color: var(--ink); font-size: 9px; }
+.retro-app .landing-reel-controls>span { background: var(--white); padding: 5px 8px; border: var(--retro-border); border-radius: 5px; }
+.retro-app .landing-reel-controls button { min-width: 44px; min-height: 44px; padding: 5px 8px; border: var(--retro-border); border-radius: 6px; background: var(--sun); color: var(--ink); }
+.retro-app .landing-hero-print { border: var(--retro-border); border-radius: 5px; background: var(--white); box-shadow: 4px 4px 0 var(--ink); }
+.retro-app .print-second { left: 5%; top: 40%; width: 34%; transform: rotate(-9deg); z-index: 2; }
+.retro-app .landing-art-caption { top: auto; left: 6%; right: auto; bottom: 5%; z-index: 3; margin: 0; padding: 10px 14px; border: var(--retro-border); border-radius: 7px; background: var(--sun); color: var(--ink); font-family: var(--font-display); font-size: 18px; line-height: 1.2; transform: rotate(-4deg); }
+.retro-app .landing-art-caption em { color: var(--ink); font-style: normal; }
+.retro-app .landing-art-index { left: 14px; bottom: 13px; color: var(--ink); font-size: 8px; }
+.retro-app .landing-section-heading h2, .retro-app .landing-output h2, .retro-app .landing-final h2 { font-size: clamp(32px, 3.8vw, 48px); font-weight: 800; line-height: 1.12; letter-spacing: -.025em; }
+.retro-app .landing-section-heading>p:last-child { color: var(--muted); font-size: 14px; }
+.retro-app .landing-how { display: block; border-top: 2px dashed var(--ink); }
+.retro-app .landing-how .landing-section-heading { margin-bottom: 30px; }
+.retro-app .landing-how h2 br, .retro-app .landing-modes h2 br { display: none; }
+.retro-app .customer-progress li b { flex-shrink: 0; }
+.customer-app:not(.retro-app) .customer-progress li b { display: none; }
+.retro-app .landing-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.retro-app .landing-steps li { padding: 22px 18px; border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: 3px 3px 0 var(--ink); }
+.retro-app .landing-steps li>span { display: grid; width: 34px; height: 34px; place-items: center; border: var(--retro-border); border-radius: 50%; background: var(--sun); color: var(--ink); font-family: ui-monospace, monospace; font-size: 12px; }
+.retro-app .landing-steps h3 { margin: 14px 0 6px; font-size: 23px; }
+.retro-app .landing-steps p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.retro-app .landing-modes { border-block: var(--retro-border); background: #f3e6c8; }
+.retro-app .landing-mode-grid { gap: 22px; align-items: stretch; }
+.retro-app .landing-mode-card, .retro-app .creation-chooser .landing-mode-card { display: flex; flex-direction: column; min-width: 0; padding: 14px; border: var(--retro-border); border-radius: 12px; background: var(--white); box-shadow: var(--retro-shadow); }
+.retro-app .landing-mode-card:hover { transform: translateY(-3px); }
+.retro-app .landing-mode-image { overflow: hidden; border: var(--retro-border); border-radius: 7px; aspect-ratio: 4/3; background: var(--sun); }
+.retro-app .mode-basic .landing-mode-image { background: var(--rose); }
+.retro-app .mode-advanced .landing-mode-image { background: var(--sky); }
+.retro-app .landing-mode-number { display: grid; place-items: center; width: 34px; height: 34px; border: var(--retro-border); border-radius: 50%; color: var(--ink); background: var(--sun); font-size: 12px; }
+.retro-app .landing-mode-copy { display: flex; flex: 1; flex-direction: column; padding: 20px 4px 5px; }
+.retro-app .landing-mode-copy h3 { min-height: 0; margin: 0 0 8px; font-size: 26px; line-height: 1.15; }
+.retro-app .landing-mode-copy .landing-eyebrow { margin-bottom: 10px; color: var(--muted); }
+.retro-app .landing-mode-copy>p:not(.landing-eyebrow) { flex: 1; color: var(--muted); font-size: 13px; }
+.retro-app .landing-mode-copy ul { flex-wrap: wrap; gap: 6px; padding-block: 12px; margin: 0 0 14px; }
+.retro-app .landing-mode-copy li { padding: 3px 7px; border: 1px solid var(--ink); border-radius: 5px; color: var(--ink); font-size: 10px; background: var(--paper); }
+.retro-app .landing-mode-copy>a { display: flex; justify-content: space-between; min-height: 46px; margin-top: auto; padding: 10px 14px; border: var(--retro-border); border-radius: 7px; box-shadow: 2px 2px 0 var(--ink); color: var(--ink); background: var(--sun); font-size: 13px; font-weight: 750; }
+.retro-app .mode-basic .landing-mode-copy>a { background: var(--rose); }
+.retro-app .mode-advanced .landing-mode-copy>a { background: var(--sky); }
+.retro-app .landing-mode-copy>a:active { transform: translate(2px, 2px); box-shadow: none; }
+.retro-app .landing-featured-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; overflow: visible; }
+.retro-app .landing-experience-card { display: block; height: 100%; padding: 12px; border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: 4px 4px 0 var(--ink); }
+.retro-app .landing-experience-card>div { border: var(--retro-border); border-radius: 6px; aspect-ratio: 4/3; }
+.retro-app .landing-experience-card h3 { padding-bottom: 8px; font-size: 23px; font-weight: 800; }
+.retro-app .landing-experience-card>p { color: var(--muted); font-family: ui-monospace, monospace; font-size: 10px; }
+.retro-app .landing-text-link { min-height: 44px; color: var(--ink); font-size: 13px; text-decoration: underline; text-underline-offset: 5px; }
+.retro-app .landing-catalog-state { border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: 4px 4px 0 var(--ink); }
+.retro-app .landing-output { border-block: var(--retro-border); color: var(--ink); background: var(--mint); }
+.retro-app .landing-output :is(.landing-eyebrow, h2 em, .landing-output-inner>div>p:not(.landing-eyebrow), .landing-output-list p, .landing-output-list span) { color: var(--ink); }
+.retro-app .landing-output-list li { border-color: var(--ink); }
+.retro-app .landing-output-list strong { font-size: 27px; font-weight: 800; }
+.retro-app .landing-output-list p { font-size: 13px; }
+.retro-app .landing-final { padding-block: 80px; }
+.retro-app .landing-footer { border-top: var(--retro-border); }
+.retro-app .landing-footer-brand { font-family: var(--font-display); font-size: 30px; font-weight: 800; }
+.retro-app .landing-footer :is(p, small, nav a) { color: var(--muted); font-size: 12px; }
+.retro-app .landing-image-fallback { color: var(--ink); font-family: var(--font-display); font-weight: 800; }
+.retro-app .creation-chooser { padding-block: 28px 70px; }
+.retro-app .creation-chooser>header { margin-block: 45px 35px; }
+.retro-app .creation-chooser h1 { font-size: clamp(34px, 4.5vw, 54px); font-weight: 800; line-height: 1.12; letter-spacing: -.025em; }
+.retro-app .creation-footnote { font-size: 13px; }
+.retro-app .creation-resume { padding: 12px 18px; border: var(--retro-border); border-radius: 8px; background: var(--mint); color: var(--ink); }
+.studio-breadcrumb { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.studio-breadcrumb>span { color: #665b4c; font: 10px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .06em; }
+.retro-app .customer-progress { width: min(620px, calc(100% - 40px)); grid-template-columns: 1fr; gap: 10px; padding-top: 24px; color: var(--ink); }
+.retro-app .customer-progress>span { grid-row: auto; text-align: center; color: var(--muted); font: 10px ui-monospace, monospace; }
+.retro-app .customer-progress ol { gap: 8px; }
+.retro-app .customer-progress li { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.retro-app .customer-progress li b { display: grid; width: 29px; height: 29px; place-items: center; border: var(--retro-border); border-radius: 50%; background: var(--white); color: var(--ink); font: 700 12px ui-monospace, monospace; }
+.retro-app .customer-progress li.is-active { color: var(--ink); font-weight: 750; }
+.retro-app .customer-progress li.is-active b { background: var(--sun); box-shadow: 2px 2px 0 var(--ink); }
+.retro-app .customer-progress li.is-done b { background: var(--mint); }
+.retro-app .customer-progress>i { height: 5px; border-radius: 5px; background: var(--neutral); }
+.retro-app .customer-progress>i b { background: var(--ink); }
+.retro-app .customer-main { max-width: 1224px; min-height: calc(100svh - 200px); margin: 0 auto; padding: 28px 32px 90px; color: var(--ink); }
+.retro-app :is(.stage-heading, .gallery-heading) { margin: 28px auto 36px; }
+.retro-app :is(.stage-heading h1, .gallery-heading h1, .customer-empty h1, .processing-copy h1, .result-stage h1) { font-size: clamp(34px, 4.3vw, 54px); font-weight: 800; line-height: 1.1; letter-spacing: -.025em; }
+.retro-app :is(.stage-heading>p:last-child, .gallery-heading>p:last-child) { margin-top: 14px; font-size: 14px; color: var(--muted); }
+.retro-app .stage-back { position: static; margin-bottom: 20px; }
+.retro-app .experience-collection h2 { font-size: 30px; font-weight: 800; }
+.retro-app .experience-collection>header>span { font-size: 11px; }
+.retro-app :is(.look-card, .template-card) { overflow: hidden; padding: 9px; border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: 4px 4px 0 var(--ink); }
+.retro-app :is(.look-card-media, .template-card-media) { border: 1px solid var(--ink); border-radius: 5px; box-shadow: none; }
+.retro-app :is(.look-card, .template-card):hover :is(.look-card-media, .template-card-media) { transform: none; box-shadow: none; }
+.retro-app :is(.look-card-caption, .template-card-caption) { padding: 14px 2px 4px; }
+.retro-app :is(.look-card-caption strong, .template-card-caption strong) { color: var(--ink); font-family: var(--font-display); font-size: 21px; font-weight: 800; line-height: 1.15; }
+.retro-app :is(.look-card-caption em, .template-card-caption em) { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.retro-app :is(.look-card.is-selected, .template-card.is-selected, .advanced-style-card.is-selected) { outline: 3px solid var(--accent); outline-offset: 4px; background: #fff0be; }
+.retro-app .classic-layout-card, .retro-app .advanced-style-card { border: var(--retro-border); border-radius: 10px; color: var(--ink); background: var(--white); box-shadow: 4px 4px 0 var(--ink); }
+.retro-app .advanced-style-card strong { font-family: var(--font-display); font-weight: 800; font-size: 23px; }
+.retro-app .advanced-style-card small { color: var(--muted); font-size: 12px; }
+.retro-app :is(.advanced-ornaments button, .classic-theme-list button) { min-height: 44px; border: var(--retro-border); border-radius: 7px; color: var(--ink); background: var(--white); box-shadow: 2px 2px 0 var(--ink); }
+.retro-app :is(.advanced-ornaments button.is-selected, .classic-theme-list button[aria-pressed='true']) { color: var(--ink); background: var(--sun); }
+.retro-app .selection-dock { width: min(900px, 100%); bottom: 16px; border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: var(--retro-shadow); backdrop-filter: none; }
+.retro-app .selection-dock :is(small, strong) { color: var(--ink); }
+.retro-app .selection-dock small { font: 10px ui-monospace, monospace; }
+.retro-app .selection-dock strong { font-size: 22px; font-weight: 800; }
+.retro-app .camera-stage { overflow: hidden; border: var(--retro-border); border-radius: 14px; background: var(--white); box-shadow: 6px 6px 0 var(--ink); }
+.retro-app .camera-idle { color: var(--ink); background: radial-gradient(#26201a20 1px, transparent 1px) 0 0 / 16px 16px, var(--white); }
+.retro-app .camera-idle strong { font-family: var(--font-display); font-weight: 800; font-size: 32px; }
+.retro-app .camera-idle em { max-width: 300px; color: var(--muted); font-size: 13px; line-height: 1.6; font-style: normal; }
+.retro-app .camera-lens { border: var(--retro-border); background: var(--sun); box-shadow: 3px 3px 0 var(--ink); }
+.retro-app .camera-lens i { border-color: var(--ink); }
+.retro-app :is(.camera-glow, .processing-depth, .processing-mist, .review-convergence-light, .review-bridge i, .result-light) { display: none; }
+.retro-app .camera-reticle { color: var(--muted); border-color: var(--ink); }
+.retro-app .camera-stage:has(video) .camera-reticle { color: white; }
+.retro-app .camera-stage.is-dragging { outline: 4px dashed var(--accent); outline-offset: 6px; }
+.retro-app .photo-guidance { flex-wrap: wrap; gap: 12px; color: var(--muted); }
+.retro-app .photo-guidance li { font-size: 12px; }
+.retro-app .photo-guidance li::before { background: var(--nature); }
+.retro-app .photo-file-note { margin: 18px auto 0; color: var(--muted); font-size: 12px; text-align: center; }
+.retro-app .camera-message { padding: 12px 16px; border: var(--retro-border); border-radius: 8px; background: var(--sun); color: var(--ink); font-size: 13px; }
+.retro-app :is(.review-source, .review-destination) { overflow: hidden; padding: 9px; border: var(--retro-border); border-radius: 9px; background: var(--white); box-shadow: 5px 5px 0 var(--ink); }
+.retro-app .review-composition { max-width: 820px; margin-top: 24px; }
+.retro-app .review-composition figcaption { position: static; padding: 10px 3px 3px; color: var(--ink); background: var(--white); font: 11px ui-monospace, monospace; letter-spacing: 0; text-transform: none; }
+.retro-app .review-composition figcaption small { color: var(--muted); }
+.retro-app .review-bridge { color: var(--ink); background: var(--sun); border: var(--retro-border); box-shadow: 2px 2px 0 var(--ink); }
+.retro-app .advanced-review-summary span { min-width: 130px; border: var(--retro-border); border-radius: 7px; background: var(--white); }
+.retro-app .advanced-review-summary small { color: var(--muted); }
+.retro-app .review-actions { gap: 24px; padding-top: 20px; }
+.retro-app .review-actions>div:first-child { display: flex; flex-wrap: wrap; gap: 12px; }
+.retro-app .review-create>span { color: var(--muted); font-size: 12px; }
+.retro-app .processing-stage { margin-block: 35px; }
+.retro-app .processing-portal figure { overflow: hidden; border: var(--retro-border); border-radius: 12px; background: var(--sky); box-shadow: 6px 6px 0 var(--ink); }
+.retro-app .processing-orbit { border: 2px dashed var(--ink); opacity: .2; }
+.retro-app .processing-pulse { padding: 10px 14px; border: var(--retro-border); border-radius: 7px; background: var(--sun); color: var(--ink); font-size: 12px; }
+.retro-app .processing-pulse i { background: var(--ink); box-shadow: none; }
+.retro-app .processing-copy>p:not(.customer-kicker), .retro-app .processing-copy small { color: var(--muted); font-size: 13px; }
+.retro-app .customer-empty { padding: 48px 24px; border: var(--retro-border); border-radius: 12px; background: var(--white); box-shadow: var(--retro-shadow); }
+.retro-app .customer-empty>p { color: var(--muted); font-size: 14px; }
+.retro-app .customer-notice { width: min(100% - 40px, 900px); border: var(--retro-border); border-radius: 9px; background: #ffe6d9; color: var(--ink); box-shadow: 3px 3px 0 var(--ink); font-size: 13px; }
+.retro-app .customer-notice button { min-height: 44px; color: var(--ink); font-size: 12px; }
+.retro-app .result-stage { color: var(--ink); }
+.customer-app.retro-app[data-mood='result'] :is(.customer-nav, .customer-main, .customer-progress) { color: var(--ink); }
+.customer-app.retro-app[data-mood='result'] .customer-nav { border-color: var(--ink); background: var(--paper); }
+.customer-app.retro-app[data-mood='result'] .customer-mode-nav button { color: var(--muted); }
+.customer-app.retro-app[data-mood='result'] .customer-mode-nav button.is-active { color: var(--ink); }
+.customer-app.retro-app[data-mood='result'] .customer-credit { border-color: var(--ink); background: var(--mint); }
+.customer-app.retro-app[data-mood='result'] .customer-progress li { color: var(--muted); }
+.customer-app.retro-app[data-mood='result'] .customer-progress li.is-active { color: var(--ink); }
+.customer-app.retro-app[data-mood='result'] .customer-progress>i { background: var(--neutral); }
+.customer-app.retro-app[data-mood='result'] .customer-progress>i b { background: var(--ink); }
+.retro-app .result-stage .customer-kicker { color: var(--accent); }
+.retro-app .result-frame { border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: 7px 7px 0 var(--ink); }
+.retro-app .compare-toggle { min-height: 44px; border: var(--retro-border); border-radius: 7px; background: var(--white); color: var(--ink); font-size: 11px; box-shadow: 2px 2px 0 var(--ink); }
+.retro-app .compare-toggle.is-active { background: var(--sun); }
+.retro-app .result-stage .customer-inline-button { color: var(--ink) !important; }
+.retro-app .result-stage .customer-solid-button { border-color: var(--ink); background: var(--orange) !important; }
+.retro-app .result-phone-panel { border: var(--retro-border); border-radius: 10px; color: var(--ink); background: var(--white); box-shadow: 4px 4px 0 var(--ink); }
+.retro-app :is(.account-hero-card, .account-panel, .account-current-plan, .account-plan-card, .account-info-panel, .account-credit-summary, .account-creation-card) { border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: 3px 3px 0 var(--ink); }
+.retro-app :is(.account-page-heading h1, .account-hero-card h2, .account-plan-card h3) { font-weight: 800; }
+.retro-app .account-page-heading h1 { line-height: 1.1; letter-spacing: -.025em; }
+.retro-app :is(.account-eyebrow, .account-back-link, .account-text-button) { color: var(--accent); }
+.retro-app :is(.account-outline-button, .account-muted-button, .account-danger-button) { min-height: 44px; padding: 10px 14px; border: var(--retro-border); border-radius: 7px; color: var(--ink); background: var(--white); box-shadow: 2px 2px 0 var(--ink); }
+.retro-app .account-outline-button:hover:not(:disabled) { background: var(--sun); }
+.retro-app .account-section-nav button { min-height: 44px; color: var(--muted); }
+.retro-app .account-section-nav button.is-active { color: var(--ink); background: var(--sun); border-color: var(--ink); border-radius: 7px; }
+.retro-app .customer-stage-enter { animation-duration: 220ms; }
+
+@media (max-width: 1100px) {
+  .retro-app .customer-nav { padding-inline: 24px; }
+  .retro-app .landing-nav-links { gap: 16px; }
+  .retro-app .landing-nav-cta { display: none; }
+  .retro-app .landing-hero { gap: 30px; }
+  .retro-app .landing-hero h1 { font-size: 48px; }
+  .retro-app .customer-credit { display: none; }
+}
+@media (max-width: 800px) {
+  .retro-app .customer-nav, .retro-app .customer-nav.landing-nav { min-height: 74px; padding: 12px 20px; grid-template-columns: 1fr auto; gap: 12px; }
+  .retro-app .customer-mode-nav { grid-row: 2; grid-column: 1/-1; justify-self: center; }
+  .retro-app .customer-account { grid-row: 1; grid-column: 2; }
+  .retro-app .customer-logo { font-size: 27px; }
+  .retro-app .landing-nav-links { display: none; }
+  .retro-app .landing-hero { grid-template-columns: 1fr; padding-block: 40px; gap: 34px; min-height: 0; }
+  .retro-app .landing-hero h1 { font-size: clamp(38px, 7vw, 58px); }
+  .retro-app .landing-hero-art { width: min(100%, 480px); margin-inline: auto; }
+  .retro-app .landing-section { padding-block: 45px; }
+  .retro-app .landing-mode-grid { grid-template-columns: 1fr; }
+  .retro-app .landing-mode-card { display: grid; grid-template-columns: .8fr 1fr; gap: 20px; }
+  .retro-app .landing-mode-image { align-self: stretch; height: 100%; aspect-ratio: auto; min-height: 230px; }
+  .retro-app .landing-mode-copy { padding-top: 6px; }
+  .retro-app .landing-featured-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .retro-app .landing-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .retro-app .landing-output-inner { grid-template-columns: 1fr; gap: 30px; }
+  .retro-app .landing-footer { align-items: flex-start; flex-wrap: wrap; }
+  .retro-app .landing-footer nav { gap: 18px; }
+  .retro-app .customer-progress { padding-top: 20px; }
+  .retro-app .customer-main { padding: 22px 24px 80px; }
+  .retro-app .advanced-style-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .retro-app .customer-nav, .retro-app .customer-nav.landing-nav { padding-inline: 16px; }
+  .retro-app .customer-logo { gap: 6px; font-size: 25px; }
+  .retro-app .studio-logo-icon { width: 25px; height: 25px; }
+  .retro-app .customer-account-trigger { padding-inline: 12px; font-size: 12px; }
+  .retro-app .landing-container { width: calc(100% - 36px); }
+  .retro-app .landing-hero h1 { font-size: clamp(32px, 9vw, 46px); }
+  .retro-app .landing-hero .landing-eyebrow { font-size: 9px; }
+  .retro-app .landing-intro { font-size: 14px; }
+  .retro-app .landing-actions { align-items: stretch; flex-direction: column; }
+  .retro-app .landing-primary, .retro-app .landing-secondary { width: 100%; }
+  .retro-app .landing-hero-art { margin-block: 8px; }
+  .retro-app .landing-art-caption { font-size: 15px; padding: 7px 10px; }
+  .retro-app .landing-reel-controls>span { max-width: 115px; font-size: 8px; }
+  .retro-app .landing-reel-controls small { display: none; }
+  .retro-app .landing-art-index { font-size: 6px; }
+  .retro-app .landing-scenery>span { font-size: 80px; }
+  .retro-app .landing-section-heading h2, .retro-app .landing-final h2 { font-size: 33px; }
+  .retro-app .landing-steps { gap: 12px; }
+  .retro-app .landing-steps li { padding: 16px 12px; }
+  .retro-app .landing-steps h3 { font-size: 21px; }
+  .retro-app .landing-steps p { font-size: 12px; }
+  .retro-app .landing-mode-card { display: flex; gap: 0; }
+  .retro-app .landing-mode-image { height: auto; min-height: 0; aspect-ratio: 4/3; }
+  .retro-app .landing-mode-copy { padding-top: 20px; }
+  .retro-app .landing-featured-grid { gap: 12px; }
+  .retro-app .landing-experience-card { padding: 7px; }
+  .retro-app .landing-experience-card>div { aspect-ratio: 4/5; }
+  .retro-app .landing-experience-card h3 { font-size: 19px; }
+  .retro-app .landing-experience-card>p { font-size: 8px; letter-spacing: .02em; }
+  .retro-app .landing-heading-row { align-items: flex-start; gap: 15px; flex-direction: column; }
+  .retro-app .landing-output-list li { grid-template-columns: 22px 95px 1fr; gap: 8px; }
+  .retro-app .landing-output-list strong { font-size: 22px; }
+  .retro-app .landing-output-list p { font-size: 12px; }
+  .retro-app .creation-chooser>header { margin-top: 24px; }
+  .retro-app .creation-chooser h1 { font-size: 35px; }
+  .studio-breadcrumb { justify-content: flex-start; }
+  .studio-breadcrumb>span { display: none; }
+  .retro-app .customer-main { padding-inline: 18px; }
+  .retro-app .customer-progress { width: calc(100% - 36px); }
+  .retro-app .customer-progress li { flex-direction: column; gap: 5px; font-size: 10px; }
+  .retro-app .customer-progress ol { justify-content: space-around; }
+  .retro-app .customer-progress li::before { display: none; }
+  .retro-app .customer-progress li::after { display: none; }
+  .retro-app :is(.stage-heading h1, .gallery-heading h1, .customer-empty h1) { font-size: 36px; }
+  .retro-app .advanced-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .retro-app .advanced-style-card { padding: 12px; }
+  .retro-app .selection-dock { gap: 10px; padding: 10px; bottom: 12px; }
+  .retro-app .selection-dock>span { max-width: 38%; }
+  .retro-app .selection-dock strong { font-size: 17px; }
+  .retro-app .selection-dock .customer-solid-button { padding-inline: 12px; font-size: 12px; gap: 6px; }
+  .retro-app .camera-stage { aspect-ratio: 4/5; }
+  .retro-app .camera-idle strong { font-size: 26px; }
+  .retro-app .camera-idle em { max-width: 230px; padding-inline: 12px; }
+  .retro-app .camera-actions { gap: 12px; }
+  .retro-app .camera-actions button { flex: 1; padding-inline: 10px; gap: 8px; font-size: 12px; }
+  .retro-app .review-composition { grid-template-columns: minmax(0, 1fr) 25px minmax(0, 1fr); gap: 8px; }
+  .retro-app .review-composition :is(.review-source, .review-destination) { transform: none; }
+  .retro-app .review-bridge { width: 25px; height: 25px; margin: 0; transform: none; font-size: 12px; }
+  .retro-app .review-composition figure { padding: 5px; }
+  .retro-app .review-composition figcaption { font-size: 9px; }
+  .retro-app .advanced-review-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .retro-app .advanced-review-summary span { min-width: 0; padding: 10px; font-size: 12px; }
+  .retro-app .advanced-review-summary strong { overflow-wrap: anywhere; }
+  .retro-app .review-actions { align-items: stretch; }
+  .retro-app .customer-notice { align-items: flex-start; flex-direction: column; }
+  .retro-app .customer-account-popover { right: 0; max-height: calc(100svh - 160px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .retro-app *, .retro-app *::before, .retro-app *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .retro-app .look-card { opacity: 1; transform: none; }
+}
+
+/* Creation controls and checkout use the same paper, ink and blue palette. */
+.retro-app .account-creation-actions { flex-wrap: wrap; align-items: center; }
+.retro-app .account-creation-actions .account-delete-photo {
+  min-height: 44px; padding: 9px 12px; font-size: 12px; color: #922f3a;
+  border: var(--retro-border); background: #fff1ec; box-shadow: 2px 2px 0 var(--ink);
+}
+.retro-app .account-photo-expiry { color: var(--ink); font-size: 12px; line-height: 1.5; }
+.photo-delete-confirm { display: grid; gap: 16px; color: var(--ink); }
+.photo-delete-confirm h2, .photo-delete-confirm p { margin: 0; }
+.photo-delete-confirm p { line-height: 1.7; }
+.photo-delete-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.photo-delete-actions .account-danger-button { color: #922f3a; background: #fff1ec; font-size: 14px; font-weight: 700; }
+.photo-delete-confirm .account-inline-notice { font-size: 13px; color: var(--ink); border: var(--retro-border); border-radius: 7px; }
+.retro-app .bekal-checkout { color: var(--ink); padding: clamp(16px, 3vw, 24px); }
+.retro-app .bekal-total {
+  align-items: center; padding: 16px; border: var(--retro-border); border-radius: 7px;
+  background: var(--paper); box-shadow: 2px 2px 0 var(--ink); color: var(--ink);
+}
+.retro-app .bekal-total span { font-size: 14px; font-weight: 700; line-height: 1.5; }
+.retro-app .bekal-total strong { color: var(--accent); overflow-wrap: anywhere; }
+.retro-app .bekal-checkout .bekal-payment-note {
+  display: flex; gap: 10px; margin: 0; padding: 12px 14px; border: var(--retro-border);
+  border-radius: 7px; background: #edf3ff; color: var(--ink); font-size: 13px; line-height: 1.6;
+}
+.retro-app .bekal-payment-note > span { color: var(--accent); flex-shrink: 0; }
+.retro-app .bekal-custom-label, .retro-app .bekal-custom-label small { color: var(--ink); }
+.studio-popup.retro-app {
+  --paper: #f8f3e8; --white: #fffdf7; --ink: #18283e; --muted: #526174;
+  --accent: #3979db; --retro-border: 2px solid var(--ink);
+  --font-display: 'Baloo 2', 'Arial Rounded MT Bold', system-ui, sans-serif;
+}
+
+.retro-app .classic-event-details { max-width: 600px; margin: 0 auto 24px; padding: 18px; border: var(--retro-border); border-radius: 10px; background: var(--white); box-shadow: 3px 3px 0 var(--ink); text-align: left; }
+.classic-event-details label { display: grid; gap: 10px; font-weight: 700; }
+.classic-event-details input { width: 100%; box-sizing: border-box; min-height: 48px; padding: 12px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; }
+.classic-event-details p { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }

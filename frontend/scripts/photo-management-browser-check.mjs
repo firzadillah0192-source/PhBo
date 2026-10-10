@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict'
+import {mkdir,writeFile} from 'node:fs/promises'
+import {createServer} from 'vite'
+import {chromium} from '/tmp/nxbooth-kiosk-browser-harness/node_modules/playwright-core/index.mjs'
+const output='/srv/photobooth/tmp/photo-management-browser';await mkdir(output,{recursive:true})
+const source=`import React from 'react';import{createRoot}from'react-dom/client';import{CreationCard}from'/src/components/customer/AccountCenter.jsx';import CreditTopUp from'/src/components/customer/CreditTopUp.jsx';import'/src/styles.css';import'/src/customer.css';import'/src/retro.css';function Harness(){const[deleted,setDeleted]=React.useState(false);return <main className="customer-app retro-app" style={{padding:24}}>{deleted?<p>Foto dihapus</p>:<div className="account-creation-grid"><CreationCard item={{id:'fixture',result_id:'fixture',title:'Test portrait',status:'PENDING_USAGE',mode:'BASIC',created_at:new Date().toISOString(),expires_at:new Date(Date.now()+14*86400000).toISOString()}} onDeleted={()=>setDeleted(true)}/></div>}<CreditTopUp data={{usage:{authenticated:true,ai_remaining:50,credit_wallet:{free_remaining:50,top_up_remaining:0}}}}/></main>}createRoot(document.getElementById('root')).render(<React.StrictMode><Harness/></React.StrictMode>);`
+const vite=await createServer({root:'/opt/photobooth/frontend',logLevel:'silent',server:{host:'127.0.0.1',port:5195,strictPort:true},plugins:[{name:'photo-harness',resolveId(id){if(id==='/photo-check.jsx')return id},load(id){if(id==='/photo-check.jsx')return source},configureServer(server){server.middlewares.use(async(req,res,next)=>{if(req.url==='/photo-check'){res.setHeader('Content-Type','text/html');res.end(await server.transformIndexHtml(req.url,'<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/photo-check.jsx"></script></body></html>'))}else next()})}}]});await vite.listen()
+const browser=await chromium.launch({executablePath:'/home/mahez/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',args:['--no-sandbox']})
+const checks=[],errors=[]
+try{for(const width of[1440,390,320]){
+ const context=await browser.newContext({viewport:{width,height:900},reducedMotion:'reduce'});let calls=0,status=500
+ await context.route('**/api/results/fixture',async route=>{assert.equal(route.request().method(),'DELETE');assert.deepEqual(route.request().postDataJSON(),{confirm:true});calls++;await new Promise(resolve=>setTimeout(resolve,80));await route.fulfill({status,contentType:'application/json',body:JSON.stringify(status===200?{deleted:true,result_id:'fixture'}:{detail:{error_code:'RESULT_DELETE_FAILED',message:'Tidak dapat menghapus; coba lagi.'}})})})
+ await context.route('**/api/account/topups/checkout',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:{error_code:'PAYMENT_GATEWAY_UNAVAILABLE'}})}))
+ const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));page.on('dialog',()=>errors.push('Unexpected native browser dialog'))
+ await page.goto('http://127.0.0.1:5195/photo-check');await page.getByText('Disimpan sampai',{exact:false}).waitFor()
+ const del=page.getByRole('button',{name:'Delete photo',exact:true});assert.ok((await del.boundingBox()).height>=44)
+ await del.click();const dialog=page.getByRole('dialog',{name:'Hapus foto',exact:true});await dialog.waitFor();assert.equal(calls,0)
+ await dialog.getByRole('button',{name:'Simpan foto'}).click();assert.equal(calls,0);assert.equal(await del.evaluate(node=>node===document.activeElement),true)
+ await del.click();await page.keyboard.press('Escape');assert.equal(calls,0)
+ await del.click();await dialog.getByRole('button',{name:'Ya, hapus foto'}).click();await dialog.getByRole('alert').waitFor();assert.equal(calls,1)
+ await page.screenshot({path:output+'/delete-'+width+'.png'})
+ status=200;await dialog.getByRole('button',{name:'Ya, hapus foto'}).click();await page.getByText('Foto dihapus',{exact:true}).waitFor();assert.equal(calls,2);assert.equal(await dialog.count(),0)
+ const note=page.locator('.bekal-payment-note');const style=await note.evaluate(node=>{const s=getComputedStyle(node);return{border:s.borderTopWidth,color:s.color,font:s.fontSize,background:s.backgroundColor}});assert.equal(style.border,'2px');assert.equal(style.font,'13px');assert.equal(style.color,'rgb(38, 32, 26)')
+ await page.getByRole('button',{name:/Racik Bekalmu/}).click();await page.getByLabel('Jumlah kredit',{exact:true}).fill('750');await page.getByRole('button',{name:'Bayar',exact:true}).click();await page.getByRole('dialog',{name:'Pembayaran belum tersedia'}).waitFor();await page.keyboard.press('Escape');assert.equal(await page.getByLabel('Jumlah kredit',{exact:true}).inputValue(),'750')
+ await note.scrollIntoViewIfNeeded();await page.screenshot({path:output+'/checkout-'+width+'.png'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
+ checks.push({width,deletion:'cancel, Escape, failure, retry, success',payment:'retro summary and unavailable popup',style});await context.close()
+}assert.deepEqual(errors,[]);await writeFile(output+'/report.json',JSON.stringify({checks,errors},null,2));console.log('PASS: 3 browser viewports; deletion confirmation/cancel/retry; retention date; retro checkout; payment fallback')}finally{await browser.close();await vite.close()}

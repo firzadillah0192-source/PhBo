@@ -7,6 +7,8 @@ import type { CustomerResultModel } from '../models/customer-result.model.js';
 import type { CustomerIdentity } from './customer-account.service.js';
 import { AppError } from '../lib/errors.js';
 import type { NativeObjectStorage } from './native-object-storage.service.js';
+import { webResultExpiresAt } from './result-retention.js';
+import { parseGenerationSnapshot } from './generation-snapshot.js';
 
 export type ResultDeliveryConfig = { resultsDir: string; claimHours: number; publicOrigin: string; production: boolean; kioskResetSeconds?: number };
 const unavailable = () => new AppError(404, 'CLAIM_UNAVAILABLE', 'This photo is no longer available.');
@@ -20,12 +22,19 @@ export async function classicPrintBytes(bytes: Buffer) {
 
 export class CustomerResultService {
   constructor(private readonly model: CustomerResultModel, readonly config: ResultDeliveryConfig, private readonly objects?: NativeObjectStorage) {}
-  async owned(id: string, identity: CustomerIdentity, claim = false) {
+  async owned(id: string, identity: CustomerIdentity, claim = false, deleting = false) {
     const found = await this.model.result(id);
     const owned = found?.job.account_id ? found.job.account_id === identity.account?.id : Boolean(found?.job.guest_id && found.job.guest_id === identity.guest?.id);
     if (!found || found.result.deleted_at || !owned) {
       if (claim) throw unavailable();
       throw new AppError(404, 'RESULT_NOT_FOUND', `result '${id}' not found`);
+    }
+    if (!deleting) {
+      if (!found.kiosk && found.result.created_at && webResultExpiresAt(found.result.created_at) <= new Date()) {
+        if (claim) throw unavailable();
+        throw new AppError(404, 'RESULT_EXPIRED', 'Foto sudah kedaluwarsa setelah 14 hari.');
+      }
+      await this.model.assertPaid(found.job.id);
     }
     return found;
   }
@@ -35,7 +44,7 @@ export class CustomerResultService {
       size_bytes: result.size_bytes, width: result.width, height: result.height, sha256: result.sha256,
       provider: result.provider, model: result.model, result_url: `/api/results/${result.id}`, download_url: `/api/results/${result.id}/download`,
       print_download_url: job.mode === 'CLASSIC' && result.width * 3 === result.height ? `/api/results/${result.id}/download?rendition=print` : null,
-      created_at: result.created_at };
+      created_at: result.created_at, expires_at: found.kiosk ? null : webResultExpiresAt(result.created_at) };
   }
   async bytes(result: NxResult, publicClaim = false) {
     try {
@@ -54,8 +63,10 @@ export class CustomerResultService {
     }
   }
   async delivery(id: string,identity: CustomerIdentity,notAfter?: Date,proxyPrefix='/api/results') {
-    const { result } = await this.owned(id,identity);
-    const signed = result.storage_path.startsWith('minio://') ? await this.objects?.signedUrl(result.storage_path,notAfter) : null;
+    const found = await this.owned(id,identity);
+    const { result } = found;
+    const expiry = found.kiosk ? notAfter : new Date(Math.min(notAfter?.getTime() ?? Infinity, webResultExpiresAt(result.created_at).getTime()));
+    const signed = result.storage_path.startsWith('minio://') ? await this.objects?.signedUrl(result.storage_path,expiry) : null;
     return { url: signed?.url ?? `${proxyPrefix}/${result.id}/image`,expires_at: signed?.expires_at ?? null,delivery: signed ? 'minio' : 'api' };
   }
   async rendition(found: NonNullable<Awaited<ReturnType<CustomerResultModel['result']>>>, print: boolean, publicClaim = false) {
@@ -73,10 +84,15 @@ export class CustomerResultService {
     } catch { throw new AppError(503, 'CLAIM_PUBLIC_URL_MISCONFIGURED', 'Secure photo-link delivery is temporarily unavailable.'); }
   }
   async createClaim(id: string, identity: CustomerIdentity, input: { reuseToken?: string | null; refresh: boolean; kioskSessionId: string | null }) {
-    const { result } = await this.owned(id, identity, true);
+    const found = await this.owned(id, identity, true);
+    const { result } = found;
     const origin = this.publicOrigin();
-    const expiresAt = new Date(Math.floor(Date.now() / 1000) * 1000 + this.config.claimHours * 3600000);
-    const { claim, token } = await this.model.createClaim(result, { ...input, sessionId: identity.sessionId, rawToken: randomBytes(32).toString('base64url'), expiresAt });
+    const snapshot = found.job.mode === 'CLASSIC' ? parseGenerationSnapshot(found.job.engine_config_json, 'CLASSIC') : null;
+    const embeddedToken = snapshot?.mode === 'CLASSIC' ? snapshot.personalization?.claim_token : null;
+    // Reuse the printed QR's persisted claim, including reloads and retry buttons.
+    if (embeddedToken) input = { ...input, refresh: false, reuseToken: embeddedToken };
+    const expiresAt = new Date(Math.min(Math.floor(Date.now() / 1000) * 1000 + this.config.claimHours * 3600000, found.kiosk ? Infinity : webResultExpiresAt(result.created_at).getTime()));
+    const { claim, token } = await this.model.createClaim(result, { ...input, sessionId: identity.sessionId, rawToken: embeddedToken || randomBytes(32).toString('base64url'), expiresAt: embeddedToken ? webResultExpiresAt(result.created_at) : expiresAt });
     const url = `${origin}/r/${encodeURIComponent(token)}`;
     return { claim_url: url, qr_payload: url, expires_at: claim.expires_at };
   }
@@ -84,7 +100,9 @@ export class CustomerResultService {
     if (token.length < 32 || token.length > 256) throw unavailable();
     const found = await this.model.claim(token);
     if (!found || found.result.deleted_at || found.claim.is_revoked) throw unavailable();
+    if (!found.kiosk && found.result.created_at && webResultExpiresAt(found.result.created_at) <= new Date()) throw unavailable();
     if (found.claim.expires_at <= new Date()) { await this.model.expired(found.claim.id, found.result.job_id); throw unavailable(); }
+    await this.model.assertPaid(found.job.id);
     return found;
   }
   async publicMetadata(token: string) {
@@ -97,7 +115,19 @@ export class CustomerResultService {
   }
   touch(found: NonNullable<Awaited<ReturnType<CustomerResultModel['claim']>>>, download: boolean) { return this.model.touch(found.claim.id, found.result.job_id, download); }
   async delete(id: string, identity: CustomerIdentity, actorType: 'owner' | 'admin' = 'owner') {
-    const { result } = await this.owned(id, identity);
+    const { result } = await this.owned(id, identity, false, true);
+    await this.removePhoto(result, actorType);
+    return { result_id: result.id, deleted: true };
+  }
+  async cleanup() {
+    let deleted = 0;
+    for (const result of await this.model.expiredResults()) {
+      await this.removePhoto(result, 'retention');
+      deleted++;
+    }
+    return { deleted };
+  }
+  private async removePhoto(result: NxResult, actorType: 'owner' | 'admin' | 'retention') {
     try {
       if (result.storage_path.startsWith('minio://')) {
         if (!this.objects || !this.objects.matchesReference('results',result.id,result.storage_path)) throw new Error('Invalid result reference');
@@ -112,6 +142,5 @@ export class CustomerResultService {
       }
     } catch { throw new AppError(500, 'RESULT_DELETE_FAILED', 'Could not delete the result photo.'); }
     await this.model.markDeleted(result, actorType);
-    return { result_id: result.id, deleted: true };
   }
 }

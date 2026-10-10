@@ -6,7 +6,7 @@ import { modeRoute } from '../../customerRoute.js'
 import './landing.css'
 
 const STEPS = [
-  ['Choose', 'Pick Classic, Basic, or Advanced.'],
+  ['Choose', 'Pick Photo Booth, Scene Remix, or Creative Studio.'],
   ['Add your photo', 'Upload a photo or use your phone camera.'],
   ['Create', 'Choose a layout or experience and make your portrait.'],
   ['Download', 'Preview and save your finished portrait.'],
@@ -24,29 +24,30 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
   const hero = featured[0]
   const second = featured.find((item) => item.mode === 'BASIC' && item.id !== hero?.id) || featured[1]
   return <div className="nx-landing">
-    <main>
+    <main id="studio-main" tabIndex="-1">
       <section className="landing-hero landing-container" aria-labelledby="landing-title">
         <div className="landing-hero-copy">
-          <p className="landing-eyebrow">A moment worth keeping</p>
+          <p className="landing-eyebrow"><span className="retro-spark" aria-hidden="true">✳</span> A moment worth keeping</p>
           <h1 id="landing-title">Moments, made<br /><em>extraordinary.</em></h1>
           <p className="landing-intro">Capture a moment, choose a world, and take home something entirely your own.</p>
           <Actions />
-          <p className="landing-hero-note">Your camera. Your imagination. Your keepsake.</p>
+          <p className="landing-hero-note"><span aria-hidden="true">✓</span> Your camera. Your imagination. Your keepsake.</p>
         </div>
         <div className="landing-hero-art">
-          <div className="landing-scenery" aria-hidden="true" />
+          <div className="landing-scenery" aria-hidden="true"><span>✳</span></div>
+          <div className="retro-window-bar"><span aria-hidden="true">● ● ●</span><span>nxbooth / preview studio</span><span aria-hidden="true">↗</span></div>
           {hero && <LandingReel previews={featured} />}
           {second && <figure className="landing-hero-print print-second">
             <CatalogImage key={second.preview} src={second.preview} alt={`${second.name} experience preview`} loading="eager" />
             <figcaption>{second.name}</figcaption>
           </figure>}
-          <p className="landing-art-caption">Your moment.<br /><em>A new perspective.</em></p>
+          <p className="landing-art-caption">A little photo.<br /><em>A lot of possibility.</em></p>
           <span className="landing-art-index" aria-hidden="true">THE NXBOOTH EXPERIENCE / 01</span>
         </div>
       </section>
 
       <section id="how-it-works" className="landing-how landing-container landing-section" aria-labelledby="how-title">
-        <div className="landing-section-heading"><p className="landing-eyebrow">How it works</p><h2 id="how-title">A little imagination.<br />Four simple steps.</h2></div>
+        <div className="landing-section-heading"><p className="landing-eyebrow">How it works</p><h2 id="how-title">A little imagination. <br />Four simple steps.</h2></div>
         <ol className="landing-steps">{STEPS.map(([title, copy], index) => <li key={title}>
           <span aria-hidden="true">0{index + 1}</span><h3>{title}</h3><p>{copy}</p>
         </li>)}</ol>
@@ -54,7 +55,7 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
 
       <section id="modes" className="landing-modes landing-section" aria-labelledby="modes-title">
         <div className="landing-container">
-          <div className="landing-section-heading"><p className="landing-eyebrow">Three ways to create</p><h2 id="modes-title">Same moment.<br />Different possibilities.</h2><p>Keep it real, step into a designed world, or follow your imagination.</p></div>
+          <div className="landing-section-heading"><p className="landing-eyebrow">Three ways to create</p><h2 id="modes-title">Same moment. <br />Different possibilities.</h2><p>Keep it real, step into a designed world, or follow your imagination.</p></div>
           <ModeCards previews={modePreviews({ templates, experiences, layouts })} />
         </div>
       </section>

@@ -39,15 +39,15 @@ test('native migration configuration requires stable production cookie secret', 
   assert.equal(migrationConfigSchema.parse({ ...config, SESSION_SECRET_KEY: 'test-only-secret' }).COOKIE_SECURE, true);
 });
 
-test('Both AI modes reserve credits while Classic remains free; unknown modes fail before accounting', async () => {
+test('Every mode records a pending charge without charging before success; unknown modes fail before accounting', async () => {
   let calls = 0;
   const model = { async reserve() { calls++; return null; } } as unknown as CreditAccountingModel;
   const credits = new CreditAccountingService(model);
   const owner = { account_id: 'test-account', guest_id: null };
   await credits.reserve('CLASSIC', 'classic-job', owner);
   await credits.reserve('BASIC', 'basic-job', owner);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.throws(() => credits.reserve('UNKNOWN', 'invalid-job', owner));
   await credits.reserve('ADVANCED', 'advanced-job', owner);
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
 });

@@ -1,5 +1,5 @@
 const FLOW_KEY = 'photobooth:active-customer-flow'
-const ALLOWED_FIELDS = new Set(['uploadId', 'mode', 'templateId', 'experienceId', 'layoutId', 'frameStyleId', 'ornamentIds', 'captureUploadIds', 'classicCaptureLayoutId', 'classicRetakesRemaining', 'stage', 'jobId', 'resultId'])
+const ALLOWED_FIELDS = new Set(['uploadId', 'mode', 'templateId', 'experienceId', 'layoutId', 'frameStyleId', 'ornamentIds', 'captureUploadIds', 'classicCaptureLayoutId', 'classicRetakesRemaining', 'classicEventName', 'classicEventLayoutId', 'classicCapturedAt', 'stage', 'jobId', 'resultId'])
 const ALLOWED_STAGES = new Set(['gallery', 'art-direction', 'photo', 'review', 'processing', 'failed', 'result'])
 
 function sessionStorageOrNull(storage) {

@@ -31,6 +31,8 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
   const [reviewPhoto, setReviewPhoto] = useState(null)
   const [reviewSeconds, setReviewSeconds] = useState(CLASSIC_REVIEW_SECONDS)
   const [message, setMessage] = useState('')
+  const [eventName, setEventName] = useState(saved?.classicEventLayoutId === layout.id ? saved.classicEventName || '' : '')
+  const eventReady = !layout.requires_event_name || (eventName.trim().length > 0 && !/[\p{Cc}\p{Cf}]/u.test(eventName))
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -76,6 +78,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
   }
   useEffect(() => { if (camera) playPreview() }, [camera])
   const openCamera = async () => {
+    if (!eventReady) { setMessage('Isi nama event sebelum mengambil foto.'); return }
     if (openingRef.current || runningRef.current) return
     openingRef.current = true
     setOpening(true)
@@ -99,6 +102,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
   const capture = () => new Promise((resolve, reject) => {
     const video = videoRef.current
     if (!video?.videoWidth || !video?.videoHeight) { reject(new Error('Camera is not ready')); return }
+    if (!uploadsRef.current.length) updateCustomerFlow({ classicCapturedAt: new Date().toISOString() })
     const canvas = document.createElement('canvas')
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
@@ -124,6 +128,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
     reviewRef.current = { resolve, timer, url }
   })
   const runCapture = async () => {
+    if (!eventReady) return
     if (runningRef.current || (uploadsRef.current.length < layout.shot_count && !ready)) return
     runningRef.current = true
     const run = ++runRef.current
@@ -158,10 +163,12 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
     } finally { runningRef.current = false }
   }
   const uploadSet = async (files) => {
+    if (!eventReady) { setMessage('Isi nama event terlebih dahulu.'); return }
     if (runningRef.current) return
     const chosen = Array.from(files || [])
     if (!chosen.length) return
     if (chosen.length !== layout.shot_count) { setMessage('Choose exactly ' + layout.shot_count + ' photographs for this layout.'); return }
+    updateCustomerFlow({ classicCapturedAt: new Date().toISOString() })
     runningRef.current = true
     const run = ++runRef.current
     setBusy(true)
@@ -187,12 +194,13 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
     <section className="photo-stage classic-capture customer-stage-enter">
       <header className="stage-heading">
         <button className="customer-inline-button stage-back" onClick={onBack} disabled={busy}>← Change frame</button>
-        <p className="customer-kicker">Classic photobooth · {layout.shot_count} photos</p>
+        <p className="customer-kicker">Photo Booth · {layout.shot_count} photos</p>
         <h1>Make your photo strip.</h1>
         <p>{completed} of {layout.shot_count} photographs accepted</p>
         <p className="classic-retake-allowance">{retakes} of {CLASSIC_RETAKE_LIMIT} retakes remaining for this session</p>
         <p className="classic-review-guidance">Review each photo for 10 seconds. Next continues automatically.</p>
       </header>
+      {layout.requires_event_name && <div className="classic-event-details"><label htmlFor="classic-event-name">Nama event<input id="classic-event-name" value={eventName} maxLength={80} disabled={busy || completed > 0} placeholder="Misalnya: Pernikahan Sarah & Arif" onChange={event => { setEventName(event.target.value); updateCustomerFlow({ classicEventName: event.target.value.trim(), classicEventLayoutId: layout.id }); setMessage('') }} autoComplete="off" required aria-describedby="classic-event-help" /></label><p id="classic-event-help">Tanggal mengikuti waktu pengambilan foto dalam WIB. QR akan membuka hasil foto untuk di-download.</p></div>}
       <div className="camera-stage classic-camera-stage">
         {camera ? <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setReady(true)} aria-label="Live camera preview" /> : <button type="button" className="camera-idle" onClick={openCamera} disabled={busy || opening}><span className="camera-lens" aria-hidden="true"><i /></span><strong>{opening ? 'Opening camera…' : 'Open the camera'}</strong></button>}
         {reviewPhoto && <img className="classic-shot-preview" src={reviewPhoto.url} alt={'Photo ' + (reviewPhoto.shot + 1) + ' for review'} />}
@@ -209,8 +217,8 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
         {retakes === 0 && <p>No retakes left. Your next photo will still use the normal countdown.</p>}
       </div> : <div className="camera-actions">
         {previewBlocked && <button className="customer-outline-button" onClick={playPreview}>Resume preview</button>}
-        <button className="customer-solid-button" onClick={completed === layout.shot_count || camera ? runCapture : openCamera} disabled={busy || opening || (camera && !ready)}>{busy ? phase === 'composing' ? 'Creating your photo strip…' : phase === 'uploading' ? 'Saving your photo…' : 'Capturing ' + (completed + 1) + ' of ' + layout.shot_count + '…' : completed === layout.shot_count ? 'Create photo strip' : camera ? 'Start photo ' + (completed + 1) + ' countdown' : 'Open camera'}</button>
-        <button className="customer-outline-button" onClick={() => inputRef.current?.click()} disabled={busy}>Choose {layout.shot_count} photos</button>
+        <button className="customer-solid-button" onClick={completed === layout.shot_count || camera ? runCapture : openCamera} disabled={busy || opening || !eventReady || (camera && !ready)}>{busy ? phase === 'composing' ? 'Creating your photo strip…' : phase === 'uploading' ? 'Saving your photo…' : 'Capturing ' + (completed + 1) + ' of ' + layout.shot_count + '…' : completed === layout.shot_count ? 'Create photo strip' : camera ? 'Start photo ' + (completed + 1) + ' countdown' : 'Open camera'}</button>
+        <button className="customer-outline-button" onClick={() => inputRef.current?.click()} disabled={busy || !eventReady}>Choose {layout.shot_count} photos</button>
       </div>}
       <input ref={inputRef} hidden multiple type="file" accept="image/*,.heic,.heif" onChange={(event) => { uploadSet(event.target.files); event.target.value = '' }} />
     </section>

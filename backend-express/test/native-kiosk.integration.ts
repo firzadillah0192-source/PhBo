@@ -53,6 +53,7 @@ export async function nativeKioskIntegration(sql: pg.Client, db: PrismaClient) {
     const generationModel = new CustomerGenerationModel(db);
     const generation = new CustomerGenerationService(generationModel,uploads,
       { file: async () => 'fixture',validateLayout: async () => ({ slots: [] }),
+        freezeBasicTemplate: async () => ({ asset: 'fixture',sha256: 'a'.repeat(64),width: 1024,height: 1536 }),
         freezeLayout: async (row: { id: string; slug: string; name: string; shot_count: number; layout_config_json: string }) => ({
           ...row,active: true,canvas_width: 1200,canvas_height: 3600,frame_asset_path: 'fixture-frame.png',
         }) } as never,{ enqueue: async () => { enqueued++; } });

@@ -3,7 +3,7 @@
 # this image adds only the candidate's HTTP adapter and Classic compositor.
 FROM photobooth-api:beta-f8a58a9-google-sso
 WORKDIR /engine
-COPY basic_api.py classic_compositor.py ./
+COPY basic_api.py classic_compositor.py basic_edit.py print_preparation.py ./
 ENV PYTHONPATH=/engine:/app
 USER photobooth
 EXPOSE 8100

@@ -57,33 +57,35 @@ test('landing, chooser, sign-in and mobile component structure render through th
     const PhotoStage = (await vite.ssrLoadModule('/src/components/customer/PhotoStage.jsx')).default
     for (const mode of ['BASIC', 'ADVANCED']) {
       const photo = renderToStaticMarkup(React.createElement(PhotoStage, { mode, busy: false, onFile: () => {}, onBack: () => {} }))
-      assert.match(photo, />Use phone camera</)
-      assert.match(photo, /capture="user"/)
+      assert.match(photo, />Take photo<\/button>/)
+      assert.match(photo, />Upload photo<\/button>/)
+      assert.doesNotMatch(photo, /Use phone camera|Resume preview|capture="user"/)
       assert.match(photo, /accept="image\/\*,\.heic,\.heif"/)
-      assert.match(photo, /Photo from phone camera/)
+      assert.equal((photo.match(/class="customer-outline-button/g) || []).length, 2)
       const blockedPhoto = renderToStaticMarkup(React.createElement(PhotoStage, { mode, busy: true, onFile: () => {}, onBack: () => {} }))
-      assert.match(blockedPhoto, /disabled=""[^>]*>Use phone camera</)
+      assert.match(blockedPhoto, /class="customer-outline-button shutter-button"[^>]*disabled=""/)
+      assert.match(blockedPhoto, /class="customer-outline-button" disabled="">Preparing photo…<\/button>/)
     }
     globalThis.window = { location: { pathname: '/', search: '' }, innerWidth: 390, sessionStorage: storage }
     const root = renderToStaticMarkup(React.createElement(App))
     assert.match(root, /Moments, made/)
     assert.match(root, /href="\/create"[^>]*>Try NXBooth Free/)
     for (const section of ['How it works', 'Three ways to create', 'Featured Experiences', 'Made to leave', 'Ready for your']) assert.ok(root.includes(section), section)
-    const journey = ['Pick Classic, Basic, or Advanced.', 'Upload a photo or use your phone camera.', 'Choose a layout or experience and make your portrait.', 'Preview and save your finished portrait.']
+    const journey = ['Pick Photo Booth, Scene Remix, or Creative Studio.', 'Upload a photo or use your phone camera.', 'Choose a layout or experience and make your portrait.', 'Preview and save your finished portrait.']
     const journeyPositions = journey.map((step) => root.indexOf(step))
     assert.ok(journeyPositions.every((position) => position >= 0))
     assert.deepEqual(journeyPositions, [...journeyPositions].sort((a, b) => a - b))
     assert.doesNotMatch(root, /scan the QR|print-ready|<strong>Print<\/strong>|<strong>QR<\/strong>/i)
     assert.match(root, />Sign In</)
     assert.doesNotMatch(root, /customer-credit|AI credits|Photobooth AI|9Router|face swap|prompt composer/)
-    assert.ok(root.indexOf('Moments, made') < root.indexOf('Classic Photobooth'))
+    assert.ok(root.indexOf('Moments, made') < root.indexOf('Photo Booth'))
 
     for (const width of [390, 768, 1024]) {
       globalThis.window = { location: { pathname: '/create', search: '' }, innerWidth: width, sessionStorage: storage }
       const chooser = renderToStaticMarkup(React.createElement(App))
       assert.match(chooser, /Choose how you want to create/)
       for (const mode of ['classic', 'basic', 'advanced']) assert.match(chooser, new RegExp(`href="/create\\?mode=${mode}"`))
-      assert.match(chooser, /Resume your advanced creation/)
+      assert.match(chooser, /Resume your Creative Studio creation/)
       assert.doesNotMatch(chooser, /Restoring your portrait/)
     }
     assert.equal(storage.getItem(customerFlowKey()), saved)
@@ -93,7 +95,7 @@ test('landing, chooser, sign-in and mobile component structure render through th
     assert.doesNotMatch(marketingNav, /customer-credit|2 AI credits/)
     assert.match(marketingNav, /href="#experiences"/)
     const creationNav = renderToStaticMarkup(React.createElement(CustomerNav, navProps))
-    assert.match(creationNav, /2 AI credits/)
+    assert.match(creationNav, /2 credits/)
 
     const featured = renderToStaticMarkup(React.createElement(LandingPage, { experiences: [{ id: 'public', name: 'Published World', thumbnail: '/api/experiences/public/thumbnail' }, { id: 'no-art', name: 'Unpictured World' }], templates: [{ id: 'basic-public', name: 'Curated World', preview_url: '/api/templates/basic-public/preview' }] }))
     assert.match(featured, /Published World preview/)

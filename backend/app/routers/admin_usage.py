@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import json
 import math
+import io
+from pathlib import Path
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
+from PIL import Image, ImageOps
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -19,6 +23,9 @@ from app.auth_models import (
 from app.db import get_db
 from app.models import GenerationJob, GenerationMode, GenerationProviderRun, JobState, Result, ResultClaim
 from app.services.claims import is_claim_expired
+from app.services.result_deletion import ResultDeleteRequest, delete_result_photo
+from app.services.control_plane import record_audit
+from app.routers.results import _read_or_404
 from app.usage_schemas import (
     GenerationUsageItem, GenerationUsagePage, ProviderAccountDistributionItem,
     ProviderOverviewResponse, ProviderRunResponse, UsageOverviewResponse,
@@ -153,7 +160,9 @@ def _credit_state(db: Session, job_id: str) -> str:
 
 
 def _run_item(run: GenerationProviderRun) -> ProviderRunResponse:
+    from app.services.image_pricing import estimate_image_price
     return ProviderRunResponse(
+        api_price_estimate=estimate_image_price(run),
         id=run.id,
         generation_job_id=run.generation_job_id,
         provider_name=run.provider_name,
@@ -193,8 +202,11 @@ def _run_item(run: GenerationProviderRun) -> ProviderRunResponse:
 
 
 def _generation_item(db: Session, job: GenerationJob) -> GenerationUsageItem:
+    from app.services.image_pricing import estimate_image_price
     account = db.get(Account, job.account_id) if job.account_id else None
     run = _latest_run(db, job.id)
+    result = job.result
+    available = bool(result and result.deleted_at is None and Path(result.storage_path).is_file())
     duration_ms = run.total_duration_ms if run else None
     if duration_ms is None and job.started_at and job.finished_at:
         duration_ms = max(0, int((job.finished_at - job.started_at).total_seconds() * 1000))
@@ -202,6 +214,13 @@ def _generation_item(db: Session, job: GenerationJob) -> GenerationUsageItem:
     if run:
         upstream_account = run.provider_account_label or run.provider_account_id
     return GenerationUsageItem(
+        result_id=result.id if result else None,
+        result_image_url=f"/api/admin/usage/generations/{job.id}/result/image" if available else None,
+        result_download_url=f"/api/admin/usage/generations/{job.id}/result/download" if available else None,
+        result_deleted_at=result.deleted_at if result else None,
+        input_tokens=run.input_tokens if run else None,
+        output_tokens=run.output_tokens if run else None,
+        api_price_estimate=estimate_image_price(run) if run else None,
         job_id=job.id,
         account_id=job.account_id,
         user_email=account.email if account else None,
@@ -418,7 +437,7 @@ def usage_user_credits(
 @router.get("/generations", response_model=GenerationUsagePage)
 def usage_generations(
     user: str | None = None,
-    mode: str | None = Query(default=None, pattern="^(BASIC|ADVANCED)$"),
+    mode: str | None = Query(default=None, pattern="^(CLASSIC|BASIC|ADVANCED)$"),
     status: str | None = None,
     provider: str | None = None,
     model: str | None = None,
@@ -515,6 +534,44 @@ def usage_generation_detail(job_id: str, db: Session = Depends(get_db), _princip
             "expired": is_claim_expired(claim.expires_at),
         } for claim in claims],
     }
+
+
+def _admin_result(db: Session, job_id: str) -> Result:
+    result = db.query(Result).filter(Result.job_id == job_id, Result.deleted_at.is_(None)).first()
+    if result is None:
+        _not_found("result", job_id)
+    return result
+
+
+@router.get("/generations/{job_id}/result/image")
+def admin_result_image(job_id: str, thumbnail: bool = False, db: Session = Depends(get_db), _principal: AdminPrincipal = OPERATOR):
+    result = _admin_result(db, job_id)
+    data = _read_or_404(result)
+    media_type = result.content_type
+    if thumbnail:
+        with Image.open(io.BytesIO(data)) as source:
+            preview = ImageOps.contain(source, (300, 450)).convert("RGB")
+            output = io.BytesIO()
+            preview.save(output, format="JPEG", quality=80)
+            data = output.getvalue()
+            media_type = "image/jpeg"
+    return Response(data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
+
+
+@router.get("/generations/{job_id}/result/download")
+def admin_result_download(job_id: str, db: Session = Depends(get_db), _principal: AdminPrincipal = OPERATOR):
+    result = _admin_result(db, job_id)
+    extension = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(result.content_type, "bin")
+    return Response(_read_or_404(result), media_type=result.content_type, headers={"Cache-Control": "private, no-store", "Content-Disposition": f'attachment; filename="photobooth-{result.id}.{extension}"'})
+
+
+@router.delete("/generations/{job_id}/result")
+def admin_delete_result(job_id: str, payload: ResultDeleteRequest, db: Session = Depends(get_db), principal: AdminPrincipal = OPERATOR):
+    result = _admin_result(db, job_id)
+    delete_result_photo(db, result, actor_type="admin")
+    record_audit(db, actor_id=principal.actor_id, action="result_photo_deleted", target_type="result", target_id=result.id, metadata={"job_id": job_id})
+    db.commit()
+    return {"result_id": result.id, "deleted": True}
 
 
 @router.get("/providers/overview", response_model=ProviderOverviewResponse)

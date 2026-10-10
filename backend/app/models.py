@@ -177,6 +177,7 @@ class GenerationJob(Base):
 
 class Result(Base):
     __tablename__ = "results"
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

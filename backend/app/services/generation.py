@@ -193,7 +193,7 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
         ornament_ids = json.loads(job.ornament_ids_json or "[]")
         ornaments = [session.get(AdvancedOrnament, ornament_id) for ornament_id in ornament_ids]
         validate_advanced_selection(experience_row, frame, [item for item in ornaments if item], ornament_ids)
-        prompt = compose_advanced_prompt(experience.prompt, frame.prompt_fragment, [item.prompt_fragment for item in ornaments])
+        prompt = compose_advanced_prompt(experience.prompt, frame.prompt_fragment)
         composed_experience = replace(experience, prompt=prompt)
 
         job.provider = provider.name
@@ -270,10 +270,7 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
                 ),
             },
         )
-        image_bytes = prepare_advanced_result(
-            ai_result.image_bytes,
-            official_logo_path=settings.templates_dir / "_branding" / "nxbooth-logo.png",
-        )
+        image_bytes = prepare_advanced_result(ai_result.image_bytes)
         content_type = "image/png"
         job.provider = ai_result.provider
         job.model = ai_result.model

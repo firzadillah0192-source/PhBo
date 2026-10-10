@@ -1,3 +1,4 @@
+import { NativeImageEngineService } from '../src/services/native-image-engine.service.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
@@ -13,6 +14,23 @@ import express from 'express';
 import request from 'supertest';
 
 const config={baseUrl:'https://router.test/v1',key:'test-only-secret',timeoutMs:1000,resultOrigins:['https://images.test']};
+test('Basic sends template first and identity second, with template canvas and no duplicate image', async () => {
+  const template = await sharp({create:{width:1024,height:1536,channels:3,background:'gold'}}).png().toBuffer();
+  const identity = await sharp({create:{width:640,height:480,channels:3,background:'blue'}}).jpeg().toBuffer();
+  let calls = 0;
+  const provider = new NativeNineRouterProvider(config, async (_url, options) => {
+    calls++;
+    const body = JSON.parse(String(options?.body));
+    assert.equal(body.image, undefined);
+    assert.deepEqual(body.images, [`data:image/png;base64,${template.toString('base64')}`, `data:image/jpeg;base64,${identity.toString('base64')}`]);
+    assert.equal(body.size, '1024x1536'); assert.equal(body.model, 'unchanged-model');
+    return new Response(JSON.stringify({data:[{b64_json:template.toString('base64')}]}));
+  });
+  await provider.generate(identity, 'Only edit Image 1 face using Image 2 identity', 'unchanged-model', {bytes:template,width:1024,height:1536});
+  assert.equal(calls, 1);
+  await assert.rejects(provider.generate(null, 'prompt', 'unchanged-model', {bytes:template,width:1024,height:1536}), {code:'BASIC_INPUT_INVALID'});
+  assert.equal(calls, 1);
+});
 test('native provider preserves configured model, one call, normalized photo and composed prompt',async()=>{
   const bytes=await sharp({create:{width:64,height:96,channels:3,background:'blue'}}).png().toBuffer();
   const photo=await sharp(bytes).jpeg().toBuffer();let calls=0;
@@ -53,4 +71,16 @@ test('distributed result limits share counters and fall back safely when Redis f
 test('pricing comparison preserves unavailable and simulation distinction',()=>{
   const run={provider_reported_model:'cx/gpt-image-2.5',requested_model:null,provider_model:null,input_tokens:100,output_tokens:50,input_text_tokens:null,input_image_tokens:null,output_image_tokens:null} as NxProviderRun;
   assert.equal(estimateImagePrice(run).status,'simulation');assert.equal(estimateImagePrice(run).low_usd,0.002);assert.equal(estimateImagePrice(run).high_usd,0.0023);assert.equal(estimateImagePrice({...run,provider_reported_model:'unknown'}).status,'unavailable');assert.equal(estimateImagePrice({...run,input_text_tokens:80,input_image_tokens:20,output_image_tokens:50}).status,'image_token_estimate');
+});
+
+
+test('template and generated face failures preserve their stage without blaming the uploaded photo', async () => {
+  for (const code of ['BASIC_TEMPLATE_FACE_NOT_FOUND','BASIC_EDIT_FACE_NOT_FOUND']) {
+    const engine=new NativeImageEngineService('https://helper.test','test-key',async()=>new Response(JSON.stringify({detail:{error_code:code}}),{status:422}));
+    await assert.rejects(engine.basicTemplate(Buffer.from('fixture')),error=>{
+      assert.equal((error as {code:string}).code,code);
+      assert.ok(error instanceof Error);assert.doesNotMatch(error.message,/another photo/i);
+      return true;
+    });
+  }
 });

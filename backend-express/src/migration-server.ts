@@ -1,3 +1,4 @@
+import {shutdownAnalytics} from './services/analytics.service.js';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { migrationConfigSchema } from './config/migration-env.js';
@@ -21,7 +22,7 @@ try{
   const server=createMigrationApp(services.catalog,{corsOrigins:config.CORS_ORIGINS,uploadMaxBytes:config.UPLOAD_MAX_BYTES,trustProxy:config.TRUST_PROXY,admin:services.admin,health:services.health,limiter:services.limiter,kiosk:services.kiosk},services.account,services.results,services.uploads,services.generations).listen(config.PORT,config.HOST);
   server.on('listening',()=>console.log('NXBooth Express migration candidate listening'));
   let stopping=false;
-  const stop=()=>{if(stopping)return;stopping=true;const timeout=setTimeout(()=>process.exit(1),10000).unref();server.close(async()=>{await services.close();await db.$disconnect();clearTimeout(timeout);});};
+  const stop=()=>{if(stopping)return;stopping=true;const timeout=setTimeout(()=>process.exit(1),10000).unref();server.close(async()=>{await shutdownAnalytics();await services.close();await db.$disconnect();clearTimeout(timeout);});};
   server.on('error',()=>{console.error('Candidate listener failed');process.exitCode=1;stop();});
   process.on('SIGINT',stop);process.on('SIGTERM',stop);
-}catch{console.error('Candidate startup failed; check database, mapped schema and storage configuration');await services.close();await db.$disconnect();process.exitCode=1;}
+}catch{console.error('Candidate startup failed; check database, mapped schema and storage configuration');await shutdownAnalytics();await services.close();await db.$disconnect();process.exitCode=1;}

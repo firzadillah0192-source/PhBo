@@ -13,7 +13,7 @@ function claimTokenFromUrl(claimUrl) {
   }
 }
 
-export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLook, kiosk = false, resetSeconds = 90, delivery = defaultDelivery }) {
+export default function ResultStage({ resultId, uploadId, mode, chargedCredits, chargeEstimated = false, onReset, onTryLook, kiosk = false, resetSeconds = 90, delivery = defaultDelivery }) {
   const { createResultClaim, getResult, resultDownloadUrl, resultImageUrl, uploadPreviewUrl } = delivery
   const [revealed, setRevealed] = useState(false)
   const [comparing, setComparing] = useState(false)
@@ -145,7 +145,7 @@ export default function ResultStage({ resultId, uploadId, mode, onReset, onTryLo
   return (
     <section className={`result-stage customer-stage-enter ${revealed ? 'is-revealed' : ''}`}>
       <header>
-        <div><p className="customer-kicker">{mode === 'CLASSIC' ? 'Classic photo strip' : 'Celestial master print'}</p><h1>{mode === 'CLASSIC' ? 'Your moments.' : 'Another you.'}</h1></div>
+        <div><p className="customer-kicker">{mode === 'CLASSIC' ? 'Photo Booth' : 'Your finished portrait'}</p><h1>{mode === 'CLASSIC' ? 'Your moments.' : 'Another you.'}</h1>{chargedCredits != null && <p>{chargeEstimated ? 'Estimasi biaya: ' : ''}{chargedCredits} kredit dipakai untuk hasil ini.</p>}</div>
         {original && <button className={`compare-toggle ${comparing ? 'is-active' : ''}`} onClick={() => setComparing((value) => !value)}>{comparing ? 'Close comparison' : 'Compare before / after'}</button>}
       </header>
       <figure className={`result-frame ${comparing ? 'is-comparing' : ''}`}>

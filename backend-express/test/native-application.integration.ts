@@ -61,17 +61,30 @@ export async function nativeApplicationIntegration(db:PrismaClient,sql:pg.Client
   const provider=new NativeNineRouterProvider({baseUrl:'https://test-provider.invalid/v1',key:'test-only-key',timeoutMs:1000,resultOrigins:[]},async(_url,options)=>{
     calls++;const body=JSON.parse(String(options?.body));lastPrompt=body.prompt;assert.equal(body.model,'test-model');if(body.image){const photo=Buffer.from(body.image.split(',')[1],'base64');assert.equal((await sharp(photo).metadata()).format,'jpeg');}
     if(providerFailed)return new Response('Synthetic unavailable',{status:503});
-    return new Response(JSON.stringify({data:[{b64_json:syntheticOutput.toString('base64')}]}),{headers:{'content-type':'application/json','x-9router-request-id':'test-request','x-9router-account-ref':'synthetic-account','x-9router-model':'test-reported-model','x-9router-input-tokens':'100','x-9router-output-tokens':'50','x-9router-total-tokens':'150','x-9router-attempt-count':'1','x-9router-duration-ms':'80'}});
+    let output=syntheticOutput;
+    if(body.images) {
+      assert.equal(body.images.length,2); assert.equal(body.image,undefined);
+      const base=Buffer.from(body.images[0].split(',')[1],'base64');
+      const identity=Buffer.from(body.images[1].split(',')[1],'base64');
+      assert.equal((await sharp(base).metadata()).format,'png');assert.equal((await sharp(identity).metadata()).format,'jpeg');
+      assert.equal(body.size,'1024x1536');
+      // Synthetic contrast edit exercises real face validation/composition and
+      // transport only; it is never evidence of identity quality.
+      output=await sharp(base).linear(.8,15).png().toBuffer();
+    }
+    return new Response(JSON.stringify({data:[{b64_json:output.toString('base64')}]}),{headers:{'content-type':'application/json','x-9router-request-id':'test-request','x-9router-account-ref':'synthetic-account','x-9router-model':'test-reported-model','x-9router-input-tokens':'100','x-9router-output-tokens':'50','x-9router-total-tokens':'150','x-9router-attempt-count':'1','x-9router-duration-ms':'80'}});
   });
   const classic=new ClassicGenerationRunner(model,uploads,assets,new ClassicImageEngineService('http://image-engine.test/compose-classic','test-only-engine-key',socketFetch));
-  const runner=new NativeGenerationRunner(model,new ProviderRunModel(db),uploads,classic,images,provider,'mini-me'),worker=new CustomerGenerationWorkerService(model,runner,resultsDir);
+  const runner=new NativeGenerationRunner(model,new ProviderRunModel(db),uploads,classic,images,provider,'mini-me',assets),worker=new CustomerGenerationWorkerService(model,runner,resultsDir);
   const adminModel=new AdminDataModel(db),adminCatalog=new AdminCatalogService(adminModel,assets,{templatesDir,tmpDir:join(uploadsDir,'admin-tmp'),minDimension:256,maxDimension:8000});
   const operations=new AdminOperationsService(adminModel,assets,{environment:'test',ai_provider:'9router',google_configured:true,upload_max_bytes:12582912,upload_min_dimension:256,upload_max_dimension:8000,admin_default_role:'superadmin'});
   const admin={auth:new AdminAuthService(new AdminAuthModel(db),account.signer,{token:'test-admin-key',defaultRole:'superadmin',sessionDays:30,cookieSecure:false}),catalog:adminCatalog,operations,usage:new AdminUsageService(operations,results),previews:new AdminPreviewService(adminModel,adminCatalog,queue,model.leases,provider,images)};
   const app=createMigrationApp(catalog,{corsOrigins:['http://localhost:5173'],admin,health:async()=>({status:'ok',checks:{database:'ok',redis:'ok'}})},account,results,uploads,generations);
   await request(app).get('/api/health').expect(200);await request(app).get('/api/admin/overview').expect(401);
   await request(app).post('/api/admin/login').set('Origin','https://evil.test').send({token:'test-admin-key'}).expect(403).expect(response=>assert.equal(response.body.detail.error_code,'CSRF_BLOCKED'));
-  const login=await request(app).post('/api/admin/login').send({token:'test-admin-key'}).expect(200);const adminCookies=(login.headers['set-cookie'] as unknown as string[]).map(value=>value.split(';')[0]).join('; ');
+  const ownerAccount=await db.nxAccount.findUniqueOrThrow({where:{id:ownerId}});await db.nxAdminUser.create({data:{id:'credential-admin-fixture',name:'Fixture account admin',email:ownerAccount.email,role:'superadmin'}});
+  await request(app).post('/api/admin/login').send({token:'test-admin-key'}).expect(422);await request(app).get('/api/admin/overview').set('x-admin-token','test-admin-key').expect(401);
+  const login=await request(app).post('/api/admin/login').set('Cookie',ownerCookie).send({}).expect(200);const adminCookies=(login.headers['set-cookie'] as unknown as string[]).map(value=>value.split(';')[0]).join('; ');
   const a=(path:string)=>request(app).get(`/api/admin/${path}`).set('Cookie',adminCookies);
   for(const path of ['overview','users',`users/${ownerId}`,`users/${ownerId}/credits`,`users/${ownerId}/sessions`,`users/${ownerId}/generations`,`users/${ownerId}/audit`,'credits/ledger','plans','subscriptions','generations','audit','admin-users','settings','experiences','templates','classic-layouts','advanced/frame-styles','advanced/ornaments','preview-sources','usage/overview','usage/users',`usage/users/${ownerId}`,`usage/users/${ownerId}/credits`,`usage/users/${ownerId}/generations`,'usage/generations','usage/providers/overview','usage/providers/accounts'])await a(path).expect(200).expect(response=>assert.match(response.headers['cache-control'],/no-store/));
   assert.ok(Array.isArray((await a('generations')).body.jobs));assert.ok(!JSON.stringify((await a('settings')).body).includes('test-admin-key'));
@@ -97,8 +110,8 @@ export async function nativeApplicationIntegration(db:PrismaClient,sql:pg.Client
   const basic=(await request(app).post('/api/generations').set('Cookie',ownerCookie).send({mode:'BASIC',upload_id:upload.upload_id,template_id:basicId}).expect(202)).body;
   assert.equal(await worker.process(basic.job_id),true,JSON.stringify(await db.nxGenerationJob.findUnique({where:{id:basic.job_id}})));
   assert.equal(calls,1);assert.equal((await db.nxQuotaReservation.findUniqueOrThrow({where:{job_id:basic.job_id}})).status,'CONSUMED');
-  const basicResult=await db.nxResult.findUniqueOrThrow({where:{job_id:basic.job_id}});assert.deepEqual([basicResult.width,basicResult.height],[2160,3240]);
-  assert.match(lastPrompt,/TEMPLATE — PRIMARY VISUAL DIRECTION/);assert.match(lastPrompt,/SUBJECT IDENTITY/);
+  const basicResult=await db.nxResult.findUniqueOrThrow({where:{job_id:basic.job_id}});assert.deepEqual([basicResult.width,basicResult.height],[1024,1536]);
+  assert.match(lastPrompt,/TEMPLATE — IMMUTABLE BASE IMAGE/);assert.match(lastPrompt,/SUBJECT IDENTITY/);
   assert.equal(await worker.process(basic.job_id),false);assert.equal(calls,1);
   await request(app).post(`/api/results/${basicResult.id}/claim`).set('Cookie',ownerCookie).send({}).expect(200);
   await db.nxExperience.update({where:{id:'mini-me'},data:{compatible_frame_style_ids_json:null,compatible_ornament_ids_json:null,internal_prompt:'PRIMARY TEST EXPERIENCE'}});
@@ -124,7 +137,7 @@ export async function nativeApplicationIntegration(db:PrismaClient,sql:pg.Client
   const reservationsBefore=await db.nxQuotaReservation.count();await request(app).post('/api/admin/experiences/mini-me/preview').set('Cookie',adminCookies).expect(202);assert.equal(await db.nxQuotaReservation.count(),reservationsBefore);
   await request(app).post('/api/admin/templates').set('Cookie',adminCookies).send({id:'test-catalog-template',name:'Test'}).expect(201);await request(app).post('/api/admin/templates/test-catalog-template/image').set('Cookie',adminCookies).attach('file',portrait,{filename:'demo.png',contentType:'image/png'}).expect(200);await a('templates/test-catalog-template/image').expect(200);await request(app).delete('/api/admin/templates/test-catalog-template').set('Cookie',adminCookies).expect(204);
   await request(app).post('/api/admin/experiences').set('Cookie',adminCookies).send({id:'test-experience',name:'Test',internal_prompt:'Test authority'}).expect(201);await request(app).patch('/api/admin/experiences/test-experience').set('Cookie',adminCookies).send({status:'published'}).expect(200);await request(app).delete('/api/admin/experiences/test-experience').set('Cookie',adminCookies).expect(204);
-  const roles=['operator','content_manager'] as const;for(const role of roles){const raw=legacyId();await db.nxAdminUser.create({data:{id:`test-${role}`,name:role,role}});await db.nxAuthSession.create({data:{id:tokenHash(raw),is_admin:true,admin_user_id:`test-${role}`,admin_role:role,expires_at:new Date(Date.now()+3600000)}});const cookie=`${adminCookie}=${account.signer.sign(raw)}`;await request(app).get('/api/admin/admin-users').set('Cookie',cookie).expect(403);await request(app).get(`/api/admin/${role==='operator'?'templates':'overview'}`).set('Cookie',cookie).expect(403);await request(app).get(`/api/admin/${role==='operator'?'overview':'templates'}`).set('Cookie',cookie).expect(200);}
+  const roles=['operator','content_manager'] as const;for(const role of roles){const raw=legacyId(),roleAccount=await db.nxAccount.create({data:{id:legacyId(),email:`${role}@role-fixture.invalid`,password_hash:'unused-fixture-password'}});await db.nxAdminUser.create({data:{id:`test-${role}`,name:role,email:roleAccount.email,role}});await db.nxAuthSession.create({data:{id:tokenHash(raw),account_id:roleAccount.id,is_admin:true,admin_user_id:`test-${role}`,admin_role:role,expires_at:new Date(Date.now()+3600000)}});const cookie=`${adminCookie}=${account.signer.sign(raw)}`;await request(app).get('/api/admin/admin-users').set('Cookie',cookie).expect(403);await request(app).get(`/api/admin/${role==='operator'?'templates':'overview'}`).set('Cookie',cookie).expect(403);await request(app).get(`/api/admin/${role==='operator'?'overview':'templates'}`).set('Cookie',cookie).expect(200);}
   const deletion=(await db.nxResult.findUniqueOrThrow({where:{job_id:recovery.job_id}}));const claim=(await request(app).post(`/api/results/${deletion.id}/claim`).set('Cookie',ownerCookie).send({}).expect(200)).body;await request(app).delete(`/api/admin/usage/generations/${recovery.job_id}/result`).set('Cookie',adminCookies).send({confirm:true}).expect(200);await request(app).get(`/api/public/results/${claim.claim_url.split('/r/')[1]}`).expect(404);
   await request(app).post('/api/admin/logout').set('Cookie',adminCookies).expect(200);await request(app).get('/api/admin/overview').set('Cookie',adminCookies).expect(401);
   // Additive migration is idempotent; it does not replace existing entities.

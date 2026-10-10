@@ -1,7 +1,12 @@
+import {analyticsHeaders,trackApiOutcome,captureAnalyticsError} from './analytics.js'
 /** Single frontend-to-backend API contract. Cookies carry guest/account/admin sessions. */
 
 const BASE = '/api'
 import { generationRequestKey,associateGenerationRequest,settleGenerationRequest } from './generationRequest.js'
+import { createReadCache } from './adminReadCache.js'
+
+const adminReadCache = createReadCache()
+export function clearAdminReadCache() { adminReadCache.clear() }
 
 class ApiError extends Error {
   constructor(status, errorCode, message, detail) {
@@ -26,15 +31,32 @@ async function parseError(response) {
 }
 
 async function request(path, options = {}) {
+  const read = !options.method || options.method === 'GET'
+  const admin = path.startsWith('/admin/')
+  if (admin && !read) {
+    clearAdminReadCache()
+    try { return await fetchRequest(path, options) } finally { clearAdminReadCache() }
+  }
+  // Always verify authentication using a live overview request on page startup.
+  if (admin && read && path !== '/admin/overview') {
+    return adminReadCache.read(path, () => fetchRequest(path, options))
+  }
+  return fetchRequest(path, options)
+}
+
+async function fetchRequest(path, options = {}) {
   // Dynamic JSON must not reuse an edge-cached status or another session's data.
   // A unique query also protects clients while an upstream cache rule is fixed.
   const read = !options.method || options.method === 'GET'
   const nonce = read ? (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`) : null
   const url = BASE + path + (read ? `${path.includes('?') ? '&' : '?'}_request=${encodeURIComponent(nonce)}` : '')
-  const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options })
-  if (!response.ok) throw await parseError(response)
+  const response = await fetch(url, { credentials: 'include', cache: 'no-store', ...options,headers:{...analyticsHeaders(),...options.headers} })
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) clearAdminReadCache()
+    const error=await parseError(response);if(response.status>=500)captureAnalyticsError(error,{route:path,surface:'web'});throw error
+  }
   const text = await response.text()
-  return text ? JSON.parse(text) : null
+  const data=text?JSON.parse(text):null;trackApiOutcome(path,options.method||'GET',data,'web');return data
 }
 
 export function getHealth() { return request('/health') }
@@ -46,6 +68,7 @@ export function getOrnaments() { return request('/advanced/ornaments') }
 export function getUsage() { return request('/account/usage') }
 export function getAccountMe() { return request('/account/me') }
 export function getAccountCenter() { return request('/account/center') }
+export function createTopUpCheckout(credits) { return request('/account/topups/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credits }) }) }
 export function updateAccountProfile(body) { return request('/account/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) }
 export function revokeAccountSession(id) { return request('/account/sessions/' + encodeURIComponent(id) + '/revoke', { method: 'POST' }) }
 export function revokeAllAccountSessions() { return request('/account/sessions/revoke-all', { method: 'POST' }) }
@@ -75,6 +98,8 @@ export async function createGeneration(uploadId, mode, templateId = null, experi
   if (mode === 'CLASSIC') {
     body.layout_id = options.layoutId
     body.capture_upload_ids = options.captureUploadIds
+    if (options.eventName) body.event_name = options.eventName
+    if (options.capturedAt) body.captured_at = options.capturedAt
   }
   if (mode === 'BASIC') body.template_id = templateId
   if (mode === 'ADVANCED') {
@@ -94,6 +119,8 @@ export async function getGeneration(jobId) {
   return job
 }
 export function getResult(resultId) { return request('/results/' + encodeURIComponent(resultId)) }
+export function deleteResultPhoto(resultId) { return request('/results/' + encodeURIComponent(resultId), { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }) }) }
+export function deleteAdminResultPhoto(jobId) { return request('/admin/usage/generations/' + encodeURIComponent(jobId) + '/result', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }) }) }
 export function startKioskSession(newRun = false) {
   return request('/kiosk/session' + (newRun ? '?new_run=true' : ''), { method: 'POST' })
 }
@@ -113,9 +140,10 @@ export function resultImageUrl(resultId) { return BASE + '/results/' + encodeURI
 export function resultDownloadUrl(resultId) { return BASE + '/results/' + encodeURIComponent(resultId) + '/download' }
 export function uploadPreviewUrl(uploadId) { return BASE + '/uploads/' + encodeURIComponent(uploadId) + '/preview' }
 
-export function loginAdmin(token) {
-  return request('/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) })
+export function loginAdmin(email, password) {
+  return request('/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(email ? { email, password } : {}) })
 }
+export function getAdminMe() { return fetchRequest('/admin/me') }
 
 export function logoutAdmin() { return request('/admin/logout', { method: 'POST' }) }
 

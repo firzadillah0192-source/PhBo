@@ -31,3 +31,12 @@ test('Basic template and engine errors remain distinct from photo errors', () =>
   assert.equal(generationFailureAction(job), 'retry')
   assert.equal(generationFailureActionLabel(job), 'Try again')
 })
+
+
+test('template and generated face failures do not ask customers to replace a valid photo', () => {
+  for (const error_code of ['BASIC_TEMPLATE_FACE_NOT_FOUND', 'BASIC_TEMPLATE_MULTIPLE_FACES', 'BASIC_EDIT_FACE_NOT_FOUND']) {
+    const job = {mode:'BASIC',error_code}
+    assert.equal(generationFailureAction(job),'retry')
+    assert.doesNotMatch(generationFailureMessage(job), /front-facing|one clear face|Choose.*photo/i)
+  }
+})

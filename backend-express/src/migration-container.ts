@@ -59,7 +59,7 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
   const provider=config.AI_PROVIDER==='9router'?new NativeNineRouterProvider({baseUrl:config.NINEROUTER_BASE_URL,key:config.NINEROUTER_API_KEY,timeoutMs:config.NINEROUTER_TIMEOUT_SECONDS*1000,resultOrigins:config.PROVIDER_RESULT_ORIGINS}):new NativeNullProvider();
   const images=new NativeImageEngineService(imageBase,config.AI_ENGINE_API_KEY);
   const classic=new ClassicGenerationRunner(model,uploads,assets,new ClassicImageEngineService(imageBase?`${imageBase}/compose-classic`:'',config.AI_ENGINE_API_KEY));
-  const runner=new NativeGenerationRunner(model,new ProviderRunModel(db),uploads,classic,images,provider,config.BASIC_MODEL_EXPERIENCE_ID);
+  const runner=new NativeGenerationRunner(model,new ProviderRunModel(db),uploads,classic,images,provider,config.BASIC_MODEL_EXPERIENCE_ID,assets);
   const worker=new CustomerGenerationWorkerService(model,runner,join(config.RUNTIME_DIR,'results'),objects);
   const adminModel=new AdminDataModel(db),adminCatalog=new AdminCatalogService(adminModel,assets,{templatesDir:config.TEMPLATES_DIR,tmpDir:join(config.RUNTIME_DIR,'tmp'),minDimension:config.UPLOAD_MIN_DIMENSION,maxDimension:config.UPLOAD_MAX_DIMENSION});
   const operations=new AdminOperationsService(adminModel,assets,{environment:config.NODE_ENV,ai_provider:config.AI_PROVIDER,google_configured:Boolean(config.GOOGLE_CLIENT_ID.trim()),upload_max_bytes:config.UPLOAD_MAX_BYTES,upload_min_dimension:config.UPLOAD_MIN_DIMENSION,upload_max_dimension:config.UPLOAD_MAX_DIMENSION,admin_default_role:config.ADMIN_DEFAULT_ROLE});

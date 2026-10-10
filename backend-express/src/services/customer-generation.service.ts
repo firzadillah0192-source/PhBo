@@ -10,6 +10,7 @@ import { generationRequest } from './generation-request.js';
 import type { KioskGenerationContext } from '../models/native-kiosk.model.js';
 import { composeAdvancedPrompt,composeBasicPrompt } from './advanced-prompt.service.js';
 import type { GenerationSnapshot } from './generation-snapshot.js';
+import { randomBytes } from 'node:crypto';
 
 export type GenerationQueue = { enqueue(id: string): Promise<void> };
 export class CustomerGenerationService {
@@ -38,7 +39,10 @@ export class CustomerGenerationService {
       if (!await this.assets.file(template.image_path)) throw new AppError(404, 'TEMPLATE_NOT_FOUND', 'Template unavailable');
       const preset = await this.model.experience(this.basicModelExperienceId);
       if (preset?.status!=='published' || !preset.enabled || !preset.model) throw new AppError(503,'AI_MODEL_NOT_CONFIGURED','The AI generation model is not configured.');
-      snapshot = { version: 1,mode: 'BASIC',prompt: composeBasicPrompt(template.name,template.description),model: preset.model };
+      let frozen;
+      try { frozen = await this.assets.freezeBasicTemplate(template); }
+      catch (error) { if (error instanceof CatalogAssetError) throw new AppError(422, 'BASIC_TEMPLATE_INVALID', 'Basic template is invalid.'); throw error; }
+      snapshot = { version: 2,mode: 'BASIC',prompt: composeBasicPrompt(template.name,template.description),model: preset.model,template: frozen };
     } else if (input.mode === 'CLASSIC') {
       const layout = await this.model.layout(input.layout_id!);
       if (!layout?.active) throw new AppError(404, 'CLASSIC_LAYOUT_NOT_FOUND', 'Classic layout unavailable');
@@ -50,6 +54,13 @@ export class CustomerGenerationService {
         catch (error) { if (error instanceof AppError) throw new AppError(422, 'CLASSIC_CAPTURE_UNAVAILABLE', 'A capture is unavailable'); throw error; }
       }
       snapshot = { version: 1,mode: 'CLASSIC',layout: await this.assets.freezeLayout(layout) };
+      if (layout.id === 'classic-floral-event-001') {
+        if (kiosk) throw new AppError(422, 'CLASSIC_LAYOUT_INVALID', 'Event personalization is available in the web studio.');
+        if (!input.event_name) throw new AppError(422, 'EVENT_NAME_REQUIRED', 'Isi nama event sebelum mengambil foto.');
+        const capturedAt = input.captured_at ? new Date(input.captured_at) : source.upload.created_at;
+        if (capturedAt.getTime() > source.upload.created_at.getTime() + 60000 || capturedAt.getTime() < source.upload.created_at.getTime() - 3600000) throw new AppError(422, 'CAPTURE_TIME_INVALID', 'Waktu pengambilan foto tidak valid. Ambil foto kembali.');
+        snapshot.personalization = { event_name: input.event_name.normalize('NFC'), captured_at: capturedAt.toISOString(), claim_token: randomBytes(32).toString('base64url') };
+      }
     } else {
       const experience = await this.model.experience(input.experience_id!);
       if (experience?.status !== 'published') throw new AppError(404, 'EXPERIENCE_NOT_FOUND', 'Experience unavailable');
@@ -76,8 +87,10 @@ export class CustomerGenerationService {
     const job = await this.model.find(id);
     const owned = job?.account_id ? job.account_id === identity.account?.id : Boolean(job?.guest_id && job.guest_id === identity.guest?.id);
     if (!job || !owned) throw new AppError(404, 'JOB_NOT_FOUND', 'Generation job unavailable');
-    const result = await this.model.result(job.id);
-    return { ...this.response(job), provider: job.provider, model: job.model, error_code: job.error_code, error_message: job.error_message,
+    const billing = await this.model.billing(job.id, job.state === 'COMPLETED');
+    const paid = !billing || billing.status === 'PAID';
+    const result = paid ? await this.model.result(job.id) : null;
+    return { ...this.response(job), credit_charge: billing ? { status: billing.status, credits: billing.credits, calculation: billing.calculation_json ? JSON.parse(billing.calculation_json) : null } : null, provider: job.provider, model: job.model, error_code: job.error_code, error_message: job.error_message,
       result_id: result?.id ?? null, result_url: result ? `/api/results/${result.id}` : null,
       download_url: result ? `/api/results/${result.id}/download` : null, updated_at: job.updated_at,
       started_at: job.started_at, finished_at: job.finished_at };

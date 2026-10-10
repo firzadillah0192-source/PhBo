@@ -60,7 +60,7 @@ export class CustomerCatalogService {
         const config = await this.assets.validateLayout(row);
         layouts.push({ id: row.id, slug: row.slug, name: row.name, canvas_width: row.canvas_width,
           canvas_height: row.canvas_height, shot_count: row.shot_count, slots: config.slots,
-          preview_url: `/api/classic/layouts/${row.id}/preview`, enabled: row.active, sort_order: row.sort_order,
+          preview_url: `/api/classic/layouts/${row.id}/preview`, enabled: row.active, sort_order: row.sort_order, requires_event_name: row.id === 'classic-floral-event-001',
           theme_slug: config.theme_slug || 'classic-originals', theme_name: config.theme_name || 'Classic Originals' });
       } catch (error) { if (!(error instanceof CatalogAssetError)) throw error; }
     }

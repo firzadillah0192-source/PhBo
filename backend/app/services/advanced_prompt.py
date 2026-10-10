@@ -16,8 +16,14 @@ COMPOSITION_RULES = (
     "the scene rather than adding a fixed border. No stretching."
 )
 BRANDING_RULES = (
-    "Reserve a clean photobooth branding region near the lower edge. "
-    "Do not generate logos or readable brand text inside that region."
+    "The required footer lettering below is an explicit exception to any earlier "
+    "instruction forbidding text or watermarks. "
+    'Fill the branding box or footer within the lower part of the frame with the exact '
+    'text "NXBooth" and a smaller line underneath reading "Powered by GenNexByte". '
+    "Integrate both lines into that frame area with clear, legible lettering and materials "
+    "appropriate to the selected experience. Keep all branding inside the frame's footer, "
+    "without covering the subject. Do not leave the branding box empty, add a separate "
+    "black panel, duplicate the branding, or add any other text."
 )
 
 FRAME_STYLE_SEEDS = (
@@ -67,14 +73,13 @@ def validate_advanced_selection(experience: ManagedExperience, frame: AdvancedFr
         raise AdvancedSelectionError("Ornament is incompatible with this experience")
 
 
-def compose_advanced_prompt(experience_prompt: str, frame_style_prompt: str, ornament_prompts: list[str]) -> str:
+def compose_advanced_prompt(experience_prompt: str, frame_style_prompt: str) -> str:
+    """Compose AI art direction; camera ornaments must never enter this prompt."""
     if not experience_prompt.strip() or not frame_style_prompt.strip():
         raise AdvancedSelectionError("Experience and frame prompts are required")
     sections = [
         "EXPERIENCE — PRIMARY VISUAL AUTHORITY\n" + experience_prompt.strip(),
         "FRAME STYLE\n" + frame_style_prompt.strip() + "\n" + STYLE_PRINCIPLE,
     ]
-    if ornament_prompts:
-        sections.append("OPTIONAL ORNAMENTS\n" + "\n".join(item.strip() for item in ornament_prompts))
-    sections.extend(("PRINT AND COMPOSITION\n" + COMPOSITION_RULES, "BRANDING SAFE AREA\n" + BRANDING_RULES))
+    sections.extend(("PRINT AND COMPOSITION\n" + COMPOSITION_RULES, "FRAME FOOTER BRANDING\n" + BRANDING_RULES))
     return "\n\n".join(sections)

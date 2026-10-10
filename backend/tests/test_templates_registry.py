@@ -21,6 +21,35 @@ def test_mvp_template_is_present():
     assert "sci-fi-space-commander-001" in ids
 
 
+def test_ai_basic_catalog_includes_curated_theme_variants():
+    assets_dir = Path(__file__).resolve().parents[2] / "templates"
+    registry = TemplateRegistry(templates_dir=assets_dir)
+    ids = {template.id for template in registry.list()}
+    expected = {
+        "sci-fi-space-commander-framed-001",
+        "sci-fi-space-commander-female-001",
+        "sci-fi-space-commander-hijab-001",
+        "cyberpunk-neon-001",
+        "cyberpunk-neon-man-001",
+        "cyberpunk-neon-hijab-001",
+        "aviation-captain-001",
+        "aviation-captain-man-001",
+        "aviation-captain-hijab-001",
+        "royal-nusantara-001",
+        "royal-nusantara-man-001",
+        "royal-nusantara-hijab-001",
+        "arctic-expedition-001",
+        "arctic-expedition-man-001",
+        "arctic-expedition-hijab-001",
+    }
+    assert expected <= ids
+    assert len(ids & expected) == 15
+    for template_id in expected:
+        template = registry.get(template_id)
+        assert (template.width, template.height) == (1024, 1536)
+        assert template.face_region is not None
+
+
 def test_mvp_template_is_gettable():
     template = get_registry().get("sci-fi-space-commander-001")
     assert template.name == "Sci-Fi Space Commander"

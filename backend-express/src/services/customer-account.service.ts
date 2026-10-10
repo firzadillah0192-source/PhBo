@@ -6,6 +6,7 @@ import { accountCookie, guestCookie, CustomerCookieSigner, hashCustomerPassword,
 import type { GoogleVerifier } from './google-identity.service.js';
 import type { CatalogAssetsService } from './catalog-assets.service.js';
 import type { NxPlan, NxSubscription } from '@prisma/client';
+import { webResultExpiresAt } from './result-retention.js';
 
 export type CustomerIdentity = { account: NxAccount | null; guest: NxGuestSession | null; clearAccount: boolean; newGuest: string | null; sessionId: string };
 type Identity = CustomerIdentity;
@@ -35,11 +36,14 @@ export class CustomerAccountService {
       avatar_url: account?.avatar_url ?? null, provider, created_at: account?.created_at ?? null };
   }
   async me(identity: Identity) { return this.response(identity.account, identity.account ? await this.model.provider(identity.account.id) : null); }
-  usage(identity: Identity) {
+  async usage(identity: Identity) {
     const owner = identity.account ?? identity.guest;
     if (!owner) throw new AppError(500, 'IDENTITY_UNAVAILABLE', 'Identity unavailable');
-    return { authenticated: Boolean(identity.account), quota_type: identity.account ? 'account' : 'guest', ai_total: owner.ai_quota_total,
-      ai_used: owner.ai_quota_used, ai_reserved: owner.ai_quota_reserved, ai_remaining: Math.max(0, owner.ai_quota_total - owner.ai_quota_used - owner.ai_quota_reserved) };
+    const snapshot = identity.account ? await this.model.wallet(identity.account.id) : null;
+    const wallet = snapshot ? { free_remaining: snapshot.free_remaining, top_up_remaining: snapshot.top_up_remaining, free_allocation: snapshot.free_allocation, reset_every_days: snapshot.reset_every_days, next_reset_at: snapshot.next_reset_at, spend_order: snapshot.spend_order } : null;
+    return { credit_wallet: wallet, authenticated: Boolean(identity.account), quota_type: identity.account ? 'account' : 'guest',
+      ...(snapshot?.usage ?? { ai_total: owner.ai_quota_total, ai_used: owner.ai_quota_used, ai_reserved: owner.ai_quota_reserved, ai_remaining: Math.max(0, owner.ai_quota_total - owner.ai_quota_used - owner.ai_quota_reserved) }) };
+
   }
   async signup(email: string, password: string, cookies: Record<string, unknown>) {
     email = email.trim().toLowerCase();
@@ -99,17 +103,21 @@ export class CustomerAccountService {
     const creations = [];
     for (const job of data.jobs) {
       const result = await this.model.creationResult(job.id);
+      if (result?.deleted_at) continue;
+      const expiresAt = result && !result.kiosk ? webResultExpiresAt(result.created_at) : null;
+      const retentionExpired = Boolean(expiresAt && expiresAt <= new Date());
       const experience = job.experience_id ? await this.model.creationExperience(job.experience_id) : null;
       const template = job.template_id ? await this.model.creationTemplate(job.template_id) : null;
-      const available = result && !result.deleted_at && this.assets ? await this.assets.exists(result.storage_path) : false;
+      const billing = await this.model.creationBilling(job.id);
+      const available = !retentionExpired && (!billing || billing.status === 'PAID') && result && this.assets ? await this.assets.exists(result.storage_path) : false;
       creations.push({ result_id: result?.id ?? null, id: result?.id ?? job.id, job_id: job.id, mode: job.mode,
-        title: experience?.name || template?.name || job.experience_id || job.template_id || 'Photobooth creation', status: job.state,
+        credits_spent: billing?.status === 'PAID' ? billing.credits : null, title: experience?.name || template?.name || job.experience_id || job.template_id || 'Photobooth creation', status: billing && billing.status !== 'PAID' && job.state === 'COMPLETED' ? billing.status : job.state,
         experience_id: job.experience_id, template_id: job.template_id || null, image_url: available ? `/api/results/${result!.id}/image` : null,
-        download_url: available ? `/api/results/${result!.id}/download` : null, created_at: job.created_at, expired: Boolean(job.state === 'COMPLETED' && result && !available) });
+        download_url: available ? `/api/results/${result!.id}/download` : null, created_at: job.created_at, expires_at: expiresAt, expired: retentionExpired || Boolean(job.state === 'COMPLETED' && result && !available && (!billing || billing.status === 'PAID')) });
     }
-    return { account: await this.me(identity), usage: { ...this.usage(identity), used_this_period: Math.abs(data.spent) }, current_plan: planResponse(data.plan, data.subscription), plans: data.plans.map(plan => planResponse(plan)), creations,
+    return { account: await this.me(identity), usage: { ...await this.usage(identity), used_this_period: Math.abs(data.spent) }, current_plan: planResponse(data.plan, data.subscription), plans: data.plans.map(plan => planResponse(plan)), creations,
       sessions: data.sessions.map(session => ({ id: session.id, created_at: session.created_at, last_seen_at: session.last_seen_at, expires_at: session.expires_at, active: session.expires_at > new Date(), is_current: session.id === identity.sessionId })),
-      billing: { enabled: false, message: 'Billing will become available when paid plans launch.', payment_method_available: false, invoices_available: false },
-      privacy: { creation_deletion_available: true, retention_configured: false, retention_message: 'Generated result photos can be deleted from My Creations. Automatic retention is not configured.', export_available: false, deletion_available: false } };
+      billing: { enabled: false, message: 'Pembayaran isi kredit belum terhubung. Tidak ada tagihan otomatis.', payment_method_available: false, invoices_available: false },
+      privacy: { creation_deletion_available: true, retention_configured: true, retention_days: 14, retention_message: 'Foto hasil di web disimpan selama 14 hari sejak selesai dibuat, lalu dihapus otomatis. Download sebelum kedaluwarsa; foto juga bisa dihapus kapan saja dari My Creations.', export_available: false, deletion_available: false } };
   }
 }

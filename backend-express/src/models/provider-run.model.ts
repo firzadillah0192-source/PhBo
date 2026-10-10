@@ -14,8 +14,8 @@ export function providerRunMetadata(meta: OperationalMeta): Prisma.NxProviderRun
   if (typeof meta.usage_available === 'string') data.usage_available = meta.usage_available.toLowerCase() === 'true';
   if (meta.usage && typeof meta.usage === 'object') {
     const usage: Record<string, number> = {};
-    for (const key of ['input_tokens', 'output_tokens', 'total_tokens', 'input_text_tokens', 'input_image_tokens', 'output_image_tokens', 'billable_units']) {
-      const value = meta.usage[key]; if (Number.isSafeInteger(value) && value >= 0) { usage[key] = value; Object.assign(data, { [key]: value }); }
+    for (const key of ['input_tokens', 'output_tokens', 'total_tokens', 'input_text_tokens', 'input_image_tokens', 'output_image_tokens', 'cached_text_tokens', 'cached_image_tokens', 'cached_tokens', 'billable_units']) {
+      const value = meta.usage[key]; if (Number.isSafeInteger(value) && value >= 0) { usage[key] = value; if (!key.startsWith('cached_')) Object.assign(data, { [key]: value }); }
     }
     data.provider_usage_raw_json = JSON.stringify(usage); data.usage_available = true;
   }

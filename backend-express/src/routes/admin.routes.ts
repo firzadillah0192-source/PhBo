@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { rateLimit } from 'express-rate-limit';
 import type { NativeAdminServices } from '../controllers/admin.controller.js';
 import { adminController } from '../controllers/admin.controller.js';
 export function nativeAdminRoutes(services:NativeAdminServices,maximum:number){
@@ -7,7 +8,8 @@ export function nativeAdminRoutes(services:NativeAdminServices,maximum:number){
   // Authenticate before allocating upload memory.
   const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:maximum,files:1,fields:4}}).single('file');
   const authorizedUpload=async(req:Parameters<typeof upload>[0],res:Parameters<typeof upload>[1],next:Parameters<typeof upload>[2])=>{try{const actor=await services.auth.resolve(req.cookies||{},req.get('x-admin-token'));services.auth.requireRole(actor,'content_manager');upload(req,res,next);}catch(error){next(error);}};
-  router.post('/login',c.login);router.post('/logout',c.logout);
+  const loginLimit=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:'draft-8',legacyHeaders:false,message:{detail:{error_code:'RATE_LIMITED',message:'Too many sign-in attempts. Try again later.'}}});
+  router.post('/login',loginLimit,c.login);router.post('/logout',c.logout);router.get('/me',c.me);
   router.get('/experiences',c.experiences);router.post('/experiences',c.createExperience);router.post('/experiences/publish-ready',c.publish);
   router.patch('/experiences/:id',c.patchExperience);router.delete('/experiences/:id',c.deleteExperience);
   router.get('/templates',c.templates);router.post('/templates',c.createTemplate);router.patch('/templates/:id',c.patchTemplate);router.delete('/templates/:id',c.deleteTemplate);

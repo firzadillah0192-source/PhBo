@@ -105,7 +105,7 @@ def _unavailable(message: str = "This photo is no longer available.") -> HTTPExc
 
 def load_owned_result(db: Session, result_id: str, identity: Identity) -> Result:
     result = db.get(Result, result_id)
-    if result is None:
+    if result is None or result.deleted_at is not None:
         raise _unavailable()
     job = result.job
     if job.account_id is not None:
@@ -208,7 +208,7 @@ def get_claim_by_token(db: Session, token: str) -> ResultClaim:
     if not token or len(token) < 32 or len(token) > 256:
         raise _unavailable()
     claim = db.query(ResultClaim).filter(ResultClaim.token_hash == token_hash(token)).one_or_none()
-    if claim is None or claim.result is None:
+    if claim is None or claim.result is None or claim.result.deleted_at is not None:
         raise _unavailable()
     if claim.is_revoked:
         raise _unavailable()

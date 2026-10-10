@@ -3,8 +3,12 @@ import { CreditAccountingModel } from './credit-accounting.model.js';
 import { legacyId } from '../services/customer-credentials.service.js';
 import { WorkerLeaseModel } from './worker-lease.model.js';
 import type { GenerationRequest } from '../services/generation-request.js';
+import { readGenerationCharge } from '../services/generation-credit-charge.service.js';
 import { AppError } from '../lib/errors.js';
 import type { KioskGenerationContext } from './native-kiosk.model.js';
+import { parseGenerationSnapshot } from '../services/generation-snapshot.js';
+import { tokenHash } from '../services/customer-credentials.service.js';
+import { webResultExpiresAt } from '../services/result-retention.js';
 
 export class CustomerGenerationModel {
   private readonly credits: CreditAccountingModel;
@@ -17,6 +21,13 @@ export class CustomerGenerationModel {
   ornaments(ids: string[]) { return this.db.nxOrnament.findMany({ where: { id: { in: ids } } }); }
   find(id: string) { return this.db.nxGenerationJob.findUnique({ where: { id } }); }
   result(job_id: string) { return this.db.nxResult.findFirst({ where: { job_id, deleted_at: null } }); }
+  billing(id: string, reconcile = false) {
+    return this.db.$transaction(async tx => {
+      const row = await readGenerationCharge(tx, id);
+      if (reconcile && row && ['NEEDS_TOP_UP','PENDING_USAGE'].includes(row.status)) await this.credits.settleIn(tx, id, true);
+      return readGenerationCharge(tx, id);
+    });
+  }
   async eventSlugForJob(jobId: string) {
     const rows=await this.db.$queryRaw<{slug:string}[]>`SELECT e.slug FROM generation_jobs j JOIN events e ON e.id=j.event_id WHERE j.id=${jobId}`;
     return rows[0]?.slug ?? null;
@@ -76,7 +87,10 @@ export class CustomerGenerationModel {
       const job = await tx.nxGenerationJob.create({ data });
       if (kiosk) await tx.$executeRaw`UPDATE generation_jobs SET kiosk_session_id=${kiosk.id},event_id=${eventId} WHERE id=${job.id}`;
       if (job.account_id) await tx.nxAccount.update({ where: { id: job.account_id }, data: { last_activity_at: new Date() } });
-      if (job.mode === 'BASIC' || job.mode === 'ADVANCED') await this.credits.reserveIn(tx, job.id, { account_id: job.account_id, guest_id: job.guest_id });
+      const owner = { account_id: job.account_id, guest_id: job.guest_id };
+      if (kiosk) {
+        if (job.mode !== 'CLASSIC') await this.credits.reserveKioskIn(tx, job.id, owner);
+      } else await this.credits.reserveIn(tx, job.id, owner);
       await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: job.id, event_type: 'job_queued', detail: 'Generation job queued' } });
       return job;
   }
@@ -119,7 +133,12 @@ export class CustomerGenerationModel {
         state: 'COMPLETED', provider: result.provider, model: result.model, updated_at: new Date(), finished_at: new Date(), error_code: null, error_message: null,
       } });
       if (!changed.count) return false;
-      await tx.nxResult.create({ data: result });
+      const saved = await tx.nxResult.create({ data: result });
+      const job = await tx.nxGenerationJob.findUniqueOrThrow({ where: { id } });
+      const snapshot = job.mode === 'CLASSIC' ? parseGenerationSnapshot(job.engine_config_json,job.mode) : null;
+      if (snapshot?.mode === 'CLASSIC' && snapshot.personalization) {
+        await tx.nxResultClaim.create({ data: { id: legacyId(), result_id: saved.id, token_hash: tokenHash(snapshot.personalization.claim_token), expires_at: webResultExpiresAt(saved.created_at) } });
+      }
       await this.credits.settleIn(tx, id, true);
       await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: id, event_type: 'result_stored', detail: 'Generation result stored' } });
       await this.leases.releaseIn(tx, 'customer', id, token);

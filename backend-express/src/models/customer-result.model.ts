@@ -1,13 +1,21 @@
 import type { PrismaClient, NxResult } from '@prisma/client';
 import { legacyId, tokenHash } from '../services/customer-credentials.service.js';
 import { AppError } from '../lib/errors.js';
+import { CreditAccountingModel } from './credit-accounting.model.js';
+import { WEB_RESULT_RETENTION_MS } from '../services/result-retention.js';
 
 export class CustomerResultModel {
   constructor(private readonly db: PrismaClient) {}
+  async assertPaid(jobId: string) {
+    const [charge] = await this.db.$queryRaw<{ status: string }[]>`SELECT status FROM generation_credit_charges WHERE job_id=${jobId}`;
+    if (charge && charge.status !== 'PAID') throw new AppError(402, charge.status === 'PENDING_USAGE' ? 'CREDIT_USAGE_UNAVAILABLE' : 'GENERATION_PAYMENT_PENDING', charge.status === 'PENDING_USAGE' ? 'Rincian pemakaian belum tersedia; kredit belum dipotong.' : 'Isi kredit untuk membuka hasil ini.');
+  }
   async result(id: string) {
     const result = await this.db.nxResult.findUnique({ where: { id } });
     const job = result ? await this.db.nxGenerationJob.findUnique({ where: { id: result.job_id } }) : null;
-    return result && job ? { result, job } : null;
+    if (!result || !job) return null;
+    const [scope] = await this.db.$queryRaw<{ kiosk_session_id: string | null }[]>`SELECT kiosk_session_id FROM generation_jobs WHERE id=${job.id}`;
+    return { result, job, kiosk: Boolean(scope?.kiosk_session_id) };
   }
   async claim(token: string) {
     const claim = await this.db.nxResultClaim.findUnique({ where: { token_hash: tokenHash(token) } });
@@ -44,11 +52,18 @@ export class CustomerResultModel {
   async expired(claimId: string, jobId: string) {
     await this.db.nxGenerationEvent.create({ data: { id: legacyId(), job_id: jobId, event_type: 'claim_expired', detail: 'Expired public result claim was requested', metadata_json: JSON.stringify({ claim_id: claimId }) } });
   }
-  async markDeleted(result: NxResult, actorType: 'owner' | 'admin' = 'owner') {
+  async expiredResults(now = new Date()) {
+    return this.db.$queryRaw<NxResult[]>`SELECT r.* FROM results r JOIN generation_jobs j ON j.id=r.job_id
+      WHERE r.deleted_at IS NULL AND j.kiosk_session_id IS NULL AND r.created_at <= ${new Date(now.getTime() - WEB_RESULT_RETENTION_MS)}
+      ORDER BY r.created_at LIMIT 100`;
+  }
+  async markDeleted(result: NxResult, actorType: 'owner' | 'admin' | 'retention' = 'owner') {
     await this.db.$transaction(async tx => {
+      // Only unsettled reservations are released. Previously paid credits stay spent.
+      await new CreditAccountingModel(this.db).settleIn(tx, result.job_id, false);
       await tx.nxResult.update({ where: { id: result.id }, data: { deleted_at: new Date() } });
       await tx.nxResultClaim.updateMany({ where: { result_id: result.id }, data: { is_revoked: true } });
-      await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: result.job_id, event_type: 'result_photo_deleted', detail: 'Generated photo deleted', metadata_json: JSON.stringify({ result_id: result.id, actor_type: actorType }) } });
+      await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: result.job_id, event_type: actorType === 'retention' ? 'result_photo_expired' : 'result_photo_deleted', detail: 'Generated photo deleted', metadata_json: JSON.stringify({ result_id: result.id, actor_type: actorType }) } });
     });
   }
 }

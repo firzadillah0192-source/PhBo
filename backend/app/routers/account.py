@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.exc import IntegrityError
@@ -49,7 +49,7 @@ from app.auth_schemas import (
 )
 from app.dependencies import get_identity
 from app.db import get_db
-from app.models import ErrorCode, GenerationJob, ManagedExperience, ManagedTemplate, Upload
+from app.models import ErrorCode, GenerationJob, ManagedExperience, ManagedTemplate, Result, Upload
 from app.services.control_plane import ensure_signup_grant
 from app.services.google_auth import verify_google_id_token
 from app.services.quota import usage_for
@@ -270,6 +270,7 @@ def _account_creation(db: Session, job: GenerationJob) -> AccountCreationRespons
     image_url = f"/api/results/{result.id}/image" if result and file_available else None
     download_url = f"/api/results/{result.id}/download" if result and file_available else None
     return AccountCreationResponse(
+        result_id=result.id if result else None,
         id=result.id if result else job.id,
         job_id=job.id,
         mode=job.mode,
@@ -331,7 +332,9 @@ def account_center(
     ]
     jobs = (
         db.query(GenerationJob)
+        .outerjoin(Result, Result.job_id == GenerationJob.id)
         .filter(GenerationJob.account_id == account.id)
+        .filter(or_(Result.id.is_(None), Result.deleted_at.is_(None)))
         .order_by(GenerationJob.created_at.desc())
         .limit(100)
         .all()
@@ -365,8 +368,9 @@ def account_center(
             "invoices_available": False,
         },
         privacy={
+            "creation_deletion_available": True,
             "retention_configured": False,
-            "retention_message": "Retention and deletion controls are not configured in this environment yet.",
+            "retention_message": "Generated result photos can be deleted from My Creations. Automatic retention is not configured.",
             "export_available": False,
             "deletion_available": False,
         },

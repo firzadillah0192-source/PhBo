@@ -50,12 +50,44 @@ async def prepare_provider(image: UploadFile = File(...), authorization: str | N
 async def prepare_advanced(image: UploadFile = File(...), authorization: str | None = Header(default=None)):
     require_engine_key(authorization)
     data = await image_bytes(image)
-    from app.services.branding import prepare_advanced_result
+    from print_preparation import prepare_advanced_result
     try:
         output = await run_in_threadpool(prepare_advanced_result, data)
         return Response(output, media_type='image/png')
     except (OSError, ValueError, Image.DecompressionBombError):
         raise HTTPException(422, detail={'error_code': 'GENERATION_IMAGE_INVALID'}) from None
+
+
+async def basic_operation(operation, *data):
+    from app.generation.basic.errors import BasicGenerationError
+    from basic_edit import BasicEditError
+    try:
+        return await run_in_threadpool(operation, *data)
+    except (BasicEditError, BasicGenerationError) as error:
+        raise HTTPException(422, detail={'error_code': error.code}) from None
+    except (OSError, ValueError, Image.DecompressionBombError):
+        raise HTTPException(422, detail={'error_code': 'BASIC_INPUT_INVALID'}) from None
+
+
+@api.post('/prepare-basic-identity')
+async def prepare_basic_identity(image: UploadFile = File(...), authorization: str | None = Header(default=None)):
+    require_engine_key(authorization)
+    from basic_edit import prepare_identity
+    return Response(await basic_operation(prepare_identity, await image_bytes(image)), media_type='image/jpeg')
+
+
+@api.post('/prepare-basic-template')
+async def prepare_basic_template(image: UploadFile = File(...), authorization: str | None = Header(default=None)):
+    require_engine_key(authorization)
+    from basic_edit import prepare_template
+    return Response(await basic_operation(prepare_template, await image_bytes(image)), media_type='image/png')
+
+
+@api.post('/compose-basic-edit')
+async def compose_basic(image: UploadFile = File(...), template: UploadFile = File(...), authorization: str | None = Header(default=None)):
+    require_engine_key(authorization)
+    from basic_edit import compose_basic_edit
+    return Response(await basic_operation(compose_basic_edit, await image_bytes(template), await image_bytes(image)), media_type='image/png')
 
 
 @api.post('/compose-classic')
@@ -102,7 +134,21 @@ async def compose_reviewed_classic(metadata: str = Form(...), images: list[Uploa
                                      layout_config_json=json.dumps({'slots': slots}), frame_asset_path=str(asset))
             try:
                 result = compose(layout, captures)
-            except (ClassicLayoutError, Image.DecompressionBombError, OSError):
+                if config.get('personalization') is not None:
+                    from datetime import datetime
+                    from classic_event_footer import render_footer
+                    details = config['personalization']
+                    if count != 3 or not isinstance(details, dict) or set(details) != {'event_name', 'captured_at', 'download_url'}:
+                        raise ValueError('Invalid event personalization')
+                    with Image.open(io.BytesIO(result)) as composed:
+                        opaque = Image.new('RGBA', (width, height), '#073957')
+                        opaque.alpha_composite(composed.convert('RGBA'))
+                    rendered = render_footer(opaque, Path('/engine/event-template'), details['event_name'],
+                                             datetime.fromisoformat(details['captured_at'].replace('Z', '+00:00')), details['download_url'])
+                    buffer = io.BytesIO()
+                    rendered.convert('RGB').save(buffer, 'PNG', dpi=(600, 600))
+                    result = buffer.getvalue()
+            except (ClassicLayoutError, Image.DecompressionBombError, OSError, ValueError, KeyError, TypeError):
                 raise HTTPException(422, detail={'error_code': 'CLASSIC_INPUT_INVALID'}) from None
             if len(result) > MAX_BYTES:
                 raise HTTPException(422, detail={'error_code': 'CLASSIC_INPUT_INVALID'})

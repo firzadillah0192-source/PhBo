@@ -14,18 +14,28 @@ from app.models import ErrorCode, Result
 from app.schemas import ResultResponse
 from app.services import storage
 from app.services.classic_format import classic_print_bytes
+from app.services.result_deletion import ResultDeleteRequest, delete_result_photo
 
 router = APIRouter(tags=["results"])
 
 
 def _load_result(result_id: str, db: Session, identity: Identity) -> Result:
     result = db.get(Result, result_id)
-    if result is None:
+    if result is None or result.deleted_at is not None:
         raise HTTPException(status_code=404, detail={"error_code": ErrorCode.RESULT_NOT_FOUND, "message": f"result '{result_id}' not found"})
     job = result.job
-    if (job.account_id and job.account_id != identity.account_id) or (job.guest_id and job.guest_id != identity.guest_id):
+    owned = identity.account_id == job.account_id if job.account_id else bool(job.guest_id and job.guest_id == identity.guest_id)
+    if not owned:
         raise HTTPException(status_code=404, detail={"error_code": ErrorCode.RESULT_NOT_FOUND, "message": f"result '{result_id}' not found"})
     return result
+
+
+@router.delete("/api/results/{result_id}", summary="Delete an owned generated photo")
+def delete_result(result_id: str, payload: ResultDeleteRequest, identity: Identity = Depends(get_identity), db: Session = Depends(get_db)) -> dict:
+    result = _load_result(result_id, db, identity)
+    delete_result_photo(db, result, actor_type="owner")
+    db.commit()
+    return {"result_id": result.id, "deleted": True}
 
 
 def _read_or_404(result: Result) -> bytes:

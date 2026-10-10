@@ -161,11 +161,12 @@ def test_advanced_all_ten_styles_keep_experience_primary(client):
     ids = [item["id"] for item in client.get("/api/advanced/frame-styles").json()]
     assert ids == [item[0] for item in FRAME_STYLE_SEEDS]
     for slug, _, _, fragment in FRAME_STYLE_SEEDS:
-        prompt = compose_advanced_prompt("EXPERIENCE_MARKER", fragment, ["SPARKLE_MARKER"])
+        prompt = compose_advanced_prompt("EXPERIENCE_MARKER", fragment)
         assert prompt.startswith("EXPERIENCE — PRIMARY VISUAL AUTHORITY\nEXPERIENCE_MARKER")
         assert fragment in prompt and STYLE_PRINCIPLE in prompt
-        assert "SPARKLE_MARKER" in prompt and COMPOSITION_RULES in prompt and BRANDING_RULES in prompt
-        assert prompt == compose_advanced_prompt("EXPERIENCE_MARKER", fragment, ["SPARKLE_MARKER"]), slug
+        assert COMPOSITION_RULES in prompt and BRANDING_RULES in prompt
+        assert '"NXBooth"' in prompt and '"Powered by GenNexByte"' in prompt
+        assert prompt == compose_advanced_prompt("EXPERIENCE_MARKER", fragment), slug
 
 
 def test_advanced_selection_validation_and_persistence(client, captured_queue, db_session):
@@ -205,7 +206,8 @@ def test_advanced_selection_validation_and_persistence(client, captured_queue, d
         db_session.commit()
 
 
-def test_advanced_provider_receives_composed_prompt_and_print_result(client, captured_queue, db_session, monkeypatch):
+@pytest.mark.parametrize("ornament_ids", [[], ["sparkles"], ["hearts"], ["glasses"]])
+def test_advanced_provider_receives_composed_prompt_and_print_result(client, captured_queue, db_session, monkeypatch, ornament_ids):
     import app.services.generation as generation_module
 
     class PromptProvider:
@@ -220,16 +222,26 @@ def test_advanced_provider_receives_composed_prompt_and_print_result(client, cap
     monkeypatch.setattr(generation_module, "get_provider", lambda: provider)
     before = client.get("/api/account/usage").json()["ai_remaining"]
     upload_id = _upload(client)
-    created = client.post("/api/generations", json={"upload_id": upload_id, "mode": "ADVANCED", "experience_id": "mini-me", "frame_style_id": "film", "ornament_ids": ["sparkles"]})
+    created = client.post("/api/generations", json={"upload_id": upload_id, "mode": "ADVANCED", "experience_id": "mini-me", "frame_style_id": "film", "ornament_ids": ornament_ids})
     assert created.status_code == 202, created.text
     assert process_job(created.json()["job_id"], db=db_session) == JobState.COMPLETED
     assert "EXPERIENCE — PRIMARY VISUAL AUTHORITY" in provider.prompt
     assert "premium photographic film-inspired" in provider.prompt
-    assert "sparkles" in provider.prompt
+    assert "OPTIONAL ORNAMENTS" not in provider.prompt
+    assert "Add a few tasteful sparkles" not in provider.prompt
+    from app.catalog import experience_definition
+    experience = experience_definition(db_session, "mini-me")
+    frame = db_session.get(AdvancedFrameStyle, "film")
+    assert provider.prompt == compose_advanced_prompt(experience.prompt, frame.prompt_fragment)
     result_id = client.get(f"/api/generations/{created.json()['job_id']}").json()["result_id"]
     result = client.get(f"/api/results/{result_id}").json()
     assert (result["width"], result["height"]) == (2160, 3240)
-    assert client.get(result["download_url"]).status_code == 200
+    downloaded = client.get(result["download_url"])
+    assert downloaded.status_code == 200
+    with Image.open(io.BytesIO(downloaded.content)) as output:
+        # Solid provider image stays solid in the footer: no application panel/text.
+        assert output.getpixel((150, 3000)) == (30, 60, 120)
+        assert output.getpixel((180, 3090)) == (30, 60, 120)
     assert client.get("/api/account/usage").json()["ai_remaining"] == before - 1
 
 

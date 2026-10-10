@@ -7,6 +7,8 @@ export const generationInput = z.object({
   upload_id: id, mode: z.enum(['CLASSIC', 'BASIC', 'ADVANCED']),
   template_id: id.nullish(), experience_id: id.nullish(), layout_id: id.nullish(), frame_style_id: id.nullish(),
   capture_upload_ids: z.array(z.string()).default([]), ornament_ids: z.array(z.string()).default([]),
+  event_name: z.string().trim().min(1).max(80).regex(/^[^\p{Cc}\p{Cf}]+$/u).optional(),
+  captured_at: z.string().datetime().optional(),
 }).strict().superRefine((value, context) => {
   const invalid = (message: string) => context.addIssue({ code: 'custom', message });
   if (value.mode === 'CLASSIC') {
@@ -16,6 +18,8 @@ export const generationInput = z.object({
   if (value.mode === 'BASIC' && (!value.template_id || value.experience_id)) invalid('Basic requires only a template');
   if (value.mode === 'ADVANCED' && (!value.experience_id || value.template_id)) invalid('Advanced requires only an experience');
   if (value.mode !== 'CLASSIC' && (value.layout_id || value.capture_upload_ids.length)) invalid('Captures are only accepted for Classic');
+  if (value.event_name && (value.mode !== 'CLASSIC' || value.layout_id !== 'classic-floral-event-001')) invalid('Event name is only accepted for the event strip');
+  if (value.captured_at && (value.mode !== 'CLASSIC' || value.layout_id !== 'classic-floral-event-001')) invalid('Capture time is only accepted for the event strip');
   if (value.mode !== 'ADVANCED' && (value.frame_style_id || value.ornament_ids.length)) invalid('Frame styles and ornaments are only accepted for Advanced');
 });
 export type GenerationInput = z.infer<typeof generationInput>;

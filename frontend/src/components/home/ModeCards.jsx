@@ -2,9 +2,9 @@ import React, { useState } from 'react'
 import { modeRoute } from '../../customerRoute.js'
 
 export const CREATION_MODES = [
-  { id: 'CLASSIC', name: 'Classic', title: 'Classic Photobooth', description: 'Multiple real camera shots composed into a traditional photobooth strip.', details: ['3 or 4 shots', 'No AI', 'Classic frames'], note: 'Real moments, together.' },
-  { id: 'BASIC', name: 'Basic', title: 'Curated Transformations', description: 'Choose a designed world and bring your identity into the scene.', details: ['Curated templates', 'Fast creation', 'Framed results'], note: 'A world, made for you.' },
-  { id: 'ADVANCED', name: 'Advanced', title: 'Generative Experiences', description: 'Choose an AI experience, visual frame style, and optional effects to create something unique.', details: ['AI experiences', 'Frame styles', 'Optional effects'], note: 'Make it one of a kind.' },
+  { id: 'CLASSIC', name: 'Photo Booth', title: 'Photo Booth', description: 'Multiple real camera shots composed into a traditional photobooth strip.', details: ['3 or 4 shots', 'No AI', 'Classic frames'], note: 'Real moments, together.' },
+  { id: 'BASIC', name: 'Scene Remix', title: 'Scene Remix', description: 'Choose a designed world and bring your identity into the scene.', details: ['Curated templates', 'AI scene editing', 'Framed results'], note: 'A world, made for you.' },
+  { id: 'ADVANCED', name: 'Creative Studio', title: 'Creative Studio', description: 'Choose an AI experience, visual frame style, and optional effects to create something unique.', details: ['AI experiences', 'Frame styles', 'Optional effects'], note: 'Make it one of a kind.' },
 ]
 
 export function CatalogImage({ src, alt, loading = 'lazy', fallback = 'Preview coming soon' }) {
@@ -16,7 +16,7 @@ export function CatalogImage({ src, alt, loading = 'lazy', fallback = 'Preview c
 
 export default function ModeCards({ previews = {}, onSelect, chooser = false, modeIds }) {
   return <div className={`landing-mode-grid ${chooser ? 'is-chooser' : ''}`}>
-    {CREATION_MODES.filter(mode => !modeIds || modeIds.includes(mode.id)).map((mode, index) => <article className={`landing-mode-card mode-${mode.name.toLowerCase()}`} key={mode.id}>
+    {CREATION_MODES.filter(mode => !modeIds || modeIds.includes(mode.id)).map((mode, index) => <article className={`landing-mode-card mode-${mode.id.toLowerCase()}`} key={mode.id}>
       <div className="landing-mode-image">
         <CatalogImage key={previews[mode.id]} src={previews[mode.id]} alt={`${mode.title} preview`} fallback={mode.note} />
         <span className="landing-mode-number" aria-hidden="true">0{index + 1}</span>

@@ -67,6 +67,7 @@ class AccountPlanResponse(BaseModel):
 
 
 class AccountCreationResponse(BaseModel):
+    result_id: str | None = None
     id: str
     job_id: str
     mode: str
@@ -97,6 +98,7 @@ class AccountBillingResponse(BaseModel):
 
 
 class AccountPrivacyResponse(BaseModel):
+    creation_deletion_available: bool = False
     retention_configured: bool = False
     retention_message: str
     export_available: bool = False

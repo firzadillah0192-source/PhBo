@@ -22,7 +22,7 @@ export default function ProcessingStage({ job, upload, previewUrl }) {
         </figure>
       </div>
       <div className="processing-copy">
-        <p className="customer-kicker">{job?.mode === 'CLASSIC' ? 'Classic photobooth' : 'In the celestial studio'}</p>
+        <p className="customer-kicker">{job?.mode === 'CLASSIC' ? 'Photo Booth' : 'Your photo is in the studio'}</p>
         <h1>{(job?.mode === 'CLASSIC' ? classicCopy : copy)[0]}</h1>
         <p>{(job?.mode === 'CLASSIC' ? classicCopy : copy)[1]}</p>
         <span className="processing-pulse"><i />{state === 'QUEUED' ? 'Waiting for the studio' : 'Creating your image'}</span>

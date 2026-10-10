@@ -5,8 +5,8 @@ export class CreditAccountingService {
   constructor(private readonly model: CreditAccountingModel) {}
   reserve(mode: string, jobId: string, owner: CreditOwner) {
     if (!['CLASSIC', 'BASIC', 'ADVANCED'].includes(mode)) throw new AppError(422, 'VALIDATION_FAILED', 'Invalid generation mode.');
-    // Both customer AI modes use NineRouter; Classic remains local and free.
-    return mode === 'BASIC' || mode === 'ADVANCED' ? this.model.reserve(jobId, owner) : Promise.resolve(null);
+    // Every customer mode charges only after a successful result.
+    return this.model.reserve(jobId, owner);
   }
   settle(jobId: string, successful: boolean) { return this.model.settle(jobId, successful); }
 }

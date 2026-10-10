@@ -8,7 +8,7 @@ import { AppError } from '../lib/errors.js';
 import { legacyId } from './customer-credentials.service.js';
 import type { NativeObjectStorage } from './native-object-storage.service.js';
 
-export type GeneratedImage = { bytes: Buffer; provider: string; model: string };
+export type GeneratedImage = { bytes: Buffer; provider: string; model: string; canvas?: { width: number; height: number } };
 export type NativeGenerationRunner = { generate(job: NxGenerationJob): Promise<GeneratedImage> };
 
 // No process is started by this service. The candidate consumer must not be
@@ -39,7 +39,8 @@ export class CustomerGenerationWorkerService {
       await image.stats();
       if (metadata.format !== 'png' || !metadata.width || !metadata.height) throw new AppError(502, 'GENERATION_IMAGE_INVALID', 'Generation returned an invalid image.');
       if (job.mode === 'CLASSIC' && (metadata.width !== 1200 || metadata.height !== 3600)) throw new AppError(502, 'CLASSIC_LAYOUT_INVALID', 'Classic output does not match the strip master.');
-      if ((job.mode === 'BASIC' || job.mode === 'ADVANCED') && (metadata.width !== 2160 || metadata.height !== 3240)) throw new AppError(502, 'GENERATION_IMAGE_INVALID', 'AI output does not match the print master.');
+      if (job.mode === 'ADVANCED' && (metadata.width !== 2160 || metadata.height !== 3240)) throw new AppError(502, 'GENERATION_IMAGE_INVALID', 'AI output does not match the print master.');
+      if (job.mode === 'BASIC' && (!generated.canvas || metadata.width !== generated.canvas.width || metadata.height !== generated.canvas.height)) throw new AppError(502, 'GENERATION_IMAGE_INVALID', 'Basic output does not match the selected template.');
       const resultId = legacyId();
       const directory = resolve(this.resultsDir, resultId.slice(0, 2));
       const eventSlug=typeof this.model.eventSlugForJob==='function' ? await this.model.eventSlugForJob(job.id) ?? undefined : undefined;

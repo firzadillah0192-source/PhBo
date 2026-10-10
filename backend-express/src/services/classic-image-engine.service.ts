@@ -5,12 +5,12 @@ import { reviewedSlots } from './catalog-assets.service.js';
 
 export class ClassicImageEngineService {
   constructor(private readonly url: string, private readonly key: string, private readonly fetcher: typeof fetch = fetch) {}
-  async generate(layout: NxClassicLayout, photos: Buffer[], frame: Buffer) {
+  async generate(layout: NxClassicLayout, photos: Buffer[], frame: Buffer, personalization?: { event_name: string; captured_at: string; claim_token: string }) {
     if (!this.url || !this.key) throw new AppError(503, 'CLASSIC_ENGINE_NOT_CONNECTED', 'Classic composition is temporarily unavailable.');
     const config = reviewedSlots(layout);
     if (photos.length !== layout.shot_count) throw new AppError(422, 'CLASSIC_SHOT_COUNT_INVALID', 'Incorrect number of captures');
     const form = new FormData();
-    form.append('metadata', JSON.stringify({ canvas_width: layout.canvas_width, canvas_height: layout.canvas_height, shot_count: layout.shot_count, slots: config.slots }));
+    form.append('metadata', JSON.stringify({ canvas_width: layout.canvas_width, canvas_height: layout.canvas_height, shot_count: layout.shot_count, slots: config.slots, ...(personalization ? { personalization: { event_name: personalization.event_name, captured_at: personalization.captured_at, download_url: `https://nxbooth.gennexbyte.com/r/${personalization.claim_token}` } } : {}) }));
     for (const [index, photo] of photos.entries()) form.append('images', new Blob([new Uint8Array(photo)], { type: 'image/jpeg' }), `capture-${index}.jpg`);
     form.append('frame', new Blob([new Uint8Array(frame)], { type: 'image/png' }), 'frame.png');
     let response: Response;

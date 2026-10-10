@@ -19,6 +19,7 @@ export function generationRequest(key: unknown, input: GenerationInput, identity
     template_id: input.template_id ?? null, experience_id: input.experience_id ?? null,
     layout_id: input.layout_id ?? null,
     frame_style_id: input.mode === 'ADVANCED' ? input.frame_style_id ?? 'natural' : null,
-    ornament_ids: [...input.ornament_ids], capture_upload_ids: [...input.capture_upload_ids] };
+    ornament_ids: [...input.ornament_ids], capture_upload_ids: [...input.capture_upload_ids],
+    ...(input.event_name ? { event_name: input.event_name, captured_at: input.captured_at ?? null } : {}) };
   return { scope, key: parsed.data, hash: createHash('sha256').update(JSON.stringify(normalized)).digest('hex') };
 }

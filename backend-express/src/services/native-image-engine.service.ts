@@ -13,7 +13,10 @@ export class NativeImageEngineService {
     if (!response.ok) {
       const detail = await response.json().catch(() => null) as { detail?: { error_code?: string } } | null;
       const code = detail?.detail?.error_code;
-      throw new AppError(response.status === 422 ? 422 : 502, typeof code === 'string' && /^[A-Z_]{1,64}$/.test(code) ? code : 'IMAGE_ENGINE_ERROR', 'The image could not be processed. Please try another photo.');
+      const message = typeof code === 'string' && code.startsWith('BASIC_TEMPLATE_') ? 'The selected studio template could not be prepared. Please choose another studio.'
+        : typeof code === 'string' && code.startsWith('BASIC_EDIT_') ? 'The generated portrait could not be finished. Please try again.'
+        : 'The image could not be processed. Please try another photo.';
+      throw new AppError(response.status === 422 ? 422 : 502, typeof code === 'string' && /^[A-Z_]{1,64}$/.test(code) ? code : 'IMAGE_ENGINE_ERROR', message);
     }
     try {
       const chunks: Buffer[] = []; let size = 0;
@@ -29,4 +32,11 @@ export class NativeImageEngineService {
   private form(bytes: Buffer) { const form = new FormData(); form.append('image', new Blob([new Uint8Array(bytes)]), 'source'); return form; }
   async providerInput(bytes: Buffer) { return (await this.request('prepare-provider', this.form(bytes), 'jpeg')).bytes; }
   async advancedResult(bytes: Buffer) { return (await this.request('prepare-advanced', this.form(bytes), 'png')).bytes; }
+  async basicIdentity(bytes: Buffer) { return (await this.request('prepare-basic-identity', this.form(bytes), 'jpeg')).bytes; }
+  async basicTemplate(bytes: Buffer) { return (await this.request('prepare-basic-template', this.form(bytes), 'png')).bytes; }
+  async basicResult(template: Buffer, edited: Buffer) {
+    const form = this.form(edited);
+    form.append('template', new Blob([new Uint8Array(template)]), 'template.png');
+    return (await this.request('compose-basic-edit', form, 'png')).bytes;
+  }
 }

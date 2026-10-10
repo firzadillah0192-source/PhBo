@@ -7,6 +7,7 @@ export function customerAccountRoutes(service: CustomerAccountService) {
   router.get('/usage', controller.usage);
   router.get('/me', controller.me);
   router.get('/center', controller.center);
+  router.post('/topups/checkout', controller.checkout);
   router.post('/google', controller.google);
   router.post('/signup', controller.signup);
   router.post('/login', controller.login);

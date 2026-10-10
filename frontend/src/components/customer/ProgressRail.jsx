@@ -8,7 +8,7 @@ export default function ProgressRail({ stage }) {
   return (
     <nav className="customer-progress" aria-label="Creation progress">
       <span>{String(active + 1).padStart(2, '0')} / 04</span>
-      <ol>{STAGES.map((label, index) => <li key={label} data-label={label} className={index === active ? 'is-active' : index < active ? 'is-done' : ''}>{label}</li>)}</ol>
+      <ol>{STAGES.map((label, index) => <li key={label} data-label={label} aria-current={index === active ? 'step' : undefined} className={index === active ? 'is-active' : index < active ? 'is-done' : ''}><b aria-hidden="true">{index < active ? '✓' : index + 1}</b>{label}</li>)}</ol>
       <i aria-hidden="true"><b style={{ transform: `scaleX(${active / 3})` }} /></i>
     </nav>
   )

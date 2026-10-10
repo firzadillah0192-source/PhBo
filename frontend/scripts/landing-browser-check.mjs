@@ -51,12 +51,17 @@ try {
     ? [{ name: 'ipad-safari-portrait', options: { ...devices['iPad (gen 7)'] } }, { name: 'ipad-safari-landscape', options: { ...devices['iPad (gen 7) landscape'] } }]
     : [{ name: 'desktop', options: { viewport: { width: 1440, height: 1000 } } }, { name: 'android-chrome', options: { ...devices['Pixel 7'] } }, { name: 'narrow-mobile', options: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true } }, { name: 'ipad-chromium-layout', options: { ...devices['iPad (gen 7)'] } }]
   const reports = []
-  for (const sample of cases) {
+  const requestedCases = process.env.NXBOOTH_BROWSER_CASES?.split(',')
+  for (const sample of cases.filter((sample) => !requestedCases || requestedCases.includes(sample.name))) {
     const motionCheck = process.env.NXBOOTH_MOTION_CHECK === '1'
     const context = await browser.newContext({ ...sample.options, reducedMotion: motionCheck ? 'no-preference' : 'reduce' })
     const page = await context.newPage()
     const errors = []
     let catalogUnavailable = false
+    let failGeneration = false
+    let holdUpload = false
+    let releaseUpload
+    let uploadReleased = false
     const generationFixtures = new Map()
     let fixtureSequence = 0
     let uploadSequence = 0
@@ -76,7 +81,13 @@ try {
       if (path === '/api/advanced/ornaments') return json([{ id: 'sparkles', name: 'Sparkles', description: 'Subtle accents.' }])
       if (classicCheck || process.env.NXBOOTH_GENERATION_CHECK === '1') {
         const preview = catalog.images[catalog.experiences.experiences[0].thumbnail]
-        if (path === '/api/uploads' && route.request().method() === 'POST') return json({ upload_id: `test-fixture-photo-${++uploadSequence}`, preview_url: catalog.experiences.experiences[0].thumbnail, width: 512, height: 768 }, 201)
+        if (path === '/api/uploads' && route.request().method() === 'POST') {
+          const wasHeld = holdUpload
+          if (wasHeld) await new Promise((resolve) => { releaseUpload = resolve })
+          const response = await json({ upload_id: `test-fixture-photo-${++uploadSequence}`, preview_url: catalog.experiences.experiences[0].thumbnail, width: 512, height: 768 }, 201)
+          if (wasHeld) uploadReleased = true
+          return response
+        }
         if (path === '/api/generations' && route.request().method() === 'POST') {
           const payload = route.request().postDataJSON()
           const id = `test-fixture-job-${++fixtureSequence}`
@@ -84,9 +95,10 @@ try {
           return json({ ...payload, job_id: id, state: 'QUEUED' }, 202)
         }
         const id = path.split('/').pop()
-        const fixture = generationFixtures.get(id)
+          const fixture = generationFixtures.get(id)
         if (path.startsWith('/api/generations/') && fixture) {
           pollUrls.push(route.request().url())
+          if (failGeneration) return json({ ...fixture, state: 'FAILED', error_code: 'AI_PROVIDER_NOT_CONNECTED' })
           const poll = ++fixture.polls
           if (poll === 1) return json({ detail: 'Temporary test disconnection' }, 503)
           const state = poll === 2 ? 'QUEUED' : poll === 3 ? 'PROCESSING' : 'COMPLETED'
@@ -94,6 +106,7 @@ try {
         }
         if (path.startsWith('/api/results/result-test-fixture-job-')) {
           if (path.endsWith('/image')) return route.fulfill({ contentType: preview.type, body: await readFile(resolve(cache, preview.filename)) })
+          if (path.endsWith('/download')) return route.fulfill({ contentType: preview.type, headers: { 'content-disposition': 'attachment; filename="test-portrait.png"' }, body: await readFile(resolve(cache, preview.filename)) })
           return json({ job_id: id.replace(/^result-/, '') })
         }
         if (/^\/api\/uploads\/test-fixture-photo-\d+\/preview$/.test(path)) return route.fulfill({ contentType: preview.type, body: await readFile(resolve(cache, preview.filename)) })
@@ -154,7 +167,10 @@ try {
     await page.getByRole('button', { name: 'Sign In', exact: true }).click()
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()
     await page.getByLabel('Email', { exact: true }).waitFor()
-    await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+    assert.equal(await page.getByLabel('Email', { exact: true }).evaluate((element) => document.activeElement === element), true)
+    await page.keyboard.press('Escape')
+    assert.equal(await page.getByRole('button', { name: 'Sign In', exact: true }).getAttribute('aria-expanded'), 'false')
+    assert.equal(await page.getByRole('button', { name: 'Sign In', exact: true }).evaluate((element) => document.activeElement === element), true)
     await page.getByRole('link', { name: /^Try NXBooth Free/ }).first().click()
     assert.equal(new URL(page.url()).pathname, '/create')
     assert.equal(new URL(page.url()).search, '')
@@ -168,14 +184,18 @@ try {
       assert.equal(new URL(page.url()).searchParams.get('mode'), mode.toLowerCase())
       if (engine === 'webkit') continue
       if (mode === 'Classic') {
-        await page.getByRole('button', { name: /Continue to camera/ }).click()
+        await page.locator('.classic-layout-card').first().click()
         await page.locator('.classic-capture').waitFor()
       } else if (mode === 'Basic') {
-        await page.getByRole('button', { name: /Continue to photo/ }).click()
+        await page.locator('.template-card').first().click()
+        await page.locator('.photo-stage').waitFor()
+        await page.screenshot({ path: resolve(output, `${sample.name}-photo.png`), fullPage: true })
+        await page.goBack()
+        await page.getByRole('heading', { name: 'Choose your studio.', exact: true }).waitFor()
+        await page.goForward()
         await page.locator('.photo-stage').waitFor()
       } else {
         await page.locator('.look-card').first().click()
-        await page.getByRole('button', { name: /Choose frame style/ }).click()
         await page.getByRole('heading', { name: 'Choose a frame style.' }).waitFor()
       }
     }
@@ -185,7 +205,6 @@ try {
         await page.evaluate(() => sessionStorage.clear())
         await page.goto(base + '/create?mode=classic', { waitUntil: 'networkidle' })
         await page.locator('.classic-layout-card').nth(index).click()
-        await page.getByRole('button', { name: /Continue to camera/ }).click()
         await page.locator('.camera-actions').getByRole('button', { name: 'Open camera', exact: true }).click()
         await page.getByRole('button', { name: 'Start photo 1 countdown', exact: true }).click()
         await page.locator('.classic-shot-review').waitFor()
@@ -231,9 +250,9 @@ try {
       // Leave a running job through SPA navigation: busy must not disable a new photo.
       await page.goto(base + '/generate/test-fixture-pending', { waitUntil: 'networkidle' })
       await page.locator('.processing-stage').waitFor()
+      await page.screenshot({ path: resolve(output, `${sample.name}-processing.png`), fullPage: true })
       await page.locator('.customer-mode-nav').getByRole('button', { name: 'Advanced', exact: true }).click()
       await page.locator('.look-card').first().click()
-      await page.getByRole('button', { name: /Choose frame style/ }).click()
       assert.equal(await page.locator('.frame-style-preview svg').count(), 10)
       await page.getByRole('button', { name: /^Modern/ }).click()
       await page.getByRole('button', { name: 'Sparkles', exact: true }).click()
@@ -244,23 +263,18 @@ try {
       await page.reload({ waitUntil: 'networkidle' })
       await page.locator('.photo-stage').waitFor()
       assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
+      assert.deepEqual(await page.locator('.camera-actions button').allTextContents(), ['Take photo', 'Upload photo'])
       const restoredOptions = await page.evaluate(() => JSON.parse(sessionStorage.getItem('photobooth:active-customer-flow')))
       assert.equal(restoredOptions.mode, 'ADVANCED')
       assert.equal(restoredOptions.frameStyleId, 'modern')
       assert.deepEqual(restoredOptions.ornamentIds, ['sparkles'])
       const fixtureImage = catalog.images[catalog.experiences.experiences[0].thumbnail]
-      // Native camera is available before any preview error; canceling it is harmless.
-      const cancelChooserPromise = page.waitForEvent('filechooser')
-      await page.getByRole('button', { name: 'Use phone camera', exact: true }).click()
-      const cancelChooser = await cancelChooserPromise
-      assert.equal(await cancelChooser.element().getAttribute('capture'), 'user')
-      await cancelChooser.setFiles([])
-      assert.equal(await page.locator('.review-stage').count(), 0)
-      assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
+      assert.deepEqual(await page.locator('.camera-actions button').allTextContents(), ['Take photo', 'Upload photo'])
       for (const mode of ['ADVANCED', 'BASIC']) {
         if (mode === 'BASIC') {
           await page.locator('.customer-mode-nav').getByRole('button', { name: 'Basic', exact: true }).click()
-          await page.getByRole('button', { name: /Continue to photo/ }).click()
+          await page.locator('.template-card').first().click()
+          await page.locator('.photo-stage').waitFor()
         }
         if (mode === 'ADVANCED' && engine === 'chromium') {
           await context.grantPermissions(['camera'])
@@ -271,7 +285,6 @@ try {
           await page.getByRole('button', { name: 'Take photo', exact: true }).click()
           await page.getByRole('status').filter({ hasText: 'Camera permission is blocked' }).waitFor()
           assert.equal(await page.getByRole('button', { name: 'Upload photo', exact: true }).isEnabled(), true)
-          assert.equal(await page.getByRole('button', { name: 'Use phone camera', exact: true }).isEnabled(), true)
           await page.evaluate(() => {
             navigator.mediaDevices.getUserMedia = window.originalCameraRequest
             const play = HTMLMediaElement.prototype.play
@@ -282,7 +295,8 @@ try {
             }
           })
           await page.getByRole('button', { name: 'Take photo', exact: true }).click()
-          await page.getByRole('button', { name: 'Resume preview', exact: true }).click()
+          await page.getByRole('status').filter({ hasText: 'camera preview could not start' }).waitFor()
+          await page.getByRole('button', { name: 'Take photo', exact: true }).click()
           await page.waitForFunction(() => document.querySelector('.photo-stage video')?.videoWidth > 0)
           assert.equal(await page.locator('.photo-stage video').evaluate((video) => getComputedStyle(video).objectFit), 'contain', 'Preview shows the full camera image without zoom cropping')
           await page.getByRole('button', { name: 'Take photo', exact: true }).click()
@@ -300,12 +314,12 @@ try {
             await page.evaluate(() => { window.testCameraStream = document.querySelector('.photo-stage video').srcObject })
           }
           const chooserPromise = page.waitForEvent('filechooser')
-          await page.getByRole('button', { name: 'Use phone camera', exact: true }).click()
+          await page.getByRole('button', { name: 'Upload photo', exact: true }).click()
           const chooser = await chooserPromise
-          assert.equal(await chooser.element().getAttribute('capture'), 'user')
+          assert.equal(await chooser.element().getAttribute('capture'), null)
           assert.equal(await chooser.element().getAttribute('accept'), 'image/*,.heic,.heif')
-          if (mode === 'BASIC' && engine === 'chromium') assert.equal(await page.evaluate(() => window.testCameraStream.getTracks().every((track) => track.readyState === 'ended')), true)
           await chooser.setFiles({ name: 'phone-camera-test.png', mimeType: fixtureImage.type, buffer: await readFile(resolve(cache, fixtureImage.filename)) })
+          if (mode === 'BASIC' && engine === 'chromium') assert.equal(await page.evaluate(() => window.testCameraStream.getTracks().every((track) => track.readyState === 'ended')), true)
         }
         await page.locator('.review-stage').waitFor()
         if (mode === 'ADVANCED') {
@@ -313,12 +327,50 @@ try {
         }
         await page.locator('.review-create .customer-solid-button').click()
         await page.locator('.result-stage').waitFor({ timeout: 15000 })
+        await page.screenshot({ path: resolve(output, `${sample.name}-${mode.toLowerCase()}-result.png`), fullPage: true })
+        const downloadPending = page.waitForEvent('download')
+        await page.getByRole('link', { name: /^Download photo/ }).click()
+        const download = await downloadPending
+        assert.equal(await download.failure(), null, 'The result download delivers a file')
         assert.match(new URL(page.url()).pathname, /^\/result\/result-test-fixture-job-/)
       }
       assert.equal(new Set(pollUrls).size, pollUrls.length, 'Every status read uses a fresh URL')
       const advancedFixture = [...generationFixtures.values()].find((item) => item.mode === 'ADVANCED')
       assert.equal(advancedFixture.frame_style_id, 'modern')
       assert.deepEqual(advancedFixture.ornament_ids, ['sparkles'])
+      // A disconnected engine must show a real failure and retain the user's photo.
+      await page.locator('.customer-mode-nav').getByRole('button', { name: 'Advanced', exact: true }).click()
+      await page.locator('.look-card').first().click()
+      await page.getByRole('button', { name: /^Modern/ }).click()
+      await page.getByRole('button', { name: /Continue to photo/ }).click()
+      await page.locator('input[type="file"]').setInputFiles(resolve(cache, fixtureImage.filename))
+      await page.locator('.review-stage').waitFor()
+      const beforeFailure = await page.evaluate(() => JSON.parse(sessionStorage.getItem('photobooth:active-customer-flow')).uploadId)
+      failGeneration = true
+      await page.locator('.review-create .customer-solid-button').click()
+      await page.getByRole('heading', { name: "This portrait didn't make it through." }).waitFor()
+      await page.screenshot({ path: resolve(output, `${sample.name}-failed.png`), fullPage: true })
+      assert.equal(await page.locator('.result-stage').count(), 0)
+      await page.locator('.customer-empty .customer-solid-button').click()
+      await page.locator('.review-stage').waitFor()
+      assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('photobooth:active-customer-flow')).uploadId), beforeFailure)
+      failGeneration = false
+      // A slow upload from an abandoned mode must not overwrite the next studio.
+      await page.locator('.customer-mode-nav').getByRole('button', { name: 'Basic', exact: true }).click()
+      await page.locator('.template-card').first().click()
+      holdUpload = true
+      await page.locator('input[type="file"]').setInputFiles(resolve(cache, fixtureImage.filename))
+      await page.getByRole('button', { name: 'Preparing photo…', exact: true }).waitFor()
+      await page.locator('.customer-mode-nav').getByRole('button', { name: 'Advanced', exact: true }).click()
+      await page.getByRole('heading', { name: 'Choose your world.', exact: true }).waitFor()
+      assert.equal(typeof releaseUpload, 'function')
+      releaseUpload()
+      while (!uploadReleased) await new Promise((resolve) => setTimeout(resolve, 20))
+      await page.waitForLoadState('networkidle')
+      assert.equal(await page.locator('.review-stage').count(), 0)
+      assert.equal(await page.getByRole('heading', { name: 'Choose your world.', exact: true }).count(), 1)
+      assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('photobooth:active-customer-flow')).uploadId), null)
+      holdUpload = false
       await page.evaluate(() => sessionStorage.clear())
     }
     await page.goto(base, { waitUntil: 'networkidle' })
@@ -328,6 +380,7 @@ try {
     assert.deepEqual(await page.evaluate(() => JSON.parse(sessionStorage.getItem('photobooth:active-customer-flow'))), savedFlow)
     await page.getByRole('link', { name: /^Resume your advanced creation/ }).click()
     await page.locator('.review-stage').waitFor()
+    await page.screenshot({ path: resolve(output, `${sample.name}-review.png`), fullPage: true })
     await page.reload({ waitUntil: 'networkidle' })
     await page.locator('.review-stage').waitFor()
     assert.equal(await page.locator('.advanced-review-summary').getByText('Modern', { exact: true }).count(), 1)
@@ -341,7 +394,7 @@ try {
     await page.goto(base + '/admin', { waitUntil: 'networkidle' })
     await page.locator('.admin-gate').waitFor()
     await page.goto(base + '/r/test-expired-claim', { waitUntil: 'networkidle' })
-    await page.getByRole('heading', { name: 'This photo link is no longer available.' }).waitFor()
+    await page.getByRole('alert').filter({ hasText: 'This photo link is no longer available.' }).waitFor()
     catalogUnavailable = true
     await page.goto(base, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: /^Reload previews/ }).waitFor()
@@ -352,8 +405,8 @@ try {
     if (motionCheck) reports.at(-1).checks.push('animated preview rotation', 'pause and play', 'reduced motion')
     if (classicCheck && engine === 'chromium' && ['desktop', 'android-chrome'].includes(sample.name)) reports.at(-1).checks.push('Classic shot review', 'three shared retakes', 'manual Next', 'ten second automatic Next', 'accepted-shot and quota refresh recovery', 'Classic shared Result')
     if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('ten frame thumbnails', 'ornament photo buttons enabled', 'Basic and Advanced queued to result', 'transient polling recovery', 'cancel previous job navigation')
-    if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push(...(engine === 'chromium' ? ['camera permission error and preview resume', 'full camera field without preview crop'] : ['camera hardware error and device photo fallback']))
-    if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('phone camera entry before errors', 'cancel phone photo safely', 'phone capture input uses existing upload and Result')
+    if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push(...(engine === 'chromium' ? ['camera permission error and retry through Take photo', 'first camera frame readiness', 'full camera field without preview crop'] : ['camera hardware error and upload fallback']))
+    if (process.env.NXBOOTH_GENERATION_CHECK === '1') reports.at(-1).checks.push('photo controls limited to Take photo and Upload', 'upload fallback reaches the shared Result flow', 'actual file download with fixture API', 'provider failure retains upload', 'late upload cannot overwrite another mode')
     if (engine === 'webkit') reports.at(-1).checks = reports.at(-1).checks.filter((check) => check !== 'photo and art-direction entry')
     await writeFile(resolve(output, `${engine}-checks.json`), JSON.stringify(reports, null, 2))
     console.log(JSON.stringify({ sample: sample.name, passed: true }))

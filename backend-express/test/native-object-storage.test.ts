@@ -91,7 +91,7 @@ test('MinIO result supports owner/claim rendition and safe deletion with legacy 
     const result = { id, storage_path: objects.reference('results', id), deleted_at: null } as any;
     const found = { result, job: { mode: 'CLASSIC', guest_id: 'guest', account_id: null } };
     let deleted = false;
-    const service = new CustomerResultService({ async result() { return found; }, async markDeleted() { deleted = true; } } as never, { resultsDir: root, claimHours: 24, publicOrigin: 'http://localhost', production: false }, objects);
+    const service = new CustomerResultService({ async result() { return found; }, async assertPaid() {}, async markDeleted() { deleted = true; } } as never, { resultsDir: root, claimHours: 24, publicOrigin: 'http://localhost', production: false }, objects);
     await objects.put(result.storage_path, bytes, 'image/png');
     assert.deepEqual(await service.rendition(found as never, false, true), bytes);
     const print = await sharp(await service.rendition(found as never, true, true)).metadata(); assert.equal(print.width, 600); assert.equal(print.height, 1800);

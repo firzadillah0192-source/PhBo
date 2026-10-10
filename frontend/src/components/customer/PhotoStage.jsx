@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { cameraFailureMessage, requestPortraitCamera } from '../../cameraAccess'
+import { cameraFailureMessage, requestPortraitCamera, waitForCameraPreview } from '../../cameraAccess'
 
 export default function PhotoStage({ mode, busy, onFile, onBack }) {
   const inputRef = useRef(null)
-  const deviceCameraRef = useRef(null)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const mountedRef = useRef(false)
@@ -45,17 +44,22 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
     const request = requestRef.current
     if (!video || !stream) return
     video.srcObject = stream
+    setReady(false)
+    setPreviewBlocked(false)
+    setMessage('Waiting for the camera picture…')
     try {
-      await video.play()
+      await waitForCameraPreview(video, () => mountedRef.current && request === requestRef.current)
       if (!mountedRef.current || request !== requestRef.current) return
       setPreviewBlocked(false)
       setMessage('')
-      setReady(video.videoWidth > 0 && video.videoHeight > 0)
-    } catch {
+      setReady(true)
+    } catch (error) {
       if (!mountedRef.current || request !== requestRef.current) return
       setReady(false)
       setPreviewBlocked(true)
-      setMessage('Camera preview paused. Tap Resume preview, or use Phone camera below.')
+      setMessage(error?.name === 'CameraFrameTimeout'
+        ? 'The camera opened but did not send a picture. Check that another app is not using it, then tap Take photo to retry or upload a photo.'
+        : 'The camera preview could not start. Tap Take photo to retry or upload a photo.')
     }
   }
 
@@ -104,7 +108,7 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
     canvas.height = video.videoHeight
     const context = canvas.getContext('2d')
     if (!context) {
-      setMessage('Photo capture is unavailable. Use Phone camera or upload a photo below.')
+      setMessage('Photo capture is unavailable. Tap Take photo to retry or upload a photo below.')
       return
     }
     context.translate(canvas.width, 0)
@@ -127,18 +131,18 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
     sendFile(file)
   }
 
-  const openDeviceCamera = () => {
-    if (busy) return
-    stopCamera()
-    setMessage('')
-    deviceCameraRef.current?.click()
+  const takePhoto = () => {
+    if (busy || opening) return
+    if (!camera) openCamera()
+    else if (previewBlocked) playPreview()
+    else capture()
   }
 
   return (
     <section className="photo-stage customer-stage-enter">
       {flash && <div className="camera-flash" aria-hidden="true" />}
       <header className="stage-heading">
-        <button className="customer-inline-button stage-back" onClick={onBack}>← Change {mode === 'BASIC' ? 'studio' : 'world'}</button>
+        <button className="customer-inline-button stage-back" onClick={onBack} disabled={busy}>← {mode === 'BASIC' ? 'Change studio' : 'Back to frame style'}</button>
         <p className="customer-kicker">Your photograph</p>
         <h1>Enter the studio.</h1>
         <p>Face the light, relax your shoulders, and look toward the lens.</p>
@@ -155,13 +159,13 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
         }}
       >
         {camera ? (
-          <video ref={videoRef} autoPlay playsInline muted onPlaying={(event) => setReady(event.currentTarget.videoWidth > 0 && event.currentTarget.videoHeight > 0)} aria-label="Live camera preview" />
+          <video ref={videoRef} autoPlay playsInline muted aria-label="Live camera preview" />
         ) : (
-          <button type="button" className="camera-idle" onClick={openCamera} disabled={busy || opening}>
+          <div className="camera-idle">
             <span className="camera-lens" aria-hidden="true"><i /></span>
-            <strong>{busy ? 'Preparing your portrait…' : opening ? 'Opening camera…' : 'Open the camera'}</strong>
-            <em>or drop a photograph anywhere on this frame</em>
-          </button>
+            <strong>{busy ? 'Preparing your portrait…' : opening ? 'Opening camera…' : 'Ready when you are'}</strong>
+            <em>Select Take photo to open your camera, or upload a photograph</em>
+          </div>
         )}
         <div className="camera-reticle" aria-hidden="true"><span>Portrait stage</span><i /><small>Face · light · focus</small></div>
         <div className="camera-glow" aria-hidden="true" />
@@ -170,17 +174,12 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
       {message && <p className="camera-message" role="status">{message}</p>}
       {opening && <p className="camera-message" role="status">Allow camera access when your browser asks. You can upload a photo instead.</p>}
       <div className="camera-actions">
-        <button type="button" className="customer-solid-button" disabled={busy} onClick={openDeviceCamera}>Use phone camera</button>
-        {previewBlocked && <button className="customer-solid-button" onClick={playPreview} disabled={busy}>Resume preview</button>}
-        {camera
-          ? <button className="customer-outline-button shutter-button" onClick={capture} disabled={busy || !ready}><span aria-hidden="true" />Take photo</button>
-          : <button className="customer-outline-button" onClick={openCamera} disabled={busy || opening}>{opening ? 'Opening camera…' : 'Take photo'}</button>}
+        <button type="button" className="customer-outline-button shutter-button" onClick={takePhoto} disabled={busy || opening || (camera && !ready && !previewBlocked)}><span aria-hidden="true" />{opening ? 'Opening camera…' : 'Take photo'}</button>
         <button className="customer-outline-button" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? 'Preparing photo…' : 'Upload photo'}</button>
       </div>
-      <p className="camera-message">Phone camera opens your device’s camera or photo picker.</p>
       <input ref={inputRef} type="file" accept="image/*,.heic,.heif" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; upload(file) }} />
-      <input ref={deviceCameraRef} type="file" aria-label="Photo from phone camera" accept="image/*,.heic,.heif" capture="user" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; upload(file) }} />
       <ul className="photo-guidance"><li>Face visible</li><li>Good lighting</li><li>Look toward camera</li></ul>
+      <p className="photo-file-note">JPEG, PNG, WebP, HEIC or HEIF · Up to 12 MB<br />Your photo stays in this session when you go back.</p>
     </section>
   )
 }

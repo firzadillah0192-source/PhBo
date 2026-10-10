@@ -36,11 +36,25 @@ test('native Advanced selection preserves enabled flags, compatibility and maxim
   assert.throws(() => validateAdvancedSelection(experience, frame, [{ ...sparkle, id: 'hearts' }], ['hearts']));
 });
 
-test('Basic template prompt is server-owned and preserves identity and print branding', () => {
+test('Basic prompt creates subtle resemblance with template-dominant contours and natural visual merging', () => {
   const prompt = composeBasicPrompt('Space Commander', 'A cinematic sci-fi commander portrait.');
   assert.match(prompt, /Space Commander/);
   assert.match(prompt, /A cinematic sci-fi commander portrait\./);
-  assert.match(prompt, /recognizable facial structure/);
+  assert.match(prompt, /subtle template-dominant facial resemblance/);
+  assert.match(prompt, /Preserve the hair exactly as Image 1/);
+  assert.match(prompt, /Preserve the facial skin tone and complexion exactly as Image 1/);
+  assert.match(prompt, /Adopt the source nose gently and naturally/);
+  assert.match(prompt, /If Image 2 visibly contains eyeglasses/);
+  assert.match(prompt, /Render lens transparency, reflections, highlights, and contact shadows using the lighting of Image 1/);
+  assert.match(prompt, /If Image 2 has no eyeglasses, do not introduce new eyewear/);
+  assert.doesNotMatch(prompt, /recognizable facial structure|Preserve natural complexion/);
+  assert.equal(prompt, composeBasicPrompt('  Space Commander  ', '  A cinematic sci-fi commander portrait.  '));
+  assert.match(prompt, /Preserve the source eye shape without enlarging, narrowing, lifting, beautifying/);
+  assert.match(prompt, /Do not copy the source cheek width, jaw width, chin outline/);
+  assert.match(prompt, /Retain the template overall facial silhouette and broad proportions/);
+  assert.match(prompt, /NATURAL VISUAL MERGE/);
+  assert.match(prompt, /Avoid a sharply outlined transplanted face/);
+  assert.doesNotMatch(prompt, /sole authority for facial identity|source facial contours and feature proportions to replace|SOURCE FACIAL ANATOMY/);
   assert.match(prompt, /NXBooth/);
   assert.throws(() => composeBasicPrompt('', 'description'));
   assert.throws(() => composeBasicPrompt('Template', ''));

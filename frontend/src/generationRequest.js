@@ -28,6 +28,7 @@ export function generationRequestKey(body,storage) {
     ornament_ids: body.mode==='ADVANCED' ? body.ornament_ids || [] : [],
     layout_id: body.mode==='CLASSIC' ? body.layout_id : null,
     capture_upload_ids: body.mode==='CLASSIC' ? body.capture_upload_ids || [] : [],
+    ...(body.event_name ? { event_name: body.event_name, captured_at: body.captured_at || null } : {}),
   })
   const existing = rows.find(row => row.payload===payload)
   if (existing) return existing.key

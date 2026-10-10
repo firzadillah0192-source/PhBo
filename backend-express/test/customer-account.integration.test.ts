@@ -300,7 +300,7 @@ test('real PostgreSQL: native accounts, credit lifecycle, all-mode Result/QR, pr
     await nativeApplicationIntegration(db,sql,root,resultsDir,uploadsDir,accountId,ownerCookie);
   } finally {
     await db.$disconnect();
-    await sql.query('DROP TABLE IF EXISTS generation_worker_leases, generation_provider_runs, subscriptions, subscription_plans, admin_audit_log, auth_identities, auth_sessions, admin_users, credit_ledger, uploads, result_claims, results, generation_events, quota_reservations, generation_jobs, accounts, guest_sessions');
+    await sql.query('DROP TABLE IF EXISTS generation_worker_leases, generation_provider_runs, subscriptions, subscription_plans, admin_audit_log, auth_identities, auth_sessions, admin_users, credit_ledger, event_basic_templates, event_advanced_experiences, uploads, result_claims, results, generation_events, quota_reservations, generation_jobs, kiosk_sessions, events, accounts, guest_sessions');
     await sql.query('DROP TABLE IF EXISTS preview_generation_jobs, preview_sources');
     await sql.query('DROP TABLE IF EXISTS admin_templates, admin_experiences, classic_layouts, advanced_frame_styles, advanced_ornaments');
     await sql.end();

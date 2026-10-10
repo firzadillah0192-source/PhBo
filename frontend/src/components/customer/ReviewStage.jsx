@@ -2,12 +2,12 @@ import React from 'react'
 import { uploadPreviewUrl } from '../../api.js'
 import { experiencePreview, templatePreview } from './experienceCatalog.js'
 
-export default function ReviewStage({ mode, upload, selection, frameStyle, ornaments = [], aiRemaining, quotaExhausted, busy, onReplace, onBack, onCreate, onOpenAccount, onPreviewError }) {
+export default function ReviewStage({ mode, upload, selection, frameStyle, ornaments = [], aiRemaining, authenticated = false, quotaExhausted, busy, onReplace, onBack, onCreate, onOpenAccount, onPreviewError }) {
   const destination = mode === 'ADVANCED' ? experiencePreview(selection) : templatePreview(selection)
   return (
     <section className={`review-stage customer-stage-enter ${busy ? 'is-creating' : ''}`}>
       <header className="stage-heading">
-        <p className="customer-kicker">Convergence</p>
+        <p className="customer-kicker">One last look</p>
         <h1>Your photograph,<br /><em>this world.</em></h1>
         <p>One source portrait. One carefully chosen destination.</p>
       </header>
@@ -28,14 +28,18 @@ export default function ReviewStage({ mode, upload, selection, frameStyle, ornam
 
       <div className="review-actions">
         <div>
-          <button className="customer-inline-button" onClick={onBack} disabled={busy}>← Try another look</button>
+          <button className="customer-inline-button" onClick={onBack} disabled={busy}>← {mode === 'ADVANCED' ? 'Back to frame style' : 'Try another look'}</button>
           <button className="customer-inline-button" onClick={onReplace} disabled={busy}>Replace photo</button>
         </div>
         <div className="review-create">
-          {mode === 'ADVANCED' && <span>{quotaExhausted ? 'No AI credits remaining' : aiRemaining == null ? 'AI credit confirmed when creation begins' : `${aiRemaining} AI ${aiRemaining === 1 ? 'credit' : 'credits'} available`}</span>}
-          {quotaExhausted && <button className="customer-inline-button" onClick={onOpenAccount}>Create an account for 5 credits</button>}
+          {mode !== 'CLASSIC' && <span>Minimal 10 kredit untuk mulai. Biaya memakai estimasi token dan dipotong setelah hasil berhasil; rincian lengkap dipakai bila tersedia.</span>}
+          {mode !== 'CLASSIC' && <span>{quotaExhausted ? 'Kredit belum cukup · minimal 10 kredit' : aiRemaining == null ? 'Kredit dikonfirmasi sebelum generate' : `${aiRemaining} ${aiRemaining === 1 ? 'credit' : 'credits'} available`}</span>}
+          {quotaExhausted && <>
+            <span role="status">{authenticated ? 'Isi bekal untuk melanjutkan berkarya.' : 'Masuk untuk mendapat 50 kredit gratis setiap 14 hari.'}</span>
+            <button className="customer-outline-button" disabled={busy} onClick={onOpenAccount}>{authenticated ? 'Isi Bekal' : 'Sign in / Create account'} <b aria-hidden="true">→</b></button>
+          </>}
           <button className="customer-solid-button" disabled={busy || quotaExhausted} onClick={onCreate}>
-            {busy ? 'Entering your world…' : mode === 'ADVANCED' ? 'Create with AI · 1 credit' : 'Create photo'} <b>→</b>
+            {busy ? 'Entering your world…' : mode !== 'CLASSIC' ? 'Generate AI' : 'Create photo'} <b>→</b>
           </button>
         </div>
       </div>

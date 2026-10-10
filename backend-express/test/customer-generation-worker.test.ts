@@ -29,7 +29,7 @@ test('ambiguous native completion retains the image and does not contradict comm
     const png = await sharp({ create: { width: 2160, height: 3240, channels: 3, background: 'blue' } }).png().toBuffer();
     const model = { async claim() { return { id: 'job', mode: 'BASIC', template_id: 'template' } as NxGenerationJob; },
       async fail() { assert.fail('Ambiguous commit must not mark failed or refund'); }, async complete() { throw new Error('Connection lost after COMMIT'); } } as unknown as CustomerGenerationModel;
-    const worker = new CustomerGenerationWorkerService(model, { async generate() { return { bytes: png, provider: 'test', model: 'test' }; } }, root);
+    const worker = new CustomerGenerationWorkerService(model, { async generate() { return { bytes: png, provider: 'test', model: 'test', canvas: { width: 2160, height: 3240 } }; } }, root);
     await assert.rejects(worker.process('job'), error => error instanceof Error && 'code' in error && error.code === 'GENERATION_COMPLETION_UNCERTAIN');
     const directories = await readdir(root); assert.equal(directories.length, 1);
     assert.equal((await readdir(join(root, directories[0]))).length, 1);
@@ -39,4 +39,18 @@ test('ambiguous native completion retains the image and does not contradict comm
 test('Classic adapter fails explicitly when private image engine is unconfigured', async () => {
   const engine = new ClassicImageEngineService('', '', async () => { assert.fail('No AI/provider request is allowed'); });
   await assert.rejects(engine.generate({} as never, [], Buffer.alloc(0)), error => error instanceof Error && 'code' in error && error.code === 'CLASSIC_ENGINE_NOT_CONNECTED');
+});
+
+test('Basic creates a shared Result at authoritative template dimensions instead of Advanced master', async () => {
+  const root=await mkdtemp(join(tmpdir(),'nxbooth-basic-canvas-test-'));
+  try {
+    const bytes=await sharp({create:{width:1024,height:1536,channels:3,background:'gold'}}).png().toBuffer();
+    let result:any;
+    const model={async claim(){return {id:'basic-job',mode:'BASIC',template_id:'framed-template'} as NxGenerationJob;},
+      async fail(){assert.fail('Valid Basic template canvas must complete');},async complete(_id:string,row:any){result=row;return true;}};
+    const worker=new CustomerGenerationWorkerService(model as never,{async generate(){return {bytes,provider:'9router',model:'same-model',canvas:{width:1024,height:1536}};}},root);
+    assert.equal(await worker.process('basic-job'),true);
+    assert.equal(result.template_id,'framed-template');assert.equal(result.width,1024);assert.equal(result.height,1536);
+    assert.equal(result.content_type,'image/png');assert.equal(result.provider,'9router');
+  } finally {await rm(root,{recursive:true,force:true});}
 });

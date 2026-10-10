@@ -26,6 +26,6 @@ export class ClassicGenerationRunner {
     for (const id of ids) photos.push(await this.uploads.read((await this.uploads.owned(id, owner)).path));
     const frame = await this.assets.file(layout.frame_asset_path);
     if (!frame) throw new AppError(422, 'CLASSIC_LAYOUT_INVALID', 'Classic frame unavailable');
-    return this.engine.generate(layout, photos, await readFile(frame));
+    return this.engine.generate(layout, photos, await readFile(frame), snapshot?.mode === 'CLASSIC' ? snapshot.personalization : undefined);
   }
 }

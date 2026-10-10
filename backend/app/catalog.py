@@ -53,7 +53,8 @@ def seed_catalog(session: Session) -> None:
             metadata = directory / "template.json"
             session.add(ManagedTemplate(
                 id=item.id, name=item.name, description=item.description,
-                image_path=str(asset), marketing_preview_path=str(preview) if item.id == "sci-fi-space-commander-framed-001" and preview.is_file() else None,
+                image_path=str(asset),
+                marketing_preview_path=str(preview) if preview.is_file() else None,
                 metadata_path=str(metadata) if metadata.exists() else None,
                 enabled=True, sort_order=-1 if item.id == "sci-fi-space-commander-framed-001" else order, updated_by="seed",
             ))

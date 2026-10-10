@@ -96,5 +96,25 @@ export class AdminOperationsService {
   async generation(id:string){const data=await this.model.read(async db=>{const job=await db.nxGenerationJob.findUnique({where:{id}});const result=await db.nxResult.findUnique({where:{job_id:id}});return {job,events:await db.nxGenerationEvent.findMany({where:{job_id:id},orderBy:{created_at:'asc'}}),claims:result?await db.nxResultClaim.findMany({where:{result_id:result.id},orderBy:{created_at:'desc'}}):[]};});if(!data.job)throw new AppError(404,'GENERATION_NOT_FOUND','Generation not found.');return {job:await this.generationItem(data.job),error_code:data.job.error_code,error_message:data.job.error_message,events:data.events.map(row=>({type:row.event_type,detail:row.detail,metadata:jsonObject(row.metadata_json),created_at:row.created_at})),claims:data.claims.map(({token_hash,metadata_json,created_by_session_id,created_by_kiosk_session_id,id,...row})=>({claim_id:id,...row,expired:row.expires_at<=new Date()}))};}
   async revokeClaim(id:string,body:unknown,actor:AdminPrincipal){const input=confirmation.parse(body);return this.model.transaction(async tx=>{const claim=await tx.nxResultClaim.findUnique({where:{id}});if(!claim)throw new AppError(404,'CLAIM_NOT_FOUND','Claim not found.');if(!claim.is_revoked){await tx.nxResultClaim.update({where:{id},data:{is_revoked:true}});const result=await tx.nxResult.findUnique({where:{id:claim.result_id}});if(result)await tx.nxGenerationEvent.create({data:{id:legacyId(),job_id:result.job_id,event_type:'claim_revoked',detail:input.reason,metadata_json:JSON.stringify({claim_id:id})}});await this.model.audit(tx,actor,'result_claim_revoked','result_claim',id,input.reason);}return {claim_id:id,revoked:true};});}
   adminUsers(){return this.model.read(db=>db.nxAdminUser.findMany({orderBy:{created_at:'asc'}}));}
-  async saveAdmin(id:string|null,body:unknown,actor:AdminPrincipal){const input=id?adminInput.omit({id:true}).partial().parse(body):adminInput.parse(body);return this.model.transaction(async tx=>{const row=id?await tx.nxAdminUser.update({where:{id},data:{...input,updated_at:new Date()}}):await tx.nxAdminUser.create({data:adminInput.parse(body)});await this.model.audit(tx,actor,id?'admin_role_changed':'admin_role_added','admin_user',row.id,'',input);return row;});}
+  async saveAdmin(id:string|null,body:unknown,actor:AdminPrincipal){
+    const input=id?adminInput.omit({id:true}).partial().parse(body):adminInput.parse(body);
+    return this.model.transaction(async tx=>{
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('nxbooth-admin-registry'))`;
+      const current=id?await tx.nxAdminUser.findUniqueOrThrow({where:{id}}):null;
+      const email=(input.email===undefined?current?.email:input.email)?.trim().toLowerCase();
+      if(!email)throw new AppError(422,'ADMIN_EMAIL_REQUIRED','An existing NXBooth account email is required.');
+      const account=await tx.nxAccount.findUnique({where:{email}});
+      if(!account||account.status!=='active')throw new AppError(422,'ADMIN_ACCOUNT_REQUIRED','Choose an active, registered NXBooth account.');
+      const duplicate=await tx.nxAdminUser.findFirst({where:{email:{equals:email,mode:'insensitive'},...(id?{id:{not:id}}:{})}});
+      if(duplicate)throw new AppError(409,'ADMIN_EMAIL_EXISTS','This account already has an admin entry. Edit that entry instead.');
+      if(current?.is_active&&current.role==='superadmin'&&(input.is_active===false||(input.role&&input.role!=='superadmin'))){
+        const others=await tx.nxAdminUser.findMany({where:{id:{not:current.id},is_active:true,role:'superadmin',email:{not:null}}});
+        let available=false;
+        for(const other of others){if(other.email&&(await tx.nxAccount.findUnique({where:{email:other.email.trim().toLowerCase()}}))?.status==='active'){available=true;break;}}
+        if(!available)throw new AppError(409,'LAST_SUPERADMIN','Keep at least one active superadmin. Add another superadmin before removing this access.');
+      }
+      const row=id?await tx.nxAdminUser.update({where:{id},data:{...input,email,updated_at:new Date()}}):await tx.nxAdminUser.create({data:{...adminInput.parse(body),email}});
+      await this.model.audit(tx,actor,id?'admin_role_changed':'admin_role_added','admin_user',row.id,'',input);return row;
+    });
+  }
 }

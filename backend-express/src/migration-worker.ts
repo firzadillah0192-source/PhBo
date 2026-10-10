@@ -10,7 +10,7 @@ const db=new PrismaClient({adapter:new PrismaPg({connectionString:config.DATABAS
 const services=migrationContainer(db,config);
 const customers=nativeGenerationQueue(db,config,'customer'),previews=nativeGenerationQueue(db,config,'preview');
 let nextCleanup=0;
-const maintain=async()=>{for(const row of await services.leases.recoverable('customer'))await services.queue.enqueue(row.id);if(Date.now()>=nextCleanup){await services.uploads.cleanup();nextCleanup=Date.now()+config.UPLOAD_CLEANUP_INTERVAL_SECONDS*1000;}};
+const maintain=async()=>{for(const row of await services.leases.recoverable('customer'))await services.queue.enqueue(row.id);if(Date.now()>=nextCleanup){await services.uploads.cleanup();await services.results.cleanup();nextCleanup=Date.now()+config.UPLOAD_CLEANUP_INTERVAL_SECONDS*1000;}};
 const customerLoop=new NativeWorkerLoop(customers,id=>services.worker.process(id),maintain);
 const previewLoop=new NativeWorkerLoop(previews,id=>services.previews.process(id),async()=>{for(const row of await services.leases.recoverable('preview'))await services.previewQueue.enqueue(row.id);});
 let stopping=false;

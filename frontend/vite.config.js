@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 // proxy serves both under one host.
 export default defineConfig({
   plugins: [react()],
+  build: { sourcemap: "hidden" },
   server: {
     host: '0.0.0.0',
     port: 3000,

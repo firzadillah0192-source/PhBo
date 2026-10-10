@@ -28,11 +28,9 @@ logger = logging.getLogger("photobooth.generation")
 
 
 def _belongs_to_owner(record, identity: Identity) -> bool:
-    if record.account_id is None and record.guest_id is None:
-        return True
-    return (
-        identity.account_id is not None and record.account_id == identity.account_id
-    ) or (identity.guest_id is not None and record.guest_id == identity.guest_id)
+    if record.account_id is not None:
+        return identity.account_id == record.account_id
+    return bool(record.guest_id and identity.guest_id == record.guest_id)
 
 
 def _job_not_found(job_id: str) -> HTTPException:
@@ -197,7 +195,7 @@ def get_generation(
     job = db.get(GenerationJob, job_id)
     if job is None or not _belongs_to_owner(job, identity):
         raise _job_not_found(job_id)
-    result = job.result
+    result = job.result if job.result and job.result.deleted_at is None else None
     return GenerationStatusResponse(
         job_id=job.id,
         state=job.state,

@@ -49,6 +49,7 @@ class UserUsagePage(BaseModel):
 
 
 class ProviderRunResponse(BaseModel):
+    api_price_estimate: dict[str, Any] | None = None
     id: str
     generation_job_id: str
     provider_name: str
@@ -87,6 +88,13 @@ class ProviderRunResponse(BaseModel):
 
 
 class GenerationUsageItem(BaseModel):
+    result_id: str | None = None
+    result_image_url: str | None = None
+    result_download_url: str | None = None
+    result_deleted_at: datetime | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    api_price_estimate: dict[str, Any] | None = None
     job_id: str
     account_id: str | None
     user_email: str | None

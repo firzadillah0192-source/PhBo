@@ -132,7 +132,7 @@ export default function ExperienceBrowser({ mode, templates, experiences, layout
         <section className="customer-empty" aria-live="polite">
           <p className="customer-kicker">No worlds published yet</p>
           <h2>Check back shortly.</h2>
-          <p>There are no Advanced experiences available right now.</p>
+          <p>There are no Creative Studio experiences available right now.</p>
           <button className="customer-solid-button" onClick={onRetry}>Try again</button>
         </section>
       </section>

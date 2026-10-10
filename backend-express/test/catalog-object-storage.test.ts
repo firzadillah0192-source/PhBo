@@ -23,6 +23,22 @@ function fixture() {
   return { objects, files };
 }
 
+test('Basic snapshots freeze actual PNG dimensions and survive template replacement in MinIO', async () => {
+  const root=await mkdtemp(join(tmpdir(),'nxbooth-basic-freeze-test-'));
+  try {
+    const {objects}=fixture(); const assets=new CatalogAssetsService([root],root,objects,join(root,'.cache'));
+    const target=join(root,'basic','template.png');
+    const bytes=await sharp({create:{width:100,height:150,channels:3,background:'gold'}}).png().toBuffer();
+    const ref=await assets.store(target,bytes);
+    const frozen=await assets.freezeBasicTemplate({image_path:ref} as never);
+    assert.deepEqual({width:frozen.width,height:frozen.height,sha256:frozen.sha256},{width:100,height:150,sha256:hash(bytes)});
+    await assets.store(target,await sharp(bytes).negate().png().toBuffer());
+    assert.deepEqual(await readFile((await assets.file(frozen.asset))!),bytes);
+    await assets.store(target,Buffer.from('invalid PNG'));
+    await assert.rejects(assets.freezeBasicTemplate({image_path:ref} as never));
+  } finally {await rm(root,{recursive:true,force:true});}
+});
+
 test('catalog aliases read MinIO, cache refreshes after replacement, and keys reject traversal', async () => {
   const root = await mkdtemp(join(tmpdir(),'nxbooth-catalog-object-test-'));
   try {

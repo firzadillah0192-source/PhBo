@@ -178,6 +178,17 @@ def test_provider_metadata_persists_and_admin_usage_is_aggregated(
     assert provider_run["routing_strategy"] == "round-robin"
     assert provider_run["input_tokens"] == 2243
     assert provider_run["output_tokens"] == 71
+    assert provider_run["api_price_estimate"]["status"] == "unavailable"
+    assert provider_run["api_price_estimate"]["low_usd"] is None
+    listed = next(row for row in filtered.json()["generations"] if row["job_id"] == job_id)
+    assert listed["input_tokens"] == 2243 and listed["output_tokens"] == 71
+    assert listed["api_price_estimate"]["status"] == "unavailable"
+    # Read-time estimation also works for historical runs without a DB migration.
+    run.provider_reported_model = "gpt-image-2.5"
+    db_session.commit()
+    priced = client.get(f"/api/admin/usage/generations/{job_id}", headers=ADMIN_HEADERS).json()
+    assert priced["provider_runs"][0]["api_price_estimate"]["low_usd"] == pytest.approx(0.001221)
+    assert priced["generation"]["api_price_estimate"]["status"] == "image_token_estimate"
 
     accounts = client.get("/api/admin/usage/providers/accounts", headers=ADMIN_HEADERS)
     assert accounts.status_code == 200

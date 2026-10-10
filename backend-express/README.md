@@ -5,8 +5,9 @@
 > now serve the production application. The notes below include upstream reference
 > commands; historical defaults do not describe the active deployment.
 
-CLASSIC accepts 1–4 photos and uses the Python frame compositor. BASIC keeps its one-template customer flow
-but generates through the server-side AI provider; ADVANCED uses NineRouter experience presets. Both AI modes
+CLASSIC accepts 1–4 photos and uses the Python frame compositor. BASIC uses the server-side AI provider with
+five themes, each available as a man, a woman without hijab, and a woman wearing hijab: Space Commander,
+Cyberpunk Neon, Aviation Captain, Royal Nusantara, and Arctic Expedition; ADVANCED uses NineRouter experience presets. Both AI modes
 reserve one credit and call NineRouter through Express. See [Generation engine setup](docs/GENERATION_ENGINES.md)
 for current requests, migration, defaults, and runtime requirements. Frames CRUD and
 the session/claim flow are retained. Older ORIGINAL/FRAME examples below are historical.

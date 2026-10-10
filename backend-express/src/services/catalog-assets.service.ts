@@ -157,6 +157,26 @@ export class CatalogAssetsService {
       frame_asset_path: reference ?? path,layout_config_json: row.layout_config_json };
   }
 
+  async freezeBasicTemplate(row: NxTemplate) {
+    const source = await this.file(row.image_path);
+    if (!source) throw new CatalogAssetError();
+    const bytes = await readFile(source);
+    const image = sharp(bytes, { limitInputPixels: 25_000_000 });
+    const info = await image.metadata(); await image.stats();
+    if (info.format !== 'png' || !info.width || !info.height || (info.orientation && info.orientation !== 1)) throw new CatalogAssetError();
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const path = join(this.templatesDir, '_job_templates', `${sha256}.png`);
+    const reference = this.objectReference(path);
+    if (!reference || !await this.exists(reference)) {
+      if (!await this.store(path, bytes)) {
+        await mkdir(dirname(path), { recursive: true });
+        try { await writeFile(path, bytes, { flag: 'wx', mode: 0o600 }); }
+        catch (error) { if (!(error && typeof error === 'object' && 'code' in error && error.code === 'EEXIST')) throw error; }
+      }
+    }
+    return { asset: reference ?? path, sha256, width: info.width, height: info.height };
+  }
+
   private async validatePng(path: string, row: NxClassicLayout, config: LayoutConfig) {
     try {
       const image = sharp(path, { limitInputPixels: 25_000_000 });

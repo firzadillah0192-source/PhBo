@@ -40,7 +40,7 @@ test('racing creation reuses winner without queueing or failing it', async () =>
     createOnce: async () => ({ job, reused: true }), queueFailed: async () => assert.fail('replay must not refund winner') };
   const service = new CustomerGenerationService(model as never,
     { owned: async () => ({ upload: { id: 'photo' } }) } as never,
-    { file: async () => 'template' } as never, { enqueue: async () => assert.fail('winner already enqueued') });
+    { file: async () => 'template', freezeBasicTemplate: async () => ({ asset: 'frozen', sha256: 'a'.repeat(64), width: 1024, height: 1536 }) } as never, { enqueue: async () => assert.fail('winner already enqueued') });
   assert.equal((await service.create({ mode: 'BASIC', upload_id: 'photo', template_id: 'template' }, owner, 'race')).job_id, 'winner');
 });
 
@@ -49,9 +49,13 @@ test('new keyed requests enqueue once and unkeyed clients keep existing behavior
   const job = { id: 'new', mode: 'BASIC', state: 'QUEUED', upload_id: 'photo', ornament_ids_json: null };
   const model = { findRequest: async () => null, template: async () => ({ enabled: true, image_path: 'template', name: 'Fixture', description: 'Synthetic template' }),
     experience: async () => ({ enabled: true, status: 'published', model: 'fixture-model' }),
-    createOnce: async () => { keyed++; return { job, reused: false }; }, create: async () => { unkeyed++; return job; } };
+    createOnce: async (data: {engine_config_json: string}) => {
+      const snapshot=JSON.parse(data.engine_config_json);
+      assert.equal(snapshot.version,2); assert.equal(snapshot.mode,'BASIC'); assert.equal(snapshot.template.width,1024);
+      assert.equal(snapshot.template.height,1536); assert.equal(snapshot.template.sha256,'a'.repeat(64));
+      keyed++; return { job, reused: false }; }, create: async () => { unkeyed++; return job; } };
   const service = new CustomerGenerationService(model as never, { owned: async () => ({ upload: { id: 'photo' } }) } as never,
-    { file: async () => 'template' } as never, { enqueue: async () => { queued++; } });
+    { file: async () => 'template', freezeBasicTemplate: async () => ({ asset: 'frozen', sha256: 'a'.repeat(64), width: 1024, height: 1536 }) } as never, { enqueue: async () => { queued++; } });
   const basic = { mode: 'BASIC', upload_id: 'photo', template_id: 'template' };
   await service.create(basic, owner, 'new-request');
   await service.create(basic, owner);

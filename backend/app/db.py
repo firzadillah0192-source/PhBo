@@ -58,6 +58,12 @@ def init_db() -> None:
     from app import auth_models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    # Keep result metadata for usage/accounting after its photo is deleted.
+    result_columns = {column["name"] for column in inspect(engine).get_columns("results")}
+    if "deleted_at" not in result_columns:
+        with engine.begin() as conn:
+            column_type = "TIMESTAMP WITH TIME ZONE" if engine.dialect.name == "postgresql" else "DATETIME"
+            conn.execute(text(f"ALTER TABLE results ADD COLUMN deleted_at {column_type}"))
     # create_all does not alter an existing table. The default preserves all
     # jobs created before mode selection; they always used the AI path.
     if engine.dialect.name == "postgresql":
