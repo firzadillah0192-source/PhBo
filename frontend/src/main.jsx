@@ -6,6 +6,7 @@ import KioskEntry from './components/kiosk/KioskEntry.jsx'
 import './styles.css'
 import './retro.css'
 import './admin-retro.css'
+import './retro-decor.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

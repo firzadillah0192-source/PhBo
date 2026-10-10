@@ -22,6 +22,6 @@
 
 .public-photo-viewer-error {
   color: #fff;
-  font: 14px/1.5 system-ui, sans-serif;
+  font: 700 var(--fs-sm)/1.5 var(--font-display);
   text-align: center;
 }
