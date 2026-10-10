@@ -1,6 +1,32 @@
 # Rencana pemanfaatan PostHog selama 12 bulan — PhBo dan Gennexbyte
 
-Tanggal penyusunan: 9 Oktober 2026. Revisi: 10 Oktober 2026, atas permintaan pemanfaatan menyeluruh dengan target konsumsi minimal 50% kredit. Status: **rencana siap dibaca; fitur lanjutan dan batas billing belum diaktifkan oleh dokumen ini**.
+Tanggal penyusunan: 9 Oktober 2026. Revisi: 10 Oktober 2026, atas permintaan pemanfaatan menyeluruh dengan target konsumsi minimal 50% kredit, dengan syarat utama hanya layanan tercakup dan tanpa tagihan debit. Status: **rencana siap dibaca; fitur lanjutan dan batas billing belum diaktifkan oleh dokumen ini**.
+
+## Aturan utama: kredit saja, tanpa tagihan debit
+
+Instruksi terbaru pengguna mengikat seluruh roadmap: **maksimalkan kredit yang tersedia, hanya gunakan biaya yang terbukti tercakup grant, dan jangan menimbulkan pembayaran dari debit.** Aturan ini mengalahkan target konsumsi 50%, pilihan paket dan cakupan fitur. Target tetap US$25.000–30.000, tetapi tidak boleh dicapai dengan membeli layanan di luar coverage atau membuat komitmen yang berlanjut setelah kredit berakhir.
+
+| Status | Perlakuan |
+| --- | --- |
+| Produk tercakup dan billing/penggunaan terverifikasi | Boleh direncanakan dari kredit, dengan batas dan penghentian sebelum coverage berakhir |
+| Add-on, komponen biaya, pajak atau renewal belum terkonfirmasi | Jangan aktifkan; jangan dianggap tertutup hanya karena produk induknya eligible |
+| PostHog AI, Replay Vision, Inbox/scouts, PostHog Desktop dan Slack AI agent | Dikeluarkan dari pemanfaatan; tidak melakukan pilot sekalipun ada free allowance |
+| LLM judge/playground inference, API provider, onboarding berbayar, BAA, layanan channel/destination pihak ketiga | Tidak dibeli atau diaktifkan melalui rencana ini; coverage yang belum jelas dianggap tidak boleh |
+| Kredit berakhir atau buffer tidak cukup untuk biaya yang belum final | Hentikan penggunaan berbayar/cancel paket sesuai aturan billing, lalu gunakan kuota gratis |
+
+**Status kontrol: belum diterapkan dan belum diverifikasi.** Revisi ini mengubah planning, bukan setting billing atau kartu. Tidak ada jaminan teknis debit tidak terpotong sampai kontrol organisasi dibuktikan. Dokumentasi [billing limits](https://posthog.com/docs/billing/limits-alerts) menjelaskan batas per produk, bukan jaminan bahwa tagihan hanya mengambil kredit. Jangan menyamakan positive billing limit dengan proteksi saat saldo/masa kredit berakhir.
+
+Prasyarat sebelum tahap berbayar:
+
+1. Verifikasi expiry grant, produk/komponen eligible dan cara kredit diterapkan pada invoice organisasi. Nilai current bill US$0 saja belum membuktikan bahwa seluruh penggunaan berikutnya bebas debit.
+2. Produk di luar coverage tidak digunakan; set batas billing US$0/nonaktifkan pada setting yang tersedia, termasuk add-on dan AI tools. Batas US$0 bukan pengganti cancellation paket tetap atau pengendalian layanan pihak ketiga.
+3. Produk tercakup mempunyai limit per produk dan total budget bulanan. Hitung biaya sebelum kredit, bukan hanya jumlah invoice setelah diskon. Pemantauan melihat pending usage/invoice, retention, paket, pajak dan renewal bila ada.
+4. Konfirmasikan apakah organisasi menyediakan hard stop berbasis kredit yang benar-benar mencegah pembayaran kartu. Belum ada fitur tersebut yang terverifikasi melalui sumber yang dibaca. Jika tidak tersedia, hanya jalankan penggunaan berbayar dengan kontrol penghentian yang dibuktikan; bila tidak bisa dibuktikan memenuhi syarat pengguna, tetap di kuota gratis.
+5. Simpan buffer sekurangnya seluruh maksimum biaya eligible siklus berjalan/berikutnya yang dapat terutang ditambah biaya belum final. Review harian saat mendekati ambang saldo; jangan menunggu saldo menjadi nol. Jika lag billing tidak dapat dibatasi, jangan menganggap estimasi buffer sebagai jaminan.
+6. Sebelum expiry, hentikan sumber usage berbayar, turunkan limit usage ke US$0 dan cancel paket/add-on sesuai tanggal efektifnya. Verifikasi tidak ada renewal, komitmen periode berikutnya atau fee tertunda di luar coverage. Fixed subscription bisa tetap ditagih walau ingestion berhenti.
+7. Status kartu atau penghapusan metode pembayaran ditangani terpisah jika diperlukan melalui billing resmi; kartu dihapus tidak membatalkan kewajiban invoice. Tidak ada perubahan kartu dilakukan dalam revisi ini.
+
+Review guardrail tidak memerlukan test transaksi debit sungguhan. Gunakan bukti setting billing, aturan grant dan periode invoice, status subscription/cancellation dan pemeriksaan usage. Pemanfaatan produk baru hanya berlanjut bila bukti tersebut memenuhi syarat kredit saja.
 
 ## 1. Tujuan dan dasar anggaran
 
@@ -73,9 +99,9 @@ Seluruh area di bawah masuk roadmap. Status awalnya **planned**; fitur yang memb
 
 Dokumentasi pendukung: [Web vitals](https://posthog.com/docs/web-analytics/web-vitals), [Warehouse](https://posthog.com/docs/data-warehouse), [CDP](https://posthog.com/docs/cdp), [Workflows](https://posthog.com/workflows), [data quality alpha](https://posthog.com/docs/data-warehouse/data-quality/start-here), dan [AI evaluations](https://posthog.com/docs/ai-evals).
 
-Evaluations rule-based bebas biaya LLM; jangan menganggarkan tiap evaluasi sebagai tagihan baru. LLM-as-a-judge memerlukan biaya API/inference tersendiri; eligibility harus diverifikasi dan tidak dimasukkan sebagai kredit pasti. Evaluasi LLM pada teks tidak membuktikan kualitas foto atau kemiripan wajah. Prompt management/playground dapat dievaluasi untuk kebutuhan LLM nyata; belum menjadi pengganti registry preset/provider PhBo. Tidak menambahkan chatbot/LLM ke Gennexbyte demi memakai fitur ini.
+Evaluations rule-based bebas biaya LLM; jangan menganggarkan tiap evaluasi sebagai tagihan baru. LLM-as-a-judge dan playground inference dikeluarkan karena biaya API/inference tersendiri belum terbukti tercakup; tidak memakai debit untuk mengaktifkannya. Evaluasi LLM pada teks tidak membuktikan kualitas foto atau kemiripan wajah. Prompt management bukan pengganti registry preset/provider PhBo; tidak melakukan inference playground melalui roadmap ini. Tidak menambahkan chatbot/LLM ke Gennexbyte demi memakai fitur ini.
 
-AI tools yang dikecualikan tetap dicatat sebagai opsi terpisah: PostHog AI untuk analisis, Replay Vision untuk klasifikasi replay, Inbox/scouts untuk temuan, Desktop/Slack agent untuk bantuan developer. Pilot dapat memakai free allowance yang tersedia bila dibutuhkan dan scope datanya jelas, tetapi **tidak menjadi strategi menghabiskan US$25.000 kredit startup**. Tidak ada langganan atau pilot AI tools diaktifkan oleh revisi ini.
+AI tools yang dikecualikan hanya dicatat untuk menjelaskan batas coverage: PostHog AI, Replay Vision, Inbox/scouts, Desktop dan Slack agent **tidak masuk scope, termasuk pilot free allowance**. AI Observability tetap masuk karena berbeda dari AI assistant. Tidak ada aktivitas pada AI tools tersebut yang diaktifkan oleh planning ini.
 
 ## 3. Kondisi saat rencana dibuat
 
@@ -98,7 +124,7 @@ Bulan dihitung relatif terhadap tanggal grant yang dikonfirmasi. Tahap boleh dip
 | Bulan 1–3 | Web vitals/attribution; replay aman; funnel web/kiosk; waktu antrean/generate; error/log worker; funnel kontak; warehouse projection dan transaksi backend | Dashboard dapat menjelaskan titik gagal, status job, durasi dan kontak yang benar-benar tersimpan; pembayaran sesuai ledger |
 | Bulan 4–6 | Survei; AI Observability; cohort/retention/group; SQL models/data quality; CDP/ekspor; flags dan eksperimen; draf workflow | Masking diperiksa pada payload dan replay; biaya tidak ditebak dari token gambar; rollback diuji; hipotesis dan hasil dicatat |
 | Bulan 7–9 | Atribusi kampanye dengan properti yang diizinkan; retention pelanggan; laporan per event/booth; Group Analytics bila diperlukan | Traffic promosi bisa ditautkan ke konversi; kunjungan berulang perangkat kiosk tidak dilaporkan sebagai pelanggan berulang |
-| Bulan 10–12 | Warehouse terbatas jika dibutuhkan; kaji ROI; rencana biaya pascakredit; tinjau expiry H-90/H-30/H-7 | Estimasi biaya berbayar disepakati; event/queries penting terdokumentasi; sampling dan limit disesuaikan sebelum kredit berakhir |
+| Bulan 10–12 | Warehouse sesuai coverage; kaji ROI; rencana kembali ke kuota gratis; tinjau expiry H-90/H-30/H-7 | Sumber usage berbayar berhenti sebelum coverage berakhir; paket tidak renew; query penting tersimpan; debit tidak menjadi fallback |
 
 Pemilik: developer mengerjakan instrumentasi dan verifikasi, pemilik bisnis menentukan KPI/hipotesis/anggaran, operator memvalidasi alur event fisik. Kamera dan printer diuji saat PC event tersedia; analytics tidak menggantikan pengujian perangkat.
 
@@ -186,7 +212,7 @@ Alokasi adalah target penggunaan per kategori, bukan tagihan yang sudah terjadi.
 
 Harga publik [Scale US$750/bulan](https://posthog.com/platform-packages) memberi US$9.000 untuk 12 bulan berbayar penuh. Trial, tanggal aktivasi, prorata dan kondisi grant dapat mengurangi angka aktual. Kredit untuk komponen paket harus dikonfirmasi pada billing sebelum langganan dibuat; BAA dikecualikan. Ketentuan startup juga menyatakan pelanggan startup tidak mendapat priority support/account manager, meskipun membeli platform package; jangan menjadikan SLA dukungan manfaat yang dijanjikan.
 
-Scale diusulkan untuk approval, audit, governance dan alert yang digunakan dalam roadmap ini. Jika tim tidak memakai kemampuan tersebut, Boost US$250/bulan lebih cocok; selisih US$6.000 perlu digantikan penggunaan eligible lain. Boost dan Scale adalah alternatif, bukan dua paket yang dijumlahkan. PostHog Enterprise mempunyai harga custom; penawaran dan eligibility harus diverifikasi sebelum dimasukkan sebagai biaya pasti.
+Scale diusulkan untuk approval, audit, governance dan alert yang digunakan dalam roadmap ini. Jika tim tidak memakai kemampuan tersebut, Boost US$250/bulan lebih cocok; selisih US$6.000 perlu digantikan penggunaan eligible lain. Boost dan Scale adalah alternatif, bukan dua paket yang dijumlahkan. Enterprise/annual commitment tidak masuk opsi belanja aktif. Penawaran belum ada dan tidak boleh menjadi fallback target 50% tanpa bukti seluruh biaya tercakup, tidak ada pembayaran debit atau kewajiban melampaui grant.
 
 ### Jadwal pencapaian
 
@@ -233,17 +259,17 @@ Sumber: [Analytics pricing](https://posthog.com/product-analytics/pricing), [Rep
 - Log 1 TB/bulan kira-kira 33 GB/hari: volume ini besar untuk dua aplikasi kecil. Hanya masuk akal bila operasi nyata menghasilkan data berguna tersebut. Jangan menambah debug/payload foto demi volume.
 - 50 juta synced rows/bulan memerlukan sumber bisnis aktif pada skala sebanding; baris kosong/duplikat dan sync berulang tidak dihitung sebagai manfaat.
 
-**Jika volume tersebut tidak tercapai, konsumsi 50% tidak dapat dijamin oleh pay-as-you-go.** Jalur alternatif adalah meminta penawaran Enterprise/annual commitment yang memenuhi kebutuhan governance dan diperbolehkan oleh grant. Belum ada harga, persetujuan kredit atau penawaran; jangan mencatat kontrak hipotetis sebagai penggunaan pasti. Tidak ada kontak ke PostHog dilakukan melalui revisi ini.
+**Jika volume tersebut tidak tercapai, konsumsi 50% tidak dapat dijamin oleh pay-as-you-go.** Perluas penggunaan bisnis yang relevan dan eligible; jangan membeli kontrak atau layanan tidak tercakup untuk mengejar angka. Target kredit boleh tidak tercapai daripada menimbulkan tagihan debit. Tidak ada Enterprise/annual commitment atau kontak ke PostHog dilakukan melalui revisi ini.
 
 ### Kendali pencapaian dan expiry
 
 - Review bulanan: konsumsi eligible sebelum kredit, kredit yang benar-benar diterapkan, saldo, forecast periode berikutnya, volume per produk dan deliverable bisnis. Jangan memakai current bill setelah diskon sebagai ukuran konsumsi kredit.
 - Hitung gap = US$25.000 dikurangi kredit eligible yang sudah digunakan. Target rata-rata sisa per bulan = gap dibagi bulan tersisa. Bill/credit yang belum finalized diberi label provisional.
 - H-180: bandingkan konsumsi dan forecast dengan target. Bila tertinggal, percepat integrasi data/fitur yang dibutuhkan, perluas penggunaan bisnis, atau kaji paket yang mempunyai manfaat nyata.
-- H-90: bila forecast masih di bawah 50%, laporkan gap dan opsi terverifikasi. Kontrak/custom package hanya diperhitungkan setelah eligibility, biaya, expiry dan manfaat jelas.
-- H-30/H-7: setujui biaya pascakredit, kurangi fitur yang tidak memberi manfaat, dan simpan definisi/query serta ekspor yang dibutuhkan sebelum data retention berakhir.
+- H-90: bila forecast masih di bawah 50%, laporkan gap dan kebutuhan produksi eligible. Target tidak boleh mengalahkan aturan tanpa debit; tidak ada komitmen baru yang belum terverifikasi.
+- H-30/H-7: verifikasi penghentian usage berbayar dan cancellation paket sebelum tanggal efektif coverage berakhir; kembali ke kuota gratis. Simpan definisi/query serta ekspor yang diperlukan.
 - Per-product billing limit adalah batas maksimum, bukan tagihan minimum. Properti `app` tidak membagi kuota atau limit per aplikasi. Jangan berhenti merekam data penting tanpa menilai dampak limit terhadap ingestion.
-- US$25.000–30.000 adalah target kredit eligible; AI tools yang dikecualikan, provider API, iklan, perangkat dan layanan pihak ketiga menggunakan anggaran terpisah.
+- US$25.000–30.000 adalah target kredit eligible; AI tools yang dikecualikan, provider API, iklan, perangkat dan layanan pihak ketiga tidak dibeli sebagai bagian pemanfaatan kredit. Operasi aplikasi yang sudah ada tidak diubah oleh planning ini.
 
 ## 8. Eksperimen dan integrasi lanjutan
 
@@ -266,7 +292,8 @@ Setelah sprint itu tervalidasi, pilih satu tahap berikutnya berdasarkan kebutuha
 ## 10. Review rencana
 
 - Perhitungan target US$25.000, tahapan kuartal dan skenario volume US$26.332,80 diperiksa.
-- Target 50% bersyarat pada penggunaan/kontrak eligible nyata; tidak dilaporkan sebagai forecast yang sudah terbukti.
+- Target 50% bersyarat pada penggunaan eligible nyata; tidak dilaporkan sebagai forecast yang sudah terbukti.
+- Aturan kredit saja/tanpa debit didahulukan; proteksi billing masih pending, tidak dinyatakan aktif.
 - Link lokal dan dokumen resmi diperiksa saat penyusunan.
 - Tidak ada secret, binary foto atau data pelanggan ditambahkan.
 - Tidak ada kode/runtime aplikasi, subscription, billing limit, replay, workflow atau akses database diubah.
