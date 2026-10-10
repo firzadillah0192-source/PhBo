@@ -3,6 +3,7 @@ import { uploadPhoto } from '../../api.js'
 import { CLASSIC_RETAKE_LIMIT, CLASSIC_REVIEW_SECONDS, runClassicCaptureSequence } from '../../classicSequence.js'
 import { cameraFailureMessage, requestPortraitCamera } from '../../cameraAccess.js'
 import { readCustomerFlow, updateCustomerFlow } from '../../customerSession.js'
+import { CatalogImage } from '../home/ModeCards.jsx'
 
 const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
@@ -201,6 +202,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
         <p className="classic-review-guidance">Review each photo for 10 seconds. Next continues automatically.</p>
       </header>
       {layout.requires_event_name && <div className="classic-event-details"><label htmlFor="classic-event-name">Nama event<input id="classic-event-name" value={eventName} maxLength={80} disabled={busy || completed > 0} placeholder="Misalnya: Pernikahan Sarah & Arif" onChange={event => { setEventName(event.target.value); updateCustomerFlow({ classicEventName: event.target.value.trim(), classicEventLayoutId: layout.id }); setMessage('') }} autoComplete="off" required aria-describedby="classic-event-help" /></label><p id="classic-event-help">Tanggal mengikuti waktu pengambilan foto dalam WIB. QR akan membuka hasil foto untuk di-download.</p></div>}
+      <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>Preview frame · {layout.name}<br />{layout.shot_count} foto dalam satu strip</figcaption></figure>
       <div className="camera-stage classic-camera-stage">
         {camera ? <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setReady(true)} aria-label="Live camera preview" /> : <button type="button" className="camera-idle" onClick={openCamera} disabled={busy || opening}><span className="camera-lens" aria-hidden="true"><i /></span><strong>{opening ? 'Opening camera…' : 'Open the camera'}</strong></button>}
         {reviewPhoto && <img className="classic-shot-preview" src={reviewPhoto.url} alt={'Photo ' + (reviewPhoto.shot + 1) + ' for review'} />}

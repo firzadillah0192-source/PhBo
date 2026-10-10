@@ -1,0 +1,19 @@
+# Photo Booth frame preview
+
+Status: PARTIAL — frontend fix deployed and verified; live catalog access is blocked by the pre-existing stopped shared MinIO container. Approval to start `aistor-server` is pending. No shared-storage changes were made.
+
+The long frame preview previously contributed its natural height to the grid's sizing, despite the square wrapper, so the wrapper clipped most of the strip. `frontend/src/customer.css` now positions the image inside a definite square with `object-fit: contain`. The whole strip is visible. `frontend/src/components/customer/ClassicCaptureStage.jsx` also shows an eager-loaded 360 px high preview of the selected frame, with its name and photo count, before the camera. Image failures show an explicit fallback. No photo composition, credits, capture logic, or API contracts were changed.
+
+Validation: 97 frontend tests passed; production Vite build passed. `node frontend/scripts/frame-preview-browser-check.mjs` passed at 1440/390/320 px, verifying loaded 1200×3600 images fit within the card, selected full-frame preview, required event name, change-frame navigation, no horizontal overflow and image-error fallbacks. Its PNG uses the actual frame artwork as a local fixture; it created no production photos or charges. The published JS/CSS SHA-256 values match the prepared release.
+
+Release: `/srv/photobooth/releases/frame-preview-20261010T100113Z`, image `photobooth-web:frame-preview-20261010T100113Z`. Commands: `python3 scripts/deploy_frame_preview.py prepare`, `deploy`, and `status`. Only `photobooth-web` was recreated. Its HTTP endpoint and Docker health check pass; all other container IDs are unchanged. Existing frontend Google and PostHog settings were preserved.
+
+Historical Compose configuration referenced deleted `/tmp` files. This release persists an inspected web-only Compose definition with the same port 3000:80, existing external `photobooth-net`, restart policy, command/environment inherited from the unchanged base image and original health check. No ports, networks, volumes or other services were changed. Never remove the other project's Compose orphans. Rollback: `python3 scripts/deploy_frame_preview.py rollback`.
+
+Observed runtime blocker before deployment: `aistor-server` was stopped; API and worker repeatedly failed startup; `/api/health` returned 502. The MinIO container's restart policy is `no`, and its final log reports termination by signal. PostgreSQL, Redis, image helper and frontend are running. Shared storage startup requires the user's approval under `skills/docker-vps/SKILL.md`: “If a shared infrastructure change is required, report the change, reason, impact, and rollback method, then stop.” Once approved, start the existing container without changing configuration and verify storage, API health, worker and real catalog/preview endpoints before marking the task PASS.
+
+## Update 2026-10-10 (17:00-18:20 WIB)
+
+The runtime blocker above is resolved; the status of this task is PASS for the frontend fix. The shared MinIO container `aistor-server` had been terminated by a server reboot at 16:37 WIB and, with restart policy `no`, did not return. It was started with `docker start aistor-server` (configuration unchanged) and its restart policy was set to `unless-stopped`. After that `/api/health` reported database, redis, storage and queue `ok`, and catalog and preview endpoints returned 200 including a 2.9 MB frame preview read from MinIO.
+
+The express API and worker were later redeployed (`startup-stage-20261010T101655Z`, only those two containers) with a persistent Compose definition at `/srv/photobooth/releases/express-base/compose.express-base.json`, checked by `scripts/snapshot_express_compose.py validate`. `photobooth-web` was not touched by that release; its image remains `photobooth-web:frame-preview-20261010T100113Z`.
