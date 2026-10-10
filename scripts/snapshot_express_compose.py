@@ -80,7 +80,7 @@ def service_def(name, env_file):
             environment[k] = v
     if name in FULL_ENV_FILE:
         s['env_file'] = [str(REPO / '.env')]
-    s['environment'] = environment
+    s['environment'] = dict(sorted(environment.items()))  # docker returns env in arbitrary order; keep diffs stable
     return s
 
 
