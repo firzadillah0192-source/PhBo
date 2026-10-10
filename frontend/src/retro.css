@@ -336,7 +336,7 @@
   .retro-app .customer-progress ol { justify-content: space-around; }
   .retro-app .customer-progress li::before { display: none; }
   .retro-app .customer-progress li::after { display: none; }
-  .retro-app :is(.stage-heading h1, .gallery-heading h1, .customer-empty h1) { font-size: var(--fs-3xl); }
+  .retro-app :is(.stage-heading h1, .gallery-heading h1, .customer-empty h1, .processing-copy h1, .result-stage h1) { font-size: var(--fs-3xl); }
   .retro-app .advanced-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .retro-app .advanced-style-card { padding: 12px; }
   .retro-app .selection-dock { gap: 10px; padding: 10px; bottom: 12px; }
@@ -406,3 +406,19 @@
 .classic-event-details label { display: grid; gap: 10px; font-weight: 700; }
 .classic-event-details input { width: 100%; box-sizing: border-box; min-height: 48px; padding: 12px; border: 2px solid var(--ink); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; }
 .classic-event-details p { margin: 12px 0 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.6; }
+
+/* Account center: readable secondary text (14px, not the 12px label size) and on-scale panel headings. */
+.retro-app :is(.account-section-nav button, .account-panel p:not(.account-eyebrow), .account-hero-identity p:not(.account-eyebrow), .account-credit-stat>span, .account-creation-copy>span) { font-size: var(--fs-sm); }
+.retro-app :is(.account-hero-identity h2, .account-panel h2) { font-size: var(--fs-2xl); }
+@media (max-width: 650px) { .retro-app :is(.account-hero-identity h2, .account-panel h2) { font-size: var(--fs-xl); } }
+
+/* Every button and button-like link in the customer theme shares one size and weight. */
+.retro-app :is(.customer-inline-button, .compare-toggle) { font-size: var(--fs-sm) !important; font-weight: 750; letter-spacing: 0; text-transform: none; } /* customer.css forces 10px !important */
+.retro-app :is(.account-back-link, .account-danger-button, .account-outline-button, .account-text-button) { font-size: var(--fs-sm); font-weight: 750; }
+
+/* Result actions wrap instead of running off the screen now that the buttons are a readable 14px. */
+.retro-app .result-stage footer>div { flex-wrap: wrap; gap: 12px; }
+@media (max-width: 650px) {
+  .retro-app .result-stage footer>div { justify-content: flex-start; }
+  .retro-app .result-stage footer>div>:is(button, a) { flex: 1 1 calc(50% - 6px); }
+}
