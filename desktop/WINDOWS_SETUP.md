@@ -8,11 +8,21 @@ Kebutuhan: Windows 11 x64, kabel USB data, Chrome atau Edge (untuk jalur browser
 
 | Yang dipasang | Untuk apa | Wajib |
 | --- | --- | --- |
-| [Canon EOS Webcam Utility](https://www.usa.canon.com/digital-cameras/eos-webcam-utility/download) | Membuat EOS 2000D tampil sebagai webcam. Tidak perlu EOS Utility. | Ya, untuk kamera Canon |
+| Canon EOS Webcam Utility (lihat "Cara mengunduh Canon" di bawah) | Membuat EOS 2000D tampil sebagai webcam. Tidak perlu EOS Utility. | Ya, untuk kamera Canon |
 | [Driver Epson L8050](https://www.epson.co.id/Printer-InkTank/L-Series/Epson-L8050/s/SPT_C11CK37501) | Printer dikenali Windows dan menerima job cetak | Ya, untuk cetak |
 | Node.js 22.12+ dan .NET SDK 10 | Hanya jika membangun dari source | Tidak, paket ZIP sudah membawa .NET |
 
 Tidak ada plugin lain. Canon EDSDK (shutter/JPEG asli) belum diimplementasikan, jadi foto diambil dari video webcam.
+
+### Cara mengunduh Canon EOS Webcam Utility
+
+Halaman Canon USA hanya untuk pelanggan di AS dan sekarang menawarkan versi Pro berlangganan, jadi dari Indonesia coba halaman berikut (urut). Canon memblokir unduhan otomatis; buka dari browser. Unduh hanya dari situs Canon.
+
+1. [Canon Europe, EOS Webcam Utility](https://www.canon-europe.com/cameras/eos-webcam-utility/): daftar kompatibel mencantumkan EOS 2000D, tombol "Download for Windows". Versi yang ditawarkan bisa berlangganan; cek harganya.
+2. [Canon Australia](https://www.canon.com.au/apps/eos-webcam-utility): dilaporkan gratis untuk Windows 10/11 64-bit. Belum diverifikasi dari server ini.
+3. [Dukungan Canon USA, lokasi unduhan versi Pro](https://support.usa.canon.com/kb/s/article/ART176748).
+
+Jika tidak ada yang bisa diunduh, webcam USB biasa tetap bisa dipakai untuk menguji alur sampai cetak. Aplikasi memakai kamera apa pun yang dikenali Windows.
 
 **Dari paket ZIP** (`NXBooth Desktop-0.1.0-win.zip`, minta dari pemilik/VPS):
 1. Cocokkan hash dengan `Get-FileHash "NXBooth Desktop-0.1.0-win.zip"` (nilainya dari pemberi paket).
@@ -33,7 +43,7 @@ npm run package:win   # hasil: release\NXBooth Desktop-0.1.0-win.zip
 Atau jalankan langsung tanpa paket: lihat "Menjalankan dari source di Windows" di [README.md](README.md).
 
 
-Driver resmi: [Canon EOS Webcam Utility](https://www.usa.canon.com/digital-cameras/eos-webcam-utility/download) dan [Epson L8050](https://www.epson.co.id/Printer-InkTank/L-Series/Epson-L8050/s/SPT_C11CK37501).
+Driver resmi: Canon EOS Webcam Utility (lihat "Cara mengunduh Canon") dan [Epson L8050](https://www.epson.co.id/Printer-InkTank/L-Series/Epson-L8050/s/SPT_C11CK37501).
 
 ## Pasang perangkat
 
