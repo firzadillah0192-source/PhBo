@@ -75,6 +75,45 @@ def patch_nginx(source):
     return source.replace(marker, locations + '\n' + marker)
 
 
+CATALOG_IMAGE_ROUTE = '^/api/(templates/[^/]+/preview|experiences/[^/]+/thumbnail|classic/layouts/[^/]+/preview)$'
+
+
+def ensure_catalog_image_cache(source):
+    """Make the public catalog images cacheable. The API sends no-store for every /api route.
+
+    Only these three read-only GET routes are touched. Cookies are not forwarded, so the
+    response is identical for every visitor and safe for the browser and Cloudflare to keep.
+    """
+    if CATALOG_IMAGE_ROUTE in source:
+        return source
+    block = '''    # Public catalog images: cacheable by browsers and Cloudflare (the API default is no-store).
+    location ~ ''' + CATALOG_IMAGE_ROUTE + ''' {
+        set $photobooth_api http://photobooth-express:8081;
+        proxy_pass $photobooth_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Forwarded-Host  $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Cookie "";
+        proxy_connect_timeout 10s;
+        proxy_read_timeout    60s;
+        proxy_hide_header Cache-Control;
+        proxy_hide_header CDN-Cache-Control;
+        proxy_hide_header Cloudflare-CDN-Cache-Control;
+        proxy_hide_header Pragma;
+        proxy_hide_header Vary;
+        add_header Cache-Control "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" always;
+    }
+
+'''
+    marker = '    location /api/ {\n'
+    if source.count(marker) != 1:
+        raise RuntimeError('Unexpected live /api routing; review before patching.')
+    return source.replace(marker, block + marker)
+
+
 def ensure_nginx(source):
     """Refresh path: keep nginx as is when every v2 route is already live; patch it when none is."""
     routes = ['location ^~ /v2/assets/', 'location ^~ /v2/admin/assets/', 'location ^~ /v2/kiosk/assets/', 'try_files $uri $uri/ /v2/index.html;', 'try_files $uri $uri/ /v2/admin/index.html;', 'try_files $uri $uri/ /v2/kiosk/index.html;']
@@ -129,7 +168,7 @@ def prepare():
         shutil.copytree(source / app / 'dist', context / target, dirs_exist_ok=True)
     nginx = subprocess.check_output(['docker', 'exec', WEB, 'cat', '/etc/nginx/conf.d/photobooth.conf']).decode()
     (release / 'nginx.previous.conf').write_text(nginx)
-    (context / 'photobooth.conf').write_text(ensure_nginx(nginx))
+    (context / 'photobooth.conf').write_text(ensure_catalog_image_cache(ensure_nginx(nginx)))
     image = 'photobooth-web:frontend-v2-' + stamp
     (context / 'Dockerfile').write_text('FROM ' + web['Config']['Image'] + '\nRUN rm -rf /usr/share/nginx/html/v2\nCOPY v2/ /usr/share/nginx/html/v2/\nCOPY photobooth.conf /etc/nginx/conf.d/photobooth.conf\n')
     override = release / 'compose.frontend-v2.yml'

@@ -419,7 +419,7 @@ const gradients = [
  * `seed` only picks the placeholder gradient. `missing` renders the no-image state.
  */
 export function Thumb({ seed = 0, src, alt = '', missing, className }: { seed?: number; src?: string; alt?: string; missing?: boolean; className?: string }) {
-  if (src) return <img src={src} alt={alt} className={cn('rounded-md object-cover', className)} />
+  if (src) return <img src={src} alt={alt} loading="lazy" decoding="async" className={cn('rounded-md object-cover', className)} />
   if (missing)
     return (
       <div className={cn('flex flex-col items-center justify-center gap-1 rounded-md bg-surface-2 text-text-muted', className)}>

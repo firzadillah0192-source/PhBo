@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from scripts.deploy_frontend_v2 import ensure_nginx, patch_nginx
+from scripts.deploy_frontend_v2 import ensure_catalog_image_cache, ensure_nginx, patch_nginx
 
 
 class RoutingTest(unittest.TestCase):
@@ -30,6 +30,22 @@ class RoutingTest(unittest.TestCase):
         self.assertEqual(ensure_nginx(Path('frontend/nginx.conf').read_text()), patched)
         with self.assertRaises(RuntimeError):
             ensure_nginx(patched.replace('location ^~ /v2/kiosk/assets/', 'location ^~ /x/'))
+
+    def test_catalog_images_become_cacheable_without_touching_other_api_routes(self):
+        source = ensure_nginx(Path('frontend/nginx.conf').read_text())
+        cached = ensure_catalog_image_cache(source)
+        self.assertEqual(ensure_catalog_image_cache(cached), cached)
+        block = cached[cached.index('# Public catalog images'):cached.index('    location /api/ {')]
+        for route in ['templates/[^/]+/preview', 'experiences/[^/]+/thumbnail', 'classic/layouts/[^/]+/preview']:
+            self.assertIn(route, block)
+        for header in ['Cache-Control', 'CDN-Cache-Control', 'Cloudflare-CDN-Cache-Control', 'Vary']:
+            self.assertIn('proxy_hide_header ' + header + ';', block)
+        self.assertIn('proxy_set_header Cookie "";', block)
+        self.assertNotIn('results', block)
+        self.assertNotIn('uploads', block)
+        self.assertIn('location /api/ {', cached)
+        with self.assertRaises(RuntimeError):
+            ensure_catalog_image_cache('server {}')
 
 
 if __name__ == '__main__':
