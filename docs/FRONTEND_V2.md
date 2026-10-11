@@ -100,11 +100,17 @@ Switching v2 to the main URL is a later, separately requested release.
 
 ## Handoff: 11 October 2026 (design parity pass)
 
-Source of truth: `origin/frontend-enhance@68bcdaf` (74 files, all imported). The first
-prepared releases (`frontend-v2-20261011T044814Z`, `...T045227Z`, `...T045711Z`) predate
-this pass: **run `deploy_frontend_v2.py prepare` again** before any deploy; do not deploy
-the older images. Nothing from v2 is deployed; the web still runs
-`photobooth-web:kiosk-printer-20261010T130035Z`. Nothing is committed.
+Source of truth: `origin/frontend-enhance@68bcdaf` (74 files, all imported).
+
+**Live:** `photobooth-web:frontend-v2-20261011T053003Z`, deployed 11 October 2026 05:33 UTC
+with `deploy_frontend_v2.py deploy` (release dir
+`/srv/photobooth/releases/frontend-v2-20261011T053003Z/`, `manifest.json` has `deployed: true`).
+Only `photobooth-web` was recreated; the old UI HTML hash, `/api` and every other
+container were unchanged. Rollback: `python3 -I scripts/deploy_frontend_v2.py rollback`
+returns to `photobooth-web:frontend-v2-20261011T045711Z` (the earlier v2 build). The
+original pre-v2 image is `photobooth-web:kiosk-printer-20261010T130035Z`. Older
+`frontend-v2-…044814Z`/`…045227Z` dirs are failed or superseded candidates and are safe to ignore.
+`prepare` can refresh a live v2 release (it keeps the live nginx when every v2 route is present).
 
 Changed in this pass (all under `frontend-enhanced/`, no backend or schema change):
 
@@ -133,5 +139,5 @@ Changed in this pass (all under `frontend-enhanced/`, no backend or schema chang
 Validation: typecheck of the three apps, 5 shared unit tests, 2 nginx routing tests,
 production builds and 26 browser assertions (isolated fixtures) pass. Screenshots are
 in `/tmp/nxbooth-v2-ui-check/`. Still open: visual comparison against the Figma frames
-side by side, physical camera/Google/provider acceptance, and the deploy itself.
+side by side and physical camera/Google/provider acceptance on the live URL.
 Express snapshot validation still reports `image differs` (pre-existing, unrelated).
