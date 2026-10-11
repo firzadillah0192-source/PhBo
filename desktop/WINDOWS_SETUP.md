@@ -27,7 +27,7 @@ Jika tidak ada yang bisa diunduh, webcam USB biasa tetap bisa dipakai untuk meng
 **Dari paket ZIP** (`NXBooth Desktop-0.1.0-win.zip`, minta dari pemilik/VPS):
 1. Cocokkan hash dengan `Get-FileHash "NXBooth Desktop-0.1.0-win.zip"` (nilainya dari pemberi paket).
 2. Ekstrak seluruh ZIP ke folder biasa, mis. `C:\NXBooth`. Jangan jalankan dari dalam ZIP.
-3. Klik kanan `Start-NXBooth.ps1` → Run with PowerShell, isi PIN operator. Windows SmartScreen mungkin memperingatkan karena paket belum ditandatangani; pilih More info → Run anyway hanya jika file berasal dari pemilik.
+3. Klik dua kali **`Start-NXBooth.cmd`** (cara termudah; membuka blokir file dan melewati batasan policy PowerShell), lalu isi PIN operator. Alternatif: klik kanan `Start-NXBooth.ps1` → Run with PowerShell. Jika jendela langsung tertutup, buka PowerShell di folder itu dan jalankan `powershell -ExecutionPolicy Bypass -File .\Start-NXBooth.ps1`. Windows SmartScreen mungkin memperingatkan karena paket belum ditandatangani; pilih More info → Run anyway hanya jika file berasal dari pemilik.
 4. Opsional, agar tombol proses terhubung ke backend: isi `PHBO_KIOSK_API_KEY` (credential kiosk dari pemilik) di sesi PowerShell yang sama sebelum menjalankan. Jangan di-commit atau dibagikan.
 
 **Dari source** (di laptop, folder `desktop`):
