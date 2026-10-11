@@ -3,17 +3,50 @@ import {createRoot} from 'react-dom/client';
 import './style.css';
 import {printerMessage} from '../../frontend/src/kioskPrinter.js';
 import {openKioskCamera,stopCamera,captureCameraPhoto,cameraError} from '../../frontend/src/kioskCamera.js';
-const names={CLASSIC:'Classic strips',BASIC:'Basic',ADVANCED:'Advanced'};
-const messages={BACKEND_NOT_CONFIGURED:'Backend belum dikonfigurasi. Foto tersimpan lokal; generation belum dijalankan.',FIXTURE_REQUIRED:'Operator perlu memilih foto untuk simulasi kamera.',CAMERA_NOT_CONNECTED:'Kamera belum terhubung.',PRINTER_NOT_CONNECTED:'Printer belum terhubung.',OPERATOR_REQUIRED:'Buka panel operator untuk membatalkan sesi ini.',PIN_INVALID:'PIN tidak sesuai.',OPERATOR_PIN_NOT_CONFIGURED:'PIN operator belum dikonfigurasi.',GENERATION_FAILED:'Generation gagal di backend. Tidak ada hasil yang dibuat.',CREDENTIAL_RECOVERY_REQUIRED:'Credential sesi tidak tersedia. Operator perlu memeriksa sesi sebelum mengulang.',PRINT_ALREADY_SUBMITTED:'Pekerjaan cetak sudah tercatat. Periksa jurnal operator.',CATALOG_UNAVAILABLE:'Katalog backend belum dapat dimuat.'};
+const names={CLASSIC:'Classic Strips',BASIC:'Basic',ADVANCED:'Advanced'};
+const messages={BACKEND_NOT_CONFIGURED:'Backend belum dikonfigurasi. Foto tersimpan lokal; generation belum dijalankan.',FIXTURE_REQUIRED:'Operator perlu memilih foto untuk simulasi kamera.',CAMERA_NOT_CONNECTED:'Kamera belum terhubung.',PRINTER_NOT_CONNECTED:'Printer belum terhubung.',OPERATOR_REQUIRED:'Buka panel operator untuk membatalkan sesi ini.',PIN_INVALID:'PIN tidak sesuai.',OPERATOR_PIN_NOT_CONFIGURED:'PIN operator belum dikonfigurasi.',GENERATION_FAILED:'Generation gagal di backend. Tidak ada hasil yang dibuat.',CREDENTIAL_RECOVERY_REQUIRED:'Credential sesi tidak tersedia. Operator perlu memeriksa sesi sebelum mengulang.',PRINT_ALREADY_SUBMITTED:'Pekerjaan cetak sudah tercatat. Periksa jurnal operator.',UNAUTHORIZED:'Kunci kiosk ditolak server. Periksa kuncinya di Menu staf.',KEY_FROM_ENVIRONMENT:'Kunci dipasang lewat environment (PHBO_KIOSK_API_KEY) dan tidak bisa diubah di sini.',CATALOG_UNAVAILABLE:'Katalog desain belum dapat dimuat. Periksa koneksi internet, lalu tekan Cek ulang.',SELECTION_REQUIRED:'Pilih desain terlebih dahulu.',EVENT_NAME_REQUIRED:'Isi nama event terlebih dahulu.'};
+const modes=[
+ {id:'CLASSIC',name:'Classic Strips',tag:'Strip foto event',desc:'Beberapa pose disusun dalam satu strip dengan frame pilihan. Tanpa AI.',color:'classic'},
+ {id:'BASIC',name:'Basic',tag:'Potret bertema',desc:'Satu foto diubah menjadi potret bertema siap pakai.',color:'basic'},
+ {id:'ADVANCED',name:'Advanced',tag:'Gaya kreatif',desc:'Satu foto diubah dengan gaya kreatif pilihan, seperti 3D atau 8-bit.',color:'advanced'}];
+const steps=['Mode','Desain','Foto','Proses','Hasil'];
+const canonLike=label=>/canon|eos/i.test(label||'');
+async function detectCameras(simulated){
+ if(simulated)return {list:['Kamera simulasi (foto dipilih staf)'],note:''};
+ const media=navigator.mediaDevices;if(!media?.enumerateDevices)return {list:[],note:'Windows tidak menyediakan akses kamera.'};
+ let stream,note='';
+ try{stream=await media.getUserMedia({video:true,audio:false});}catch(e){note=e?.name==='NotAllowedError'?'Akses kamera ditolak Windows.':e?.name==='NotReadableError'?'Kamera sedang dipakai aplikasi lain.':'';}
+ try{const list=(await media.enumerateDevices()).filter(d=>d.kind==='videoinput').map(d=>d.label||'Kamera');return {list,note};}
+ catch{return {list:[],note};}
+ finally{stopCamera(stream);}
+}
+function Thumb({mode,id,name,api}){
+ const ref=useRef(null),[src,setSrc]=useState('');
+ useEffect(()=>{
+  let cancelled=false;const el=ref.current;
+  const load=()=>api.thumbnail(mode,id).then(r=>{if(!cancelled&&r.ok)setSrc(r.data);});
+  if(!el||typeof IntersectionObserver==='undefined'){load();return()=>{cancelled=true;};}
+  const io=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){io.disconnect();load();}},{rootMargin:'200px'});io.observe(el);
+  return()=>{cancelled=true;io.disconnect();};
+ },[mode,id]);
+ return <div className="thumb" ref={ref}>{src?<img src={src} alt={name}/>:<span className="thumb-wait" aria-hidden="true"/>}</div>;
+}
+function Row({ok,label,value,hint}){return <li className={`check ${ok===true?'ok':ok===false?'warn':'info'}`}><i aria-hidden="true">{ok===true?'✓':ok===false?'!':'i'}</i><div><b>{label}</b><span>{value}</span>{hint&&<small className="hint">{hint}</small>}</div></li>;}
 function App(){
  const [state,setState]=useState(null),[error,setError]=useState(''),[mode,setMode]=useState('CLASSIC'),[choice,setChoice]=useState(''),[panel,setPanel]=useState(false),[operator,setOperator]=useState(false),[pin,setPin]=useState('');
- const [eventName,setEventName]=useState(''),[pairing,setPairing]=useState(null);
+ const [keyInput,setKeyInput]=useState(''),[eventName,setEventName]=useState(''),[pairing,setPairing]=useState(null),[view,setView]=useState('check'),[cams,setCams]=useState(null),[checking,setChecking]=useState(false),[count,setCount]=useState(0);
  const api=window.nxbooth;
  const video=useRef(null),[camera,setCamera]=useState({ready:false,error:'',source:''});
- const refresh=async()=>{const r=await api.state();if(r.ok)setState(r.data);else setError(r.error.code);};
- useEffect(()=>{if(!api){setError('Jalankan UI melalui aplikasi Electron.');return;}refresh();return api.onChange(refresh);},[]);
- async function act(method,...args){setError('');const r=await api[method](...args);if(!r.ok)setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));await refresh();}
- const s=state?.session,choices=state?.catalog[mode]||[],personalized=mode==='CLASSIC'&&choices.find(c=>c.id===choice)?.requiresEventName;
+ const refresh=async()=>{const r=await api.state();if(r.ok)setState(r.data);else setError(r.error.code);return r.ok?r.data:null;};
+ async function runCheck(){
+  setChecking(true);setError('');
+  const r=await api.refresh();const st=r.ok?r.data:await refresh();if(r.ok)setState(r.data);
+  setCams(await detectCameras(!!st?.device.simulated));setChecking(false);
+ }
+ useEffect(()=>{if(!api){setError('Jalankan UI melalui aplikasi Electron.');return;}
+  refresh().then(st=>{if(st&&!st.session)runCheck();else if(st)setCams({list:[],note:''});});return api.onChange(refresh);},[]);
+ async function act(method,...args){setError('');const r=await api[method](...args);if(!r.ok)setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));await refresh();return r.ok;}
+ const s=state?.session,choices=state?.catalog[mode]||[],picked=choices.find(c=>c.id===choice),personalized=mode==='CLASSIC'&&picked?.requiresEventName;
  useEffect(()=>{
   if(state?.device.simulated||s?.phase!=='CAPTURING')return;
   let cancelled=false,stream;
@@ -29,35 +62,74 @@ function App(){
    await act('captureWebcam',base64);
   }catch(error){setError(error.message||'Kamera belum siap.');}
  }
-
- const phase=s?.phase,step=!s?1:['CAPTURING','REVIEWING'].includes(phase)?2:['UPLOADING','PROCESSING'].includes(phase)?3:phase==='RESULT_READY'?4:2;
- const steps=['Mode','Foto','Proses','Hasil'];
+ async function countdownThenCapture(){
+  for(let n=3;n>=1;n--){setCount(n);await new Promise(r=>setTimeout(r,1000));}
+  setCount(0);await capture();
+ }
+ async function startSession(){
+  const ok=await act('start',mode,choice||undefined,personalized?eventName:undefined);
+  if(ok){setChoice('');setEventName('');}
+ }
+ function backHome(){setChoice('');setEventName('');setView('mode');}
+ const phase=s?.phase;
+ const step=s?(['CAPTURING','REVIEWING'].includes(phase)?3:['UPLOADING','PROCESSING'].includes(phase)?4:phase==='RESULT_READY'?5:3):view==='style'?2:view==='mode'?1:0;
  const accent={CLASSIC:'classic',BASIC:'basic',ADVANCED:'advanced'};
- const blurb={CLASSIC:'Beberapa pose dalam satu layout',BASIC:'Satu foto, tema siap pakai',ADVANCED:'Satu foto, gaya kustom'};
  const title=({CAPTURING:'Siap untuk pose berikutnya?',REVIEWING:'Periksa foto kamu.',UPLOADING:'Mengirim foto…',PROCESSING:'Foto sedang diproses.',RESULT_READY:'Hasil foto kamu.',RECOVERY_REQUIRED:'Sesi perlu diperiksa.',FAILED:'Generation gagal.'})[phase];
+ const dev=state?.device,printerOk=dev&&(dev.simulated||dev.printer==='READY');
+ const needsName=personalized&&(!eventName.trim()||/[\p{Cc}\p{Cf}]/u.test(eventName));
+ const catalogEmpty=!choices.length;
  return <main className="stage"><header className="bar"><div className="brand"><strong>NX<span>Booth</span></strong><small>DESKTOP · EVENT STATION</small></div>
   <ol className="steps" aria-label="Langkah sesi">{steps.map((n,i)=><li key={n} className={i+1<step?'done':i+1===step?'current':''} aria-current={i+1===step?'step':undefined}><i>{i+1<step?'✓':i+1}</i>{n}</li>)}</ol>
-  <button className="subtle" onClick={()=>setPanel(!panel)}>Operator</button></header>
-  <div className="status"><span className={state?.device.simulated?'chip warn':'chip'}>{state?.device.simulated?'SIMULASI PERANGKAT':state?.device.printer==='READY'?'PRINTER SIAP · KAMERA VIA WEBCAM':'PERIKSA PERANGKAT'}</span><span>{state?.configured?'Backend dikonfigurasi':'Capture lokal · backend belum dikonfigurasi'}</span></div>
+  <button className="subtle" onClick={()=>setPanel(!panel)} aria-expanded={panel}>Menu staf</button></header>
   {error&&<p role="alert" className="alert">{error}</p>}
-  {!s?<section className="screen"><p className="eyebrow">MULAI SESI</p><h1>Abadikan momenmu.</h1><p className="lead">Pilih pengalaman foto, lalu lanjutkan ke pengambilan gambar.</p><div className="modes">{Object.entries(names).map(([id,name])=><button key={id} className={`card ${accent[id]}${mode===id?' selected':''}`} onClick={()=>{setMode(id);setChoice('');}}><span className="dot"/><b>{name}</b><span className="sub">{blurb[id]}</span></button>)}</div>
-  {state?.configured&&<label className="field">Desain <select value={choice} onChange={e=>setChoice(e.target.value)}><option value="">Pilih desain</option>{choices.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
-  {state?.connectionError&&<p className="alert">{messages[state.connectionError]}</p>}
-  <>{personalized&&<label className="field">Nama event<input value={eventName} maxLength={80} onChange={e=>setEventName(e.target.value)} placeholder="Misalnya: Pernikahan Sarah & Arif" required/><small>Tanggal otomatis mengikuti waktu foto dalam WIB.</small></label>}<div className="actions"><button className="primary" disabled={!state||state.busy||state.configured&&!choice||personalized&&(!eventName.trim()||/[\p{Cc}\p{Cf}]/u.test(eventName))} onClick={()=>act('start',mode,choice||undefined,personalized?eventName:undefined)}>Mulai sesi</button></div></></section>:<section className="screen">
+  {!s&&view==='check'&&<section className="screen" aria-label="Cek perangkat"><p className="eyebrow">PERSIAPAN</p><h1>Cek perangkat</h1><p className="lead">Pemeriksaan singkat sebelum mulai. Tidak ada yang wajib: jika perangkat belum terhubung, Anda tetap bisa lanjut dan aplikasi memakai perangkat yang terdeteksi nanti.</p>
+   <ul className="checks" aria-live="polite">
+    <Row ok={checking||!cams?null:cams.list.length>0} label="Kamera" value={checking||!cams?'Memeriksa…':cams.list.length?`${cams.list.length>1?cams.list.length+' kamera: ':''}${(cams.list.find(canonLike)||cams.list[0])} ${canonLike(cams.list.find(canonLike)||'')?'· Canon terdeteksi':''}`:'Tidak ada kamera terdeteksi'} hint={!cams||checking?'':cams.list.length?'':(cams.note||'Hubungkan kamera (Canon EOS Webcam Utility) atau webcam. Aplikasi memakai kamera yang terdeteksi saat sesi foto.')}/>
+    <Row ok={checking||!dev?null:!!printerOk} label="Printer" value={checking||!dev?'Memeriksa…':printerOk?(dev.simulated?'Simulasi (tidak mencetak)':dev.printerName||'Siap'):'Printer belum terdeteksi'} hint={checking||!dev||printerOk?'':'Pasang driver printer dan nyalakan. Aplikasi memakai printer yang terdeteksi saat mencetak.'}/>
+    <Row ok={checking||!state?null:state.catalogLoaded?true:false} label="Server NXBooth" value={checking||!state?'Memeriksa…':state.catalogLoaded?`Terhubung · ${state.catalog.CLASSIC.length} frame, ${state.catalog.BASIC.length} tema, ${state.catalog.ADVANCED.length} gaya`:'Katalog belum bisa dimuat'} hint={checking||!state?'':state.connectionError?messages[state.connectionError]:''}/>
+    <Row ok={null} label="Pemrosesan foto" value={state?.configured?'Kredensial kiosk terpasang':'Tanpa kredensial kiosk'} hint={state?.configured?'':'Foto bisa diambil dan ditinjau, tetapi belum bisa dikirim untuk diproses. Staf mengisinya di Menu staf → Kunci kiosk.'}/>
+   </ul>
+   <div className="actions"><button className="primary" onClick={()=>setView('mode')}>Lanjutkan</button><button disabled={checking} onClick={runCheck}>{checking?'Memeriksa…':'Cek ulang'}</button></div></section>}
+  {!s&&view==='mode'&&<section className="screen"><p className="eyebrow">LANGKAH 1 · PILIH MODE</p><h1>Abadikan momenmu.</h1><p className="lead">Pilih pengalaman foto yang kamu mau.</p>
+   <div className="modes">{modes.map(m=><button key={m.id} className={`card ${m.color}`} onClick={()=>{setMode(m.id);setChoice('');setEventName('');setError('');setView('style');}}><span className="dot"/><b>{m.name}</b><span className="tag">{m.tag}</span><span className="sub">{m.desc}</span></button>)}</div>
+   <div className="actions"><button onClick={()=>setView('check')}>Cek perangkat</button></div></section>}
+  {!s&&view==='style'&&<section className="screen"><p className="eyebrow">LANGKAH 2 · {names[mode].toUpperCase()}</p><h1>{mode==='CLASSIC'?'Pilih frame':mode==='BASIC'?'Pilih tema':'Pilih gaya'}</h1>
+   {catalogEmpty?<p className="lead">{state?.catalogLoaded||state?.configured?'Belum ada desain untuk mode ini.':'Katalog desain belum tersedia, jadi sesi dimulai tanpa desain (hanya ambil dan tinjau foto).'}</p>
+   :<div className="gallery" role="radiogroup" aria-label="Pilihan desain">{choices.map(c=><button key={c.id} role="radio" aria-checked={choice===c.id} className={`tile${choice===c.id?' selected':''}`} onClick={()=>setChoice(c.id)}><Thumb api={api} mode={mode} id={c.id} name={c.name}/><b>{c.name}</b><span>{mode==='CLASSIC'?`${c.shots} foto`:c.theme}</span></button>)}</div>}
+   {personalized&&<label className="field">Nama event<input value={eventName} maxLength={80} onChange={e=>setEventName(e.target.value)} placeholder="Misalnya: Pernikahan Sarah & Arif" required/><small>Tanggal otomatis mengikuti waktu foto dalam WIB.</small></label>}
+   <div className="actions"><button className="primary" disabled={!state||state.busy||!catalogEmpty&&!choice||needsName} onClick={startSession}>Mulai sesi</button><button onClick={backHome}>Kembali</button></div></section>}
+  {s&&<section className="screen">
   <p className="eyebrow">{names[s.mode]} · {s.captures.length}/{s.shots} FOTO</p>
   <h1>{title}</h1>
-  {phase==='CAPTURING'&&!state.device.simulated&&<div className="desktop-camera"><video ref={video} autoPlay muted playsInline aria-label="Preview kamera Canon" onPlaying={()=>setCamera(c=>({...c,ready:true}))}/><p role="status">{camera.error||camera.source||'Membuka kamera…'}</p></div>}<div className="photos">{s.result?<img className="result" src={s.result} alt="Hasil generation dari backend"/>:s.captures.map((c,i)=><figure key={c.id}><img src={c.url} alt={`Foto ${i+1}`}/><figcaption>Foto {i+1}{state.device.simulated?' · simulasi':''}</figcaption></figure>)}</div>
-  {phase==='CAPTURING'&&<p className="lead">{state.device.simulated?'Simulasi mengambil salinan foto pilihan operator.':'Kamera memakai EOS Webcam Utility. Foto diambil dari video kamera.'}</p>}
-  {['UPLOADING','PROCESSING'].includes(phase)&&<p role="status" className="lead"><span className="spinner"/>{s.jobStatus||'Mengirim foto ke jalur media'} · status berasal dari backend.</p>}
+  {phase==='CAPTURING'&&!state.device.simulated&&<div className="desktop-camera"><video ref={video} autoPlay muted playsInline aria-label="Preview kamera Canon" onPlaying={()=>setCamera(c=>({...c,ready:true}))}/>{count>0&&<div className="count" role="status" aria-label={`Hitung mundur ${count}`}>{count}</div>}<p role="status">{camera.error||camera.source||'Membuka kamera…'}</p></div>}<div className="photos">{s.result?<img className="result" src={s.result} alt="Hasil generation dari backend"/>:s.captures.map((c,i)=><figure key={c.id}><img src={c.url} alt={`Foto ${i+1}`}/><figcaption>Foto {i+1}{state.device.simulated?' · simulasi':''}</figcaption></figure>)}</div>
+  {phase==='CAPTURING'&&<p className="lead">{state.device.simulated?'Simulasi mengambil salinan foto pilihan staf.':'Tekan Ambil foto. Ada hitung mundur 3 detik; foto diambil dari video kamera.'}</p>}
+  {['UPLOADING','PROCESSING'].includes(phase)&&<p role="status" className="lead row"><span className="spinner"/>{s.jobStatus||'Mengirim foto ke jalur media'} · status berasal dari backend.</p>}
   {s.error&&<p className="alert">{messages[s.error]||s.error}</p>}
   <div className="actions">
-  {phase==='CAPTURING'&&<button className="primary" disabled={state.busy||!state.device.simulated&&!camera.ready} onClick={capture}>Ambil foto</button>}
-  {['CAPTURING','REVIEWING'].includes(phase)&&s.captures.length>0&&<button disabled={state.busy} onClick={()=>act('retake')}>Ulangi foto terakhir</button>}
+  {phase==='CAPTURING'&&<button className="primary" disabled={state.busy||count>0||!state.device.simulated&&!camera.ready} onClick={state.device.simulated?capture:countdownThenCapture}>Ambil foto</button>}
+  {['CAPTURING','REVIEWING'].includes(phase)&&s.captures.length>0&&<button disabled={state.busy||count>0} onClick={()=>act('retake')}>Ulangi foto terakhir</button>}
   {phase==='REVIEWING'&&<button className="primary" disabled={state.busy} onClick={()=>act('process')}>Proses foto</button>}
-  {phase==='RESULT_READY'&&<><button className="primary" disabled={state.busy||s.prints.some(p=>p.status!=='REJECTED')} onClick={()=>act('print')}>{state.device.simulated?'Simulasi cetak':'Cetak foto'}</button><button disabled={state.busy} onClick={()=>act('finish')}>Selesai</button></>}
+  {phase==='RESULT_READY'&&<><button className="primary" disabled={state.busy||s.prints.some(p=>p.status!=='REJECTED')} onClick={()=>act('print')}>{state.device.simulated?'Simulasi cetak':'Cetak foto'}</button><button disabled={state.busy} onClick={async()=>{if(await act('finish'))setView('mode');}}>Selesai</button></>}
   </div>{s.prints.map(p=><p key={p.id} className="lead">{p.status==='SIMULATED'?'Simulasi cetak tercatat. Tidak ada kertas yang dicetak.':p.status==='ACCEPTED'?'Foto sudah dikirim ke printer. Periksa kertas setelah selesai.':`Status cetak: ${p.status}. Periksa sebelum mengulang.`}</p>)}
   </section>}
-  {panel&&<aside aria-label="Panel operator"><h2>Panel operator</h2>{!operator?<form onSubmit={async e=>{e.preventDefault();const r=await api.unlock(pin);setPin('');if(r.ok)setOperator(true);else setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));}}><label>PIN operator <input type="password" autoComplete="off" value={pin} onChange={e=>setPin(e.target.value)}/></label><button>Buka</button></form>:<><p>Kamera: {state?.device.camera} · Printer: {state?.device.printer}</p><p>Credential: {state?.credentialPersistence?'tersimpan terenkripsi':'hanya memori; sesi online tidak dapat dipulihkan setelah restart'}</p>{state?.device.simulated&&<button disabled={state?.busy} onClick={()=>act('chooseFixture')}>Pilih foto simulasi</button>}<button onClick={()=>act('openWebKiosk')}>Buka kiosk di browser</button><button onClick={async()=>{const r=await api.printerPairing();if(r.ok)setPairing(r.data);else setError(r.error.code)}}>Tampilkan kode koneksi browser</button>{pairing&&<label>Kode koneksi printer (tab browser)<input readOnly value={pairing.code} onFocus={e=>e.target.select()}/><small>Salin ke Operator kiosk web. Kode berubah saat aplikasi dimulai ulang. Jangan bagikan.</small></label>}{s&&<><button disabled={state.busy} onClick={()=>act('finish')}>Tutup sesi</button>{['RECOVERY_REQUIRED','FAILED'].includes(s.phase)&&<button disabled={state.busy} onClick={()=>act('process')}>Pulihkan proses sesi</button>}</>}<button onClick={async()=>{await api.lock();setOperator(false);setPairing(null);}}>Kunci panel</button></>}</aside>}
+  {panel&&<aside aria-label="Menu staf"><div className="drawer-head"><h2>Menu staf</h2><button className="subtle" onClick={()=>setPanel(false)}>Tutup menu</button></div>
+   <p className="lead">Area khusus petugas event, bukan untuk tamu. Di sini staf bisa memeriksa perangkat, menutup atau memulihkan sesi yang macet, memilih foto simulasi, dan menyambungkan printer ke kiosk di browser. Dilindungi PIN yang dibuat saat aplikasi dijalankan lewat <code>Start-NXBooth.cmd</code>.</p>
+   {!operator?<form onSubmit={async e=>{e.preventDefault();const r=await api.unlock(pin);setPin('');if(r.ok)setOperator(true);else setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));}}><label>PIN staf <input type="password" autoComplete="off" value={pin} onChange={e=>setPin(e.target.value)}/></label><button>Buka</button></form>:<>
+   <p>Kamera: {state?.device.camera} · Printer: {state?.device.printer}{state?.device.printerName?` (${state.device.printerName})`:''}</p>
+   <p>Credential: {state?.credentialPersistence?'tersimpan terenkripsi':'hanya memori; sesi online tidak dapat dipulihkan setelah restart'}</p>
+   <h3>Kunci kiosk</h3>
+   <p className="lead">{state?.configured?`Terpasang (${state.keySource==='env'?'dari environment':'disimpan di aplikasi'}). Foto bisa dikirim untuk diproses.`:'Belum terpasang. Tanpa kunci ini foto hanya bisa diambil dan ditinjau, tidak bisa diproses.'} Kunci adalah nilai <code>KIOSK_API_KEY</code> di pengaturan server NXBooth; minta pemilik sistem. Tidak ditampilkan kembali setelah disimpan.</p>
+   {state?.keySource!=='env'&&<form onSubmit={async e=>{e.preventDefault();if(await act('setApiKey',keyInput.trim()))setKeyInput('');}}><label>Kunci kiosk <input type="password" autoComplete="off" spellCheck="false" value={keyInput} onChange={e=>setKeyInput(e.target.value)}/></label><div className="actions"><button className="primary" disabled={keyInput.trim().length<32||state?.busy}>Simpan kunci</button>{state?.configured&&<button type="button" onClick={()=>act('clearApiKey')}>Hapus kunci</button>}</div>{!state?.credentialPersistence&&<small>Windows tidak menyediakan penyimpanan aman di komputer ini, jadi kunci hanya bertahan sampai aplikasi ditutup.</small>}</form>}
+   <h3>Perangkat dan sesi</h3>
+   <div className="actions">
+   <button disabled={checking} onClick={async()=>{if(s)return;setView('check');setPanel(false);runCheck();}}>Cek perangkat lagi</button>
+   {state?.device.simulated&&<button disabled={state?.busy} onClick={()=>act('chooseFixture')}>Pilih foto simulasi</button>}
+   <button onClick={()=>act('openWebKiosk')}>Buka kiosk di browser</button>
+   <button onClick={async()=>{const r=await api.printerPairing();if(r.ok)setPairing(r.data);else setError(r.error.code)}}>Tampilkan kode koneksi browser</button>
+   {s&&<><button disabled={state.busy} onClick={async()=>{if(await act('finish'))setView('mode');}}>Tutup sesi</button>{['RECOVERY_REQUIRED','FAILED'].includes(s.phase)&&<button disabled={state.busy} onClick={()=>act('process')}>Pulihkan proses sesi</button>}</>}
+   <button onClick={async()=>{await api.lock();setOperator(false);setPairing(null);}}>Kunci panel</button></div>
+   {pairing&&<label>Kode koneksi printer (tab browser)<input readOnly value={pairing.code} onFocus={e=>e.target.select()}/><small>Salin ke bagian Operator di kiosk web. Kode berubah saat aplikasi dimulai ulang. Jangan bagikan.</small></label>}
+   </>}</aside>}
   <footer>Foto tersimpan pada komputer event. Upload dan download foto menggunakan jalur media terpisah.</footer>
  </main>;
 }

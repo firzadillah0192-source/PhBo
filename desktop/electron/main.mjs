@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, shell, nativeImage } from 'electron';
 import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { mkdir, appendFile } from 'node:fs/promises';
+import { mkdir, appendFile, readFile, writeFile, stat } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { Journal } from '../shared/journal.mjs';
@@ -11,6 +11,7 @@ import { Runtime } from '../shared/runtime.mjs';
 import { origins } from '../shared/clients.mjs';
 import {PrinterService,startPrinterServer,WEB_KIOSK_ORIGIN} from '../shared/printer-service.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
+const KEY_ID='6b696f736b2d6170692d6b6579303031'; // fixed id of the staff-entered kiosk key in the credential store
 protocol.registerSchemesAsPrivileged([{scheme:'nxbooth',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 async function reportStartupFailure(error){
   const code=/^[A-Z0-9_]+$/.test(error?.message)?error.message:'STARTUP_ERROR';
@@ -39,7 +40,9 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   }catch{printerServerError='PRINTER_APP_PORT_UNAVAILABLE';}
   let operator=false;let unlockFailures=0;let lockedUntil=0;
   const config=origins(); // Pinned HTTPS endpoints; renderer cannot change destinations.
-  const runtime=new Runtime({journal,bridge,assets,origins:config,apiKey:process.env.PHBO_KIOSK_API_KEY||'',secrets,printer,onChange:()=>{win?.webContents.send('desktop:changed');}});
+  let savedKey='';try{savedKey=(await secrets.get(KEY_ID))?.key||'';}catch{}
+  const runtime=new Runtime({journal,bridge,assets,origins:config,apiKey:process.env.PHBO_KIOSK_API_KEY||'',secrets,printer,publicCatalog:!test,onChange:()=>{win?.webContents.send('desktop:changed');}});
+  if(!runtime.apiKey&&savedKey){runtime.apiKey=savedKey;runtime.keySource='saved';}
   const dist=resolve(here,'../dist');
   protocol.handle('nxbooth',request=>{const url=new URL(request.url);const path=resolve(dist,'.'+decodeURIComponent(url.pathname==='/' ? '/index.html':url.pathname));const rel=relative(dist,path);
     if(url.host!=='app'||rel.startsWith('..')||isAbsolute(rel))return new Response('Forbidden',{status:403});return net.fetch(pathToFileURL(path).href);});
@@ -47,8 +50,26 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',(event,url)=>{if(url!=='nxbooth://app/index.html')event.preventDefault();});
   win.webContents.session.setPermissionRequestHandler((_wc,_permission,callback)=>callback(false));
+  // Catalog art is large PNG; shrink once in the trusted process and cache on disk for a day.
+  const thumbs=join(root,'thumbs');await mkdir(thumbs,{recursive:true});let thumbSlots=0;const thumbWaiters=[];
+  const slot=async()=>{if(thumbSlots>=3)await new Promise(r=>thumbWaiters.push(r));thumbSlots++;};
+  const release=()=>{thumbSlots--;thumbWaiters.shift()?.();};
+  async function thumbnail(mode,id){
+    const file=join(thumbs,`${mode}-${id}.jpg`);
+    try{const st=await stat(file);if(Date.now()-st.mtimeMs<86400000)return 'data:image/jpeg;base64,'+(await readFile(file)).toString('base64');}catch{}
+    await slot();
+    try{
+      const image=nativeImage.createFromBuffer(await runtime.catalogImage(mode,id));
+      if(image.isEmpty())throw new Error('INVALID_IMAGE');
+      const {width}=image.getSize();const jpg=image.resize({width:Math.min(width,420),quality:'good'}).toJPEG(78);
+      await writeFile(file,jpg,{mode:0o600});return 'data:image/jpeg;base64,'+jpg.toString('base64');
+    }finally{release();}
+  }
   const callSchema=z.discriminatedUnion('method',[
     z.object({method:z.literal('state')}).strict(),z.object({method:z.literal('start'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),selectionId:z.string().max(128).optional(),eventName:z.string().trim().min(1).max(80).regex(/^[^\p{Cc}\p{Cf}]+$/u).optional()}).strict(),
+    z.object({method:z.literal('refresh')}).strict(),
+    z.object({method:z.literal('setApiKey'),key:z.string().min(32).max(512).regex(/^[\x21-\x7E]+$/)}).strict(),z.object({method:z.literal('clearApiKey')}).strict(),
+    z.object({method:z.literal('thumbnail'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),id:z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/)}).strict(),
     ...['capture','retake','process','print','finish','fixture','lock','printerPairing','openWebKiosk'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('captureWebcam'),base64:z.string().max(22*1024*1024)}).strict(),
     z.object({method:z.literal('unlock'),pin:z.string().min(4).max(128)}).strict()
@@ -63,6 +84,18 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
         const a=Buffer.from(p.pin),b=Buffer.from(wanted);if(a.length!==b.length||!timingSafeEqual(a,b)){if(++unlockFailures>=5){lockedUntil=Date.now()+60000;unlockFailures=0;}throw new Error('PIN_INVALID');}
         unlockFailures=0;operator=true;return {ok:true,data:{operator:true}};
       }
+      if(p.method==='refresh'){await runtime.refreshDevices();await runtime.refreshCatalog();return {ok:true,data:await runtime.state()};}
+      if(p.method==='setApiKey'){
+        if(!operator)throw new Error('OPERATOR_REQUIRED');
+        if(runtime.keySource==='env'&&runtime.apiKey)throw new Error('KEY_FROM_ENVIRONMENT');
+        await secrets.set(KEY_ID,{key:p.key});return {ok:true,data:await runtime.setApiKey(p.key)};
+      }
+      if(p.method==='clearApiKey'){
+        if(!operator)throw new Error('OPERATOR_REQUIRED');
+        if(runtime.keySource==='env')throw new Error('KEY_FROM_ENVIRONMENT');
+        await secrets.set(KEY_ID,{key:''});return {ok:true,data:await runtime.setApiKey('')};
+      }
+      if(p.method==='thumbnail')return {ok:true,data:await thumbnail(p.mode,p.id)};
       if(p.method==='lock'){operator=false;return {ok:true,data:{operator:false}};}
       if(p.method==='printerPairing'){
         if(!operator)throw new Error('OPERATOR_REQUIRED');

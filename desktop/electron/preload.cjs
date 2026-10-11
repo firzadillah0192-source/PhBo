@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
   captureWebcam:base64=>call({method:'captureWebcam',base64}),
   print:()=>call({method:'print'}),finish:()=>call({method:'finish'}),chooseFixture:()=>call({method:'fixture'}),
   printerPairing:()=>call({method:'printerPairing'}),openWebKiosk:()=>call({method:'openWebKiosk'}),
+  setApiKey:key=>call({method:'setApiKey',key}),clearApiKey:()=>call({method:'clearApiKey'}),refresh:()=>call({method:'refresh'}),thumbnail:(mode,id)=>call({method:'thumbnail',mode,id}),
   unlock:pin=>call({method:'unlock',pin}),lock:()=>call({method:'lock'}),
   onChange:callback=>{const handler=()=>callback();ipcRenderer.on('desktop:changed',handler);return()=>ipcRenderer.removeListener('desktop:changed',handler);}
 }));

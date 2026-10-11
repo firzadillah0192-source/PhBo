@@ -24,14 +24,31 @@ internal static class PrintLayout
 [SupportedOSPlatform("windows")]
 internal static class WindowsPrinter
 {
+    private static readonly string[] Virtual = ["pdf", "xps", "onenote", "fax", "anydesk", "virtual", "document writer"];
+
+    // Prefer the Epson L8050, then any Epson, then the Windows default, then any physical printer.
     private static PrinterSettings Settings()
     {
         var configured = Environment.GetEnvironmentVariable("PHBO_PRINTER_NAME");
-        var names = PrinterSettings.InstalledPrinters.Cast<string>().Where(name => name.Contains("L8050", StringComparison.OrdinalIgnoreCase)).ToArray();
-        var name = !string.IsNullOrWhiteSpace(configured) ? configured : names.Length == 1 ? names[0] : null;
-        if (name == null) throw new Exception(names.Length > 1 ? "PRINTER_SELECTION_REQUIRED" : "PRINTER_NOT_CONNECTED");
-        // This release is calibrated for the approved Epson model only.
-        if (!name.Contains("L8050", StringComparison.OrdinalIgnoreCase)) throw new Exception("PRINTER_MODEL_UNSUPPORTED");
+        var all = PrinterSettings.InstalledPrinters.Cast<string>().ToArray();
+        var physical = all.Where(n => !Virtual.Any(v => n.Contains(v, StringComparison.OrdinalIgnoreCase))).ToArray();
+        string? name = null;
+        if (!string.IsNullOrWhiteSpace(configured)) name = configured;
+        else
+        {
+            var l8050 = physical.Where(n => n.Contains("L8050", StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (l8050.Length == 1) name = l8050[0];
+            else if (l8050.Length > 1) throw new Exception("PRINTER_SELECTION_REQUIRED");
+            else
+            {
+                var epson = physical.Where(n => n.Contains("EPSON", StringComparison.OrdinalIgnoreCase)).ToArray();
+                var def = new PrinterSettings();
+                name = epson.Length >= 1 ? epson[0]
+                    : def.IsValid && physical.Contains(def.PrinterName) ? def.PrinterName
+                    : physical.FirstOrDefault();
+            }
+        }
+        if (name == null) throw new Exception("PRINTER_NOT_CONNECTED");
         var settings = new PrinterSettings { PrinterName = name, Copies = 1, Collate = false };
         if (!settings.IsValid) throw new Exception("PRINTER_NOT_CONNECTED");
         return settings;

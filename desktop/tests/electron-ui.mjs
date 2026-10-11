@@ -8,19 +8,21 @@ await writeFile(fixture,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAw
 let app;
 try{
  app=await electron.launch({timeout:30000,args:[resolve('electron/main.mjs'),'--no-sandbox'],env:{...process.env,PHBO_DESKTOP_TEST:'1',PHBO_DEVICE_MODE:'simulated',PHBO_TEST_DATA:data,PHBO_TEST_FIXTURE:fixture,PHBO_OPERATOR_PIN:'123456',PHBO_KIOSK_API_KEY:''}});
- const page=await app.firstWindow();await page.getByRole('heading',{name:'Abadikan momenmu.'}).waitFor();
+ const page=await app.firstWindow();await page.getByRole('heading',{name:'Cek perangkat'}).waitFor();await page.getByText('Kamera',{exact:true}).waitFor();await page.getByText('Printer',{exact:true}).waitFor();await page.getByRole('button',{name:'Lanjutkan'}).click();await page.getByRole('heading',{name:'Abadikan momenmu.'}).waitFor();
  const prefs=await app.evaluate(({BrowserWindow})=>{const p=BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences();return {sandbox:p.sandbox,contextIsolation:p.contextIsolation,nodeIntegration:p.nodeIntegration};});
  assert.deepEqual(prefs,{sandbox:true,contextIsolation:true,nodeIntegration:false});
  assert.equal(await page.evaluate(async()=>{try{await fetch('https://example.com');return 'allowed';}catch{return 'blocked';}}),'blocked');
  assert.equal(await page.evaluate(()=>typeof window.require),'undefined');assert.equal(await page.evaluate(()=>typeof window.process),'undefined');
+ assert.equal((await page.evaluate(()=>window.nxbooth.setApiKey('k'.repeat(40)))).error.code,'OPERATOR_REQUIRED');
+ assert.equal(JSON.stringify(await page.evaluate(()=>window.nxbooth.state())).includes('kkkkkkkk'),false);
  await page.getByRole('button',{name:'Basic',exact:false}).click();await page.getByRole('button',{name:'Mulai sesi'}).click();
  await page.getByRole('button',{name:'Ambil foto'}).click();await page.getByRole('heading',{name:'Periksa foto kamu.'}).waitFor();
  assert.equal(await page.locator('img').count(),1);
  await page.waitForFunction(()=>document.querySelector('img')?.naturalWidth>0);
  await page.getByRole('button',{name:'Proses foto'}).click();await page.getByRole('alert').filter({hasText:'Backend belum dikonfigurasi'}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Simulasi cetak',exact:true}).count(),0);
- await page.getByRole('button',{name:'Operator',exact:true}).click();await page.getByLabel('PIN operator').fill('1111');await page.getByRole('button',{name:'Buka',exact:true}).click();await page.getByRole('alert').filter({hasText:'PIN tidak sesuai'}).waitFor();
- await page.getByLabel('PIN operator').fill('123456');await page.getByRole('button',{name:'Buka',exact:true}).click();await page.getByRole('button',{name:'Tutup sesi'}).click();await page.getByRole('heading',{name:'Abadikan momenmu.'}).waitFor();
+ await page.getByRole('button',{name:'Menu staf',exact:true}).click();await page.getByLabel('PIN staf').fill('1111');await page.getByRole('button',{name:'Buka',exact:true}).click();await page.getByRole('alert').filter({hasText:'PIN tidak sesuai'}).waitFor();
+ await page.getByLabel('PIN staf').fill('123456');await page.getByRole('button',{name:'Buka',exact:true}).click();await page.getByText('Kunci kiosk',{exact:false}).first().waitFor();assert.equal(await page.getByRole('button',{name:'Simpan kunci'}).isDisabled(),true);await page.getByRole('button',{name:'Tutup sesi'}).click();await page.getByRole('heading',{name:'Abadikan momenmu.'}).waitFor();
  await page.screenshot({path:join(data,'desktop-ui.png'),fullPage:true});
  console.log('PASS: Electron sandbox/preload, capture, backend error, operator PIN and session reset.');
 }catch(e){if(app){for(const w of await app.windows())console.error(await w.locator('body').innerText().catch(()=>''));}throw e;}

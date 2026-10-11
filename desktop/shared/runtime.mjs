@@ -3,28 +3,48 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { newId } from './journal.mjs';
 import { inspectImage } from './image.mjs';
-import { ControlClient, MediaClient } from './clients.mjs';
+import { ControlClient, MediaClient, fetchCatalogImage } from './clients.mjs';
 
 export class Runtime {
-  constructor({journal,bridge,assets,origins,apiKey='',secrets,printer=null,onChange=()=>{}}) {
-    Object.assign(this,{journal,bridge,assets,origins,apiKey,secrets,printer,onChange});
+  constructor({journal,bridge,assets,origins,apiKey='',secrets,printer=null,publicCatalog=false,onChange=()=>{}}) {
+    Object.assign(this,{journal,bridge,assets,origins,apiKey,secrets,printer,publicCatalog,onChange});
     this.session=journal.all().find(s=>s.phase!=='FINISHED')||null;this.busy=false;
     this.catalog={CLASSIC:[],BASIC:[],ADVANCED:[]};this.device={camera:'UNKNOWN',printer:'UNKNOWN'};
   }
   async initialize() {
-    try{this.device=await this.bridge.call('devices.status');if(this.device.printing)this.device={...this.device,...this.device.printing};}catch{this.device={camera:'ADAPTER_UNAVAILABLE',printer:'ADAPTER_UNAVAILABLE',simulated:false};}
-    if(this.apiKey)try { const c=new ControlClient(this.origins,this.apiKey);
-      const [frames,templates,experiences]=await Promise.all([c.catalog('frames'),c.catalog('templates'),c.catalog('experiences')]);
-      this.catalog={CLASSIC:frames.map(f=>({id:f.id,name:f.name,shots:f.shot_count,requiresEventName:f.requires_event_name===true})),BASIC:templates.map(t=>({id:t.id,name:t.name,shots:1})),ADVANCED:experiences.map(e=>({id:e.id,name:e.name,shots:1}))};
-    }catch{this.connectionError='CATALOG_UNAVAILABLE';}
+    await this.refreshDevices();
+    await this.refreshCatalog();
     return this.state();
+  }
+  async setApiKey(key,source='saved'){this.apiKey=key;this.keySource=key?source:undefined;this.connectionError=undefined;await this.refreshCatalog();return this.state();}
+  async refreshDevices() {
+    try{this.device=await this.bridge.call('devices.status');if(this.device.printing)this.device={...this.device,...this.device.printing};}catch{this.device={camera:'ADAPTER_UNAVAILABLE',printer:'ADAPTER_UNAVAILABLE',simulated:false};}
+    return this.device;
+  }
+  // The catalog is public read-only data; a kiosk key is only needed to process photos.
+  async refreshCatalog() {
+    if(!this.apiKey&&!this.publicCatalog)return;
+    this.connectionError=undefined;
+    try { const c=new ControlClient(this.origins,this.apiKey);
+      const [frames,templates,experiences]=await Promise.all([c.catalog('frames'),c.catalog('templates'),c.catalog('experiences')]);
+      this.catalog={CLASSIC:frames.map(f=>({id:f.id,name:f.name,shots:f.shot_count,requiresEventName:f.requires_event_name===true,theme:f.theme_name||'',preview:f.preview_url||`/api/classic/layouts/${f.id}/preview`})),
+        BASIC:templates.filter(t=>t.enabled!==false&&t.basic_available!==false).map(t=>({id:t.id,name:t.name,shots:1,theme:'',preview:t.preview_url})),
+        ADVANCED:experiences.filter(e=>e.enabled!==false).map(e=>({id:e.id,name:e.name,shots:1,theme:e.category||'',preview:e.thumbnail}))};
+      this.catalogLoaded=true;
+    }catch{this.connectionError='CATALOG_UNAVAILABLE';}
+  }
+  /** Raw artwork bytes for a catalog entry; the path comes from the loaded catalog, never from the renderer. */
+  async catalogImage(mode,id) {
+    const item=this.catalog[mode]?.find(x=>x.id===id);
+    if(!item?.preview)throw new Error('CATALOG_IMAGE_UNKNOWN');
+    return fetchCatalogImage(this.origins,item.preview);
   }
   async state() {
     const s=this.session; const previews=[];
     if(s) for(const c of s.captures) {const bytes=await readFile(join(this.assets,c.file));const {mime}=inspectImage(bytes);previews.push({id:c.id,url:`data:${mime};base64,${bytes.toString('base64')}`});}
     let result=null;
     if(s?.resultFile){const b=await readFile(join(this.assets,s.resultFile));result=`data:${inspectImage(b).mime};base64,${b.toString('base64')}`;}
-    return {configured:!!this.apiKey,credentialPersistence:this.secrets.persistent,device:this.device,busy:this.busy,catalog:this.catalog,connectionError:this.connectionError,
+    return {configured:!!this.apiKey,keySource:this.apiKey?(this.keySource||'env'):'none',catalogLoaded:!!this.catalogLoaded,credentialPersistence:this.secrets.persistent,device:this.device,busy:this.busy,catalog:this.catalog,connectionError:this.connectionError,
       session:s?{id:s.id,phase:s.phase,mode:s.mode,shots:s.shots,captures:previews,result,error:s.error,jobStatus:s.jobStatus,prints:this.journal.prints(this.printer&&s.resultId?'web:'+s.resultId:s.id)}:null};
   }
   async exclusive(fn){if(this.busy)throw new Error('OPERATION_BUSY');this.busy=true;this.onChange();try{return await fn();}finally{this.busy=false;this.onChange();}}
@@ -33,7 +53,7 @@ export class Runtime {
   async start(mode,selectionId,eventName){return this.exclusive(async()=>{
     if(this.session && this.session.phase!=='FINISHED')throw new Error('SESSION_ACTIVE');
     const choice=this.catalog[mode]?.find(x=>x.id===selectionId);
-    if(!['CLASSIC','BASIC','ADVANCED'].includes(mode)||this.apiKey&&!choice)throw new Error('SELECTION_REQUIRED');
+    if(!['CLASSIC','BASIC','ADVANCED'].includes(mode)||(this.apiKey||this.catalog[mode]?.length)&&!choice)throw new Error('SELECTION_REQUIRED');
     const name=eventName?.trim().normalize('NFC');
     if(choice?.requiresEventName&&(!name||name.length>80||/[\p{Cc}\p{Cf}]/u.test(name)))throw new Error('EVENT_NAME_REQUIRED');
     this.session={id:newId(),mode,selectionId:choice?.id||null,shots:choice?.shots||(mode==='CLASSIC'?3:1),phase:'CAPTURING',captures:[],keys:{reserve:newId(),upload:newId(),generate:newId()}};

@@ -1,5 +1,5 @@
 import { inspectImage } from './image.mjs';
-const defaults = {control:'https://api-nxbooth.gennexbyte.com',media:'https://media-nxbooth.gennexbyte.com',storage:'https://storage-nxbooth.gennexbyte.com'};
+const defaults = {control:'https://api-nxbooth.gennexbyte.com',media:'https://media-nxbooth.gennexbyte.com',storage:'https://storage-nxbooth.gennexbyte.com',web:'https://nxbooth.gennexbyte.com'};
 const segment = value => { if(typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(value)) throw new Error('INVALID_ID'); return value; };
 export function origins(config={}, test=false) {
   const result={...defaults,...config};
@@ -42,6 +42,14 @@ export class ControlClient {
   status(id){return this.request(`/api/v1/generations/${segment(id)}`);}
   resultUrl(id){return this.request(`/api/v1/results/${segment(id)}/url`);}
   catalog(kind){if(!['frames','templates','experiences'].includes(kind))throw new Error('INVALID_CATALOG');return this.request('/api/v1/'+kind);}
+}
+const CATALOG_IMAGE=/^\/api\/(templates\/[a-zA-Z0-9_-]+\/preview|experiences\/[a-zA-Z0-9_-]+\/thumbnail|classic\/layouts\/[a-zA-Z0-9_-]+\/preview)$/;
+/** Public catalog artwork only: fixed web origin, allowlisted paths, no cookies, no redirects. */
+export async function fetchCatalogImage(config,path){
+  if(typeof path!=='string'||!CATALOG_IMAGE.test(path))throw new Error('CATALOG_IMAGE_FORBIDDEN');
+  const r=await fetch(config.web+path,{headers:{'Accept':'image/png,image/jpeg,image/webp','User-Agent':'NXBoothDesktop/1.0'},redirect:'error',signal:AbortSignal.timeout(30000)});
+  if(!r.ok)throw new Error('CATALOG_IMAGE_FAILED');
+  return bounded(r,8*1024*1024);
 }
 export class MediaClient {
   constructor(config,apiKey=''){this.config=config;this.apiKey=apiKey;}
