@@ -1,0 +1,58 @@
+/** Tokens mirror the Figma "Color" and "Size" variable collections. */
+export default {
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        bg: '#F7F7FB',
+        surface: { DEFAULT: '#FFFFFF', 2: '#EEF0F6' },
+        border: '#DDE0EA',
+        text: { DEFAULT: '#12131F', muted: '#5A5F73' },
+        primary: { DEFAULT: '#5B3DF5', hover: '#4A2EDB', soft: '#EEEBFE' },
+        accent: { DEFAULT: '#F5A524', soft: '#FEF3DD' },
+        success: { DEFAULT: '#15803D', soft: '#E3F3E8' },
+        warning: { DEFAULT: '#B45309', soft: '#FBEEDD' },
+        danger: { DEFAULT: '#C62828', hover: '#A61F1F', soft: '#FBE6E6' },
+        info: { DEFAULT: '#1D4ED8', soft: '#E4ECFC' },
+        classic: { DEFAULT: '#E0703A', soft: '#FCEDE5' },
+        basic: { DEFAULT: '#0F9D8A', soft: '#E0F4F1' },
+        /* Dark "stage" palette (kiosk & processing) — Figma Foundations / Colour — Dark */
+        stage: {
+          bg: '#0E0F1A',
+          surface: '#171927',
+          'surface-2': '#22253A',
+          border: '#2F3350',
+          text: '#F4F5FA',
+          muted: '#A8ADC4',
+          primary: '#8C78FF',
+          'primary-hover': '#A194FF',
+          'primary-soft': '#26224A',
+          accent: '#FFB84D',
+          'accent-soft': '#3A2C12',
+          success: '#4ADE80',
+          'success-soft': '#14301F',
+          warning: '#FBBF24',
+          'warning-soft': '#3A2D10',
+          danger: '#F87171',
+          'danger-soft': '#3D1A1A',
+          info: '#60A5FA',
+          'info-soft': '#172B4D',
+          classic: '#F08A57',
+          basic: '#2CC4AF',
+          advanced: '#8C78FF',
+        },
+      },
+      fontFamily: {
+        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+      borderRadius: { sm: '8px', md: '12px', lg: '20px' },
+      boxShadow: {
+        e1: '0 1px 2px rgba(18,19,31,.06)',
+        e2: '0 8px 24px rgba(18,19,31,.10)',
+      },
+    },
+  },
+  plugins: [],
+}
