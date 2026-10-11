@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, protocol, net, safeStorage, shell, nativeImage } from 'electron';
 import { join, dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, appendFile } from 'node:fs/promises';
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { Journal } from '../shared/journal.mjs';
@@ -12,7 +12,16 @@ import { origins } from '../shared/clients.mjs';
 import {PrinterService,startPrinterServer,WEB_KIOSK_ORIGIN} from '../shared/printer-service.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
 protocol.registerSchemesAsPrivileged([{scheme:'nxbooth',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
-if(!app.requestSingleInstanceLock()){app.quit();}else app.whenReady().then(async()=>{
+async function reportStartupFailure(error){
+  const code=/^[A-Z0-9_]+$/.test(error?.message)?error.message:'STARTUP_ERROR';
+  const detail=String(error?.stack||error?.message||error).slice(0,2000);
+  console.error('DESKTOP_START_FAILED',code);
+  let where='';
+  try{where=join(app.getPath('userData'),'startup-error.log');await mkdir(dirname(where),{recursive:true});await appendFile(where,`${new Date().toISOString()} ${code}\n${detail}\n\n`);}catch{where='';}
+  try{dialog.showErrorBox('NXBooth Desktop tidak bisa dimulai',`Kode: ${code}\n\n${detail.split('\n').slice(0,4).join('\n')}${where?`\n\nLog: ${where}`:''}`);}catch{}
+}
+let win;
+if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorBox('NXBooth Desktop sudah berjalan','Aplikasi sudah terbuka (mungkin tersembunyi). Tutup lewat Task Manager (NXBooth Desktop), lalu jalankan lagi.');app.quit();}).catch(()=>app.quit());}else app.whenReady().then(async()=>{
   const test=!app.isPackaged&&process.env.PHBO_DESKTOP_TEST==='1';
   if(test&&process.env.PHBO_TEST_DATA)app.setPath('userData',process.env.PHBO_TEST_DATA);
   const root=app.getPath('userData'),assets=join(root,'assets');await mkdir(assets,{recursive:true});
@@ -28,7 +37,7 @@ if(!app.requestSingleInstanceLock()){app.quit();}else app.whenReady().then(async
   if(process.platform==='win32'||test&&process.env.PHBO_WEB_BRIDGE_TEST==='1')try{
     printerServer=await startPrinterServer(printer,{port:test?0:20253});
   }catch{printerServerError='PRINTER_APP_PORT_UNAVAILABLE';}
-  let win;let operator=false;let unlockFailures=0;let lockedUntil=0;
+  let operator=false;let unlockFailures=0;let lockedUntil=0;
   const config=origins(); // Pinned HTTPS endpoints; renderer cannot change destinations.
   const runtime=new Runtime({journal,bridge,assets,origins:config,apiKey:process.env.PHBO_KIOSK_API_KEY||'',secrets,printer,onChange:()=>{win?.webContents.send('desktop:changed');}});
   const dist=resolve(here,'../dist');
@@ -90,5 +99,6 @@ if(!app.requestSingleInstanceLock()){app.quit();}else app.whenReady().then(async
   await runtime.initialize();
   if(test&&process.env.PHBO_TEST_FIXTURE)await runtime.setFixture(process.env.PHBO_TEST_FIXTURE);
   await win.loadURL('nxbooth://app/index.html');
+  app.on('second-instance',()=>{if(win.isMinimized())win.restore();win.focus();});
   app.on('window-all-closed',()=>app.quit());
-}).catch(error=>{console.error('DESKTOP_START_FAILED', /^[A-Z0-9_]+$/.test(error.message)?error.message:'STARTUP_ERROR');app.quit();});
+}).catch(async error=>{await reportStartupFailure(error);app.quit();});
