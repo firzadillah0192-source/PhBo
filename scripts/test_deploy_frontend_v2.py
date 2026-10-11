@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from scripts.deploy_frontend_v2 import patch_nginx
+from scripts.deploy_frontend_v2 import ensure_nginx, patch_nginx
 
 
 class RoutingTest(unittest.TestCase):
@@ -23,6 +23,13 @@ class RoutingTest(unittest.TestCase):
             patch_nginx('server {}')
         with self.assertRaises(RuntimeError):
             patch_nginx('location /v2/ { }')
+
+    def test_refresh_keeps_live_v2_routing_and_rejects_partial(self):
+        patched = patch_nginx(Path('frontend/nginx.conf').read_text())
+        self.assertEqual(ensure_nginx(patched), patched)
+        self.assertEqual(ensure_nginx(Path('frontend/nginx.conf').read_text()), patched)
+        with self.assertRaises(RuntimeError):
+            ensure_nginx(patched.replace('location ^~ /v2/kiosk/assets/', 'location ^~ /x/'))
 
 
 if __name__ == '__main__':

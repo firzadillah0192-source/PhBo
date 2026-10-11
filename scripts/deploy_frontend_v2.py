@@ -75,6 +75,17 @@ def patch_nginx(source):
     return source.replace(marker, locations + '\n' + marker)
 
 
+def ensure_nginx(source):
+    """Refresh path: keep nginx as is when every v2 route is already live; patch it when none is."""
+    routes = ['location ^~ /v2/assets/', 'location ^~ /v2/admin/assets/', 'location ^~ /v2/kiosk/assets/', 'try_files $uri $uri/ /v2/index.html;', 'try_files $uri $uri/ /v2/admin/index.html;', 'try_files $uri $uri/ /v2/kiosk/index.html;']
+    present = [route in source for route in routes]
+    if all(present):
+        return source
+    if any(present):
+        raise RuntimeError('Live nginx has only part of the v2 routing; inspect it before preparing.')
+    return patch_nginx(source)
+
+
 def compose(manifest, rollback=False):
     helper = dict(value.split('=', 1) for value in inspect('photobooth-image-helper')['Config']['Env'] if '=' in value)
     if helper.get('AI_ENGINE_API_KEY'):
@@ -118,9 +129,9 @@ def prepare():
         shutil.copytree(source / app / 'dist', context / target, dirs_exist_ok=True)
     nginx = subprocess.check_output(['docker', 'exec', WEB, 'cat', '/etc/nginx/conf.d/photobooth.conf']).decode()
     (release / 'nginx.previous.conf').write_text(nginx)
-    (context / 'photobooth.conf').write_text(patch_nginx(nginx))
+    (context / 'photobooth.conf').write_text(ensure_nginx(nginx))
     image = 'photobooth-web:frontend-v2-' + stamp
-    (context / 'Dockerfile').write_text('FROM ' + web['Config']['Image'] + '\nCOPY v2/ /usr/share/nginx/html/v2/\nCOPY photobooth.conf /etc/nginx/conf.d/photobooth.conf\n')
+    (context / 'Dockerfile').write_text('FROM ' + web['Config']['Image'] + '\nRUN rm -rf /usr/share/nginx/html/v2\nCOPY v2/ /usr/share/nginx/html/v2/\nCOPY photobooth.conf /etc/nginx/conf.d/photobooth.conf\n')
     override = release / 'compose.frontend-v2.yml'
     rollback = release / 'compose.rollback.yml'
     override.write_text('services:\n  photobooth-web:\n    image: ' + image + '\n')
