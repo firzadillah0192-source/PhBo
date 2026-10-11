@@ -2,6 +2,37 @@
 
 Paket portable Windows 11 x64. Ekstrak **seluruh ZIP**, jangan menjalankan EXE di dalam ZIP. .NET sudah disertakan. Paket belum ditandatangani digital.
 
+## Cepat: pasang di laptop Windows
+
+Kebutuhan: Windows 11 x64, kabel USB data, Chrome atau Edge (untuk jalur browser).
+
+| Yang dipasang | Untuk apa | Wajib |
+| --- | --- | --- |
+| [Canon EOS Webcam Utility](https://www.usa.canon.com/digital-cameras/eos-webcam-utility/download) | Membuat EOS 2000D tampil sebagai webcam. Tidak perlu EOS Utility. | Ya, untuk kamera Canon |
+| [Driver Epson L8050](https://www.epson.co.id/Printer-InkTank/L-Series/Epson-L8050/s/SPT_C11CK37501) | Printer dikenali Windows dan menerima job cetak | Ya, untuk cetak |
+| Node.js 22.12+ dan .NET SDK 10 | Hanya jika membangun dari source | Tidak, paket ZIP sudah membawa .NET |
+
+Tidak ada plugin lain. Canon EDSDK (shutter/JPEG asli) belum diimplementasikan, jadi foto diambil dari video webcam.
+
+**Dari paket ZIP** (`NXBooth Desktop-0.1.0-win.zip`, minta dari pemilik/VPS):
+1. Cocokkan hash dengan `Get-FileHash "NXBooth Desktop-0.1.0-win.zip"` (nilainya dari pemberi paket).
+2. Ekstrak seluruh ZIP ke folder biasa, mis. `C:\NXBooth`. Jangan jalankan dari dalam ZIP.
+3. Klik kanan `Start-NXBooth.ps1` → Run with PowerShell, isi PIN operator. Windows SmartScreen mungkin memperingatkan karena paket belum ditandatangani; pilih More info → Run anyway hanya jika file berasal dari pemilik.
+4. Opsional, agar tombol proses terhubung ke backend: isi `PHBO_KIOSK_API_KEY` (credential kiosk dari pemilik) di sesi PowerShell yang sama sebelum menjalankan. Jangan di-commit atau dibagikan.
+
+**Dari source** (di laptop, folder `desktop`):
+
+```powershell
+git clone git@github.com:firzadillah0192-source/PhBo.git
+cd PhBo\desktop
+npm ci
+npm run bridge:build
+npm run package:win   # hasil: release\NXBooth Desktop-0.1.0-win.zip
+```
+
+Atau jalankan langsung tanpa paket: lihat "Menjalankan dari source di Windows" di [README.md](README.md).
+
+
 Driver resmi: [Canon EOS Webcam Utility](https://www.usa.canon.com/digital-cameras/eos-webcam-utility/download) dan [Epson L8050](https://www.epson.co.id/Printer-InkTank/L-Series/Epson-L8050/s/SPT_C11CK37501).
 
 ## Pasang perangkat
