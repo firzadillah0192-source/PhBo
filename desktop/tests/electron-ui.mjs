@@ -13,8 +13,6 @@ try{
  assert.deepEqual(prefs,{sandbox:true,contextIsolation:true,nodeIntegration:false});
  assert.equal(await page.evaluate(async()=>{try{await fetch('https://example.com');return 'allowed';}catch{return 'blocked';}}),'blocked');
  assert.equal(await page.evaluate(()=>typeof window.require),'undefined');assert.equal(await page.evaluate(()=>typeof window.process),'undefined');
- assert.equal((await page.evaluate(()=>window.nxbooth.setApiKey('k'.repeat(40)))).error.code,'OPERATOR_REQUIRED');
- assert.equal(JSON.stringify(await page.evaluate(()=>window.nxbooth.state())).includes('kkkkkkkk'),false);
  await page.getByRole('button',{name:'Basic',exact:false}).click();await page.getByRole('button',{name:'Mulai sesi'}).click();
  await page.getByRole('button',{name:'Ambil foto'}).click();await page.getByRole('heading',{name:'Periksa foto kamu.'}).waitFor();
  assert.equal(await page.locator('img').count(),1);
@@ -22,7 +20,7 @@ try{
  await page.getByRole('button',{name:'Proses foto'}).click();await page.getByRole('alert').filter({hasText:'Backend belum dikonfigurasi'}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Simulasi cetak',exact:true}).count(),0);
  await page.getByRole('button',{name:'Menu staf',exact:true}).click();await page.getByLabel('PIN staf').fill('1111');await page.getByRole('button',{name:'Buka',exact:true}).click();await page.getByRole('alert').filter({hasText:'PIN tidak sesuai'}).waitFor();
- await page.getByLabel('PIN staf').fill('123456');await page.getByRole('button',{name:'Buka',exact:true}).click();await page.getByText('Kunci kiosk',{exact:false}).first().waitFor();assert.equal(await page.getByRole('button',{name:'Simpan kunci'}).isDisabled(),true);await page.getByRole('button',{name:'Tutup sesi'}).click();await page.getByRole('heading',{name:'Abadikan momenmu.'}).waitFor();
+ await page.getByLabel('PIN staf').fill('123456');await page.getByRole('button',{name:'Buka',exact:true}).click();assert.equal(await page.getByText('Kunci kiosk',{exact:false}).count(),0);await page.getByRole('button',{name:'Tutup sesi'}).click();await page.getByRole('heading',{name:'Abadikan momenmu.'}).waitFor();
  await page.screenshot({path:join(data,'desktop-ui.png'),fullPage:true});
  console.log('PASS: Electron sandbox/preload, capture, backend error, operator PIN and session reset.');
 }catch(e){if(app){for(const w of await app.windows())console.error(await w.locator('body').innerText().catch(()=>''));}throw e;}

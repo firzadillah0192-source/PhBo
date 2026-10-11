@@ -11,7 +11,6 @@ import { Runtime } from '../shared/runtime.mjs';
 import { origins } from '../shared/clients.mjs';
 import {PrinterService,startPrinterServer,WEB_KIOSK_ORIGIN} from '../shared/printer-service.mjs';
 const here=dirname(fileURLToPath(import.meta.url));
-const KEY_ID='6b696f736b2d6170692d6b6579303031'; // fixed id of the staff-entered kiosk key in the credential store
 protocol.registerSchemesAsPrivileged([{scheme:'nxbooth',privileges:{standard:true,secure:true,supportFetchAPI:true}}]);
 async function reportStartupFailure(error){
   const code=/^[A-Z0-9_]+$/.test(error?.message)?error.message:'STARTUP_ERROR';
@@ -40,9 +39,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   }catch{printerServerError='PRINTER_APP_PORT_UNAVAILABLE';}
   let operator=false;let unlockFailures=0;let lockedUntil=0;
   const config=origins(); // Pinned HTTPS endpoints; renderer cannot change destinations.
-  let savedKey='';try{savedKey=(await secrets.get(KEY_ID))?.key||'';}catch{}
   const runtime=new Runtime({journal,bridge,assets,origins:config,apiKey:process.env.PHBO_KIOSK_API_KEY||'',secrets,printer,publicCatalog:!test,onChange:()=>{win?.webContents.send('desktop:changed');}});
-  if(!runtime.apiKey&&savedKey){runtime.apiKey=savedKey;runtime.keySource='saved';}
   const dist=resolve(here,'../dist');
   protocol.handle('nxbooth',request=>{const url=new URL(request.url);const path=resolve(dist,'.'+decodeURIComponent(url.pathname==='/' ? '/index.html':url.pathname));const rel=relative(dist,path);
     if(url.host!=='app'||rel.startsWith('..')||isAbsolute(rel))return new Response('Forbidden',{status:403});return net.fetch(pathToFileURL(path).href);});
@@ -68,7 +65,6 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   const callSchema=z.discriminatedUnion('method',[
     z.object({method:z.literal('state')}).strict(),z.object({method:z.literal('start'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),selectionId:z.string().max(128).optional(),eventName:z.string().trim().min(1).max(80).regex(/^[^\p{Cc}\p{Cf}]+$/u).optional()}).strict(),
     z.object({method:z.literal('refresh')}).strict(),
-    z.object({method:z.literal('setApiKey'),key:z.string().min(32).max(512).regex(/^[\x21-\x7E]+$/)}).strict(),z.object({method:z.literal('clearApiKey')}).strict(),
     z.object({method:z.literal('thumbnail'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),id:z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/)}).strict(),
     ...['capture','retake','process','print','finish','fixture','lock','printerPairing','openWebKiosk'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('captureWebcam'),base64:z.string().max(22*1024*1024)}).strict(),
@@ -85,16 +81,6 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
         unlockFailures=0;operator=true;return {ok:true,data:{operator:true}};
       }
       if(p.method==='refresh'){await runtime.refreshDevices();await runtime.refreshCatalog();return {ok:true,data:await runtime.state()};}
-      if(p.method==='setApiKey'){
-        if(!operator)throw new Error('OPERATOR_REQUIRED');
-        if(runtime.keySource==='env'&&runtime.apiKey)throw new Error('KEY_FROM_ENVIRONMENT');
-        await secrets.set(KEY_ID,{key:p.key});return {ok:true,data:await runtime.setApiKey(p.key)};
-      }
-      if(p.method==='clearApiKey'){
-        if(!operator)throw new Error('OPERATOR_REQUIRED');
-        if(runtime.keySource==='env')throw new Error('KEY_FROM_ENVIRONMENT');
-        await secrets.set(KEY_ID,{key:''});return {ok:true,data:await runtime.setApiKey('')};
-      }
       if(p.method==='thumbnail')return {ok:true,data:await thumbnail(p.mode,p.id)};
       if(p.method==='lock'){operator=false;return {ok:true,data:{operator:false}};}
       if(p.method==='printerPairing'){
