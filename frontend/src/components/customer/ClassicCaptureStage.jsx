@@ -193,9 +193,9 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
     } finally { runningRef.current = false }
   }
   if (!eventConfirmed) return (
-    <section className="photo-stage classic-capture customer-stage-enter">
+    <section className="photo-stage classic-capture classic-event-stage customer-stage-enter">
+      <nav className="capture-navigation" aria-label="Photo Booth navigation"><button className="customer-inline-button" onClick={onBack}>← Change frame</button></nav>
       <header className="stage-heading">
-        <button className="customer-inline-button stage-back" onClick={onBack}>← Change frame</button>
         <p className="customer-kicker">Photo Booth · {layout.shot_count} photos</p>
         <h1>Nama event.</h1>
       </header>
@@ -206,15 +206,19 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
   )
   return (
     <section className="photo-stage classic-capture customer-stage-enter">
-      <header className="stage-heading">
-        <button className="customer-inline-button stage-back" onClick={onBack} disabled={busy}>← Change frame</button>
-        <p className="customer-kicker">Photo Booth · {layout.shot_count} photos</p>
+      <nav className="capture-navigation" aria-label="Photo Booth navigation">
+        <button className="customer-inline-button" onClick={onBack} disabled={busy}>← Change frame</button>
+        {layout.requires_event_name && completed === 0 && !busy && <button className="customer-inline-button" onClick={() => { stopCamera(); setEventConfirmed(false); window.scrollTo({ top: 0, behavior: 'auto' }) }}>Ubah nama event</button>}
+      </nav>
+      <header className="stage-heading classic-capture-heading">
         <h1>Make your photo strip.</h1>
-        <p>{completed} of {layout.shot_count} photographs accepted</p>
-        <p className="classic-retake-allowance">{retakes} of {CLASSIC_RETAKE_LIMIT} retakes remaining for this session</p>
-        <p className="classic-review-guidance">Review each photo for 10 seconds. Next continues automatically.</p>
+        <div className="classic-capture-status">
+          <p>{completed} of {layout.shot_count} photographs accepted</p>
+          <p className="classic-retake-allowance">{retakes} of {CLASSIC_RETAKE_LIMIT} retakes remaining</p>
+        </div>
+        <p className="classic-review-guidance">10-second review · Next continues automatically.</p>
       </header>
-      {layout.requires_event_name ? <p className="classic-event-summary">{eventName.trim()}{completed === 0 && !busy && <button className="customer-inline-button" onClick={() => { stopCamera(); setEventConfirmed(false); window.scrollTo({ top: 0, behavior: 'auto' }) }}>Ubah nama event</button>}</p> : <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>Preview frame · {layout.name}<br />{layout.shot_count} foto dalam satu strip</figcaption></figure>}
+      <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>{layout.name}{layout.requires_event_name && <><br />{eventName.trim()}</>}</figcaption></figure>
       <div className="camera-stage classic-camera-stage">
         {camera ? <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setReady(true)} aria-label="Live camera preview" /> : <button type="button" className="camera-idle" onClick={openCamera} disabled={busy || opening}><span className="camera-lens" aria-hidden="true"><i /></span><strong>{opening ? 'Opening camera…' : 'Open the camera'}</strong></button>}
         {reviewPhoto && <img className="classic-shot-preview" src={reviewPhoto.url} alt={'Photo ' + (reviewPhoto.shot + 1) + ' for review'} />}

@@ -6,6 +6,10 @@ export default function ReviewStage({ mode, upload, selection, frameStyle, ornam
   const destination = mode === 'ADVANCED' ? experiencePreview(selection) : templatePreview(selection)
   return (
     <section className={`review-stage customer-stage-enter ${busy ? 'is-creating' : ''}`}>
+      <nav className="capture-navigation" aria-label="Review navigation">
+        <button className="customer-inline-button" onClick={onBack} disabled={busy}>← {mode === 'ADVANCED' ? 'Back to frame style' : 'Try another look'}</button>
+        <button className="customer-inline-button" onClick={onReplace} disabled={busy}>Replace photo</button>
+      </nav>
       <header className="stage-heading">
         <p className="customer-kicker">One last look</p>
         <h1>Your photograph,<br /><em>this world.</em></h1>
@@ -27,10 +31,6 @@ export default function ReviewStage({ mode, upload, selection, frameStyle, ornam
       {mode === 'ADVANCED' && <div className="advanced-review-summary" aria-label="Selected generation options"><span><small>Experience</small><strong>{selection.name}</strong></span><span><small>Frame style</small><strong>{frameStyle?.name || 'Natural'}</strong></span><span><small>Ornaments</small><strong>{ornaments.length ? ornaments.map((item) => item.name).join(', ') : 'None'}</strong></span><span><small>Photo</small><strong>Ready</strong></span></div>}
 
       <div className="review-actions">
-        <div>
-          <button className="customer-inline-button" onClick={onBack} disabled={busy}>← {mode === 'ADVANCED' ? 'Back to frame style' : 'Try another look'}</button>
-          <button className="customer-inline-button" onClick={onReplace} disabled={busy}>Replace photo</button>
-        </div>
         <div className="review-create">
           {mode !== 'CLASSIC' && <span>Minimal 10 kredit untuk mulai. Biaya memakai estimasi token dan dipotong setelah hasil berhasil; rincian lengkap dipakai bila tersedia.</span>}
           {mode !== 'CLASSIC' && <span>{quotaExhausted ? 'Kredit belum cukup · minimal 10 kredit' : aiRemaining == null ? 'Kredit dikonfirmasi sebelum generate' : `${aiRemaining} ${aiRemaining === 1 ? 'credit' : 'credits'} available`}</span>}
