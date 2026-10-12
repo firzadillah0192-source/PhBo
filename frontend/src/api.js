@@ -269,3 +269,17 @@ export function getAdminUsageGenerations(params = {}) {
 export function getAdminUsageGeneration(id) { return request('/admin/usage/generations/' + encodeURIComponent(id)) }
 export function getAdminProviderOverview() { return request('/admin/usage/providers/overview') }
 export function getAdminProviderAccounts() { return request('/admin/usage/providers/accounts') }
+
+// ---- AI Provider Lab (admin, superadmin-only; isolated from production generation) ----
+const lab = '/admin/lab'
+// Lab reads bypass the admin read cache: run polling and spend totals must always be live.
+export const labGet = (path) => fetchRequest(lab + path)
+export function labSend(method, path, body) { return request(lab + path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) }) }
+export function labUpload(path, payload, files) {
+  const form = new FormData()
+  form.append('payload', JSON.stringify(payload))
+  for (const [field, list] of Object.entries(files)) for (const file of list) form.append(field, file)
+  return request(lab + path, { method: 'POST', body: form })
+}
+export const labImageUrl = (runId, slot, download = false) => `${BASE}${lab}/runs/${encodeURIComponent(runId)}/image/${encodeURIComponent(slot)}${download ? '?download=1' : ''}`
+export const labExportUrl = (query = '') => `${BASE}${lab}/export.csv${query}`

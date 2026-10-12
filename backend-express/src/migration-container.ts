@@ -38,6 +38,12 @@ import { NativeKioskService } from './services/native-kiosk.service.js';
 import { KioskDeviceModel } from './models/kiosk-device.model.js';
 import { KioskDeviceService } from './services/kiosk-device.service.js';
 import { accountCookie } from './services/customer-credentials.service.js';
+import { LabService } from './lab/service.js';
+import { LabVault } from './lab/crypto.js';
+import { PgLabStore } from './lab/store.js';
+import { DiskLabFiles } from './lab/files.js';
+import { NxScenarios } from './lab-bridge/nx-scenarios.js';
+import { ADAPTERS } from './lab/adapters/index.js';
 import { nativeGenerationQueue } from './services/native-generation-queue.js';
 
 export function migrationContainer(db:PrismaClient,config:z.output<typeof migrationConfigSchema>){
@@ -72,7 +78,12 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
   const adminModel=new AdminDataModel(db),adminCatalog=new AdminCatalogService(adminModel,assets,{templatesDir:config.TEMPLATES_DIR,tmpDir:join(config.RUNTIME_DIR,'tmp'),minDimension:config.UPLOAD_MIN_DIMENSION,maxDimension:config.UPLOAD_MAX_DIMENSION});
   const operations=new AdminOperationsService(adminModel,assets,{environment:config.NODE_ENV,ai_provider:config.AI_PROVIDER,google_configured:Boolean(config.GOOGLE_CLIENT_ID.trim()),upload_max_bytes:config.UPLOAD_MAX_BYTES,upload_min_dimension:config.UPLOAD_MIN_DIMENSION,upload_max_dimension:config.UPLOAD_MAX_DIMENSION,admin_default_role:config.ADMIN_DEFAULT_ROLE});
   const previews=new AdminPreviewService(adminModel,adminCatalog,previewQueue,model.leases,provider,images);
-  const admin={auth:new AdminAuthService(new AdminAuthModel(db),account.signer,{token:config.ADMIN_TOKEN,defaultRole:config.ADMIN_DEFAULT_ROLE,sessionDays:config.SESSION_DAYS,cookieSecure:account.config.cookieSecure}),catalog:adminCatalog,operations,usage:new AdminUsageService(operations,results),previews};
+  // AI Provider Lab: own tables, own credential vault, own files; shares only the admin auth + audit log.
+  const lab=new LabService({store:new PgLabStore(db,db),files:new DiskLabFiles(join(config.RUNTIME_DIR,'lab')),vault:new LabVault(config.LAB_ENCRYPTION_KEY),adapters:ADAPTERS,
+    scenarios:new NxScenarios(new CustomerCatalogModel(db),assets,images,config.BASIC_MODEL_EXPERIENCE_ID),
+    policy:config.NINEROUTER_BASE_URL.trim()?{internalOrigin:config.NINEROUTER_BASE_URL}:{},maxUploadBytes:config.UPLOAD_MAX_BYTES,
+    audit:async(actor,action,type,target,reason,metadata)=>{await adminModel.transaction(tx=>adminModel.audit(tx,actor,action,type,target,reason,metadata));}});
+  const admin={auth:new AdminAuthService(new AdminAuthModel(db),account.signer,{token:config.ADMIN_TOKEN,defaultRole:config.ADMIN_DEFAULT_ROLE,sessionDays:config.SESSION_DAYS,cookieSecure:account.config.cookieSecure}),catalog:adminCatalog,operations,usage:new AdminUsageService(operations,results),previews,lab};
   const queueReady=async()=>{await queue.ping();await previewQueue.ping();};
   const health=async()=>{let database='ok',redis='ok',storage='ok',dispatch='ok';try{await db.$queryRaw`SELECT 1`;}catch{database='error: unreachable';}try{await rateLimitStore.ping();}catch{redis='error: unreachable';}try{await queueReady();}catch{dispatch='error: unreachable';}try{await storageReady();}catch{storage='error: unreachable';}const connected=provider.available();return {status:database==='ok'&&redis==='ok'&&storage==='ok'&&dispatch==='ok'?'ok':'degraded',app:'NXBooth',environment:config.NODE_ENV,checks:{database,redis,storage,queue:dispatch,ai_provider:`${connected?'ok':'not_connected'} (${provider.name})`},queue_backend:config.GENERATION_QUEUE_BACKEND,ai_provider:provider.name,ai_provider_connected:connected};};
   return {catalog,account,results,uploads,generations,kiosk,devices,queue,previewQueue,worker,previews,leases:model.leases,admin,health,storageReady,queueReady,limiter:new NativeRateLimitService(rateLimitStore),async close(){await queue.close();await previewQueue.close();await rateLimitStore.close();}};
