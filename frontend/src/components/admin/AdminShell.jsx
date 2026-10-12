@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 const GROUPS = [
  ['Workspace', ['overview','users','credits','generations','provider-ops']],
  ['Studio catalog', ['classic-layouts','templates','experiences','advanced-presets']],
- ['Administration', ['subscriptions','admin-users','audit','settings']],
+ ['Administration', ['subscriptions','ai-lab','admin-users','audit','settings']],
 ]
 export default function AdminShell({ sections, section, onSection, onLock, onRefresh, children }) {
  const [open,setOpen]=useState(false)

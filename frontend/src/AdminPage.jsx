@@ -23,6 +23,7 @@ import AdminSignInGate from './components/admin/AdminSignInGate.jsx'
 import { getAdminMe } from './api.js'
 import { adminPlanPayload } from './adminPlanPayload.js'
 import BasicTemplatePanel from './components/admin/BasicTemplatePanel.jsx'
+import AiProviderLab from './components/admin/AiProviderLab.jsx'
 import AdminResultPhoto from './components/admin/AdminResultPhoto.jsx'
 import { AdvancedPresetsPanel, ClassicLayoutsPanel } from './components/admin/ThreeModesPanel.jsx'
 import { DEFAULT_USD_TO_IDR, rupiahFromUsd } from './pricingDisplay.js'
@@ -34,7 +35,7 @@ const SECTIONS = [
   ['subscriptions', 'Subscriptions'], ['generations', 'Generations'],
   ['provider-ops', 'Provider Ops / Routing'],
   ['classic-layouts', 'Classic Layouts'], ['experiences', 'Advanced Experiences'], ['advanced-presets', 'Advanced Styles'], ['templates', 'Basic Templates'],
-  ['admin-users', 'Admin Users'], ['audit', 'Audit Log'], ['settings', 'Settings'],
+  ['ai-lab', 'AI Provider Lab'], ['admin-users', 'Admin Users'], ['audit', 'Audit Log'], ['settings', 'Settings'],
 ]
 
 const emptyExperience = { id: '', name: '', description: '', internal_prompt: '', status: 'draft', category: 'Design', enabled: true, sort_order: 0 }
@@ -315,7 +316,7 @@ export default function AdminPage() {
   const lock = async () => { try { await logoutAdmin() } finally { clearAdminReadCache(); setUnlocked(false); setSection('overview') } }
   if (checking) return <div className="app admin-app admin-retro admin-locked"><main className="admin-gate admin-card"><Busy>Checking your admin session…</Busy></main></div>
   if (!unlocked) return <AdminSignInGate onSignedIn={signedIn} />
-  const visibleSections = SECTIONS.filter(([id]) => role === 'superadmin' || (role === 'content_manager' ? ['classic-layouts','experiences','advanced-presets','templates'].includes(id) : !['classic-layouts','experiences','advanced-presets','templates','admin-users'].includes(id)))
-  const content = { overview: <OverviewPanel onOpen={setSection} />, users: <UsersPanel />, credits: <CreditsPanel />, subscriptions: <><PlansPanel canManage={role === 'superadmin'} /><SubscriptionList /></>, generations: <GenerationsPanel />, 'provider-ops': <ProviderOpsPanel />, 'classic-layouts': <ClassicLayoutsPanel />, experiences: <ContentPanel kind="experience" />, 'advanced-presets': <AdvancedPresetsPanel />, templates: <BasicTemplatePanel />, 'admin-users': <ActorsPanel />, audit: <AuditPanel />, settings: <SettingsPanel /> }[section]
+  const visibleSections = SECTIONS.filter(([id]) => role === 'superadmin' || (role === 'content_manager' ? ['classic-layouts','experiences','advanced-presets','templates'].includes(id) : !['classic-layouts','experiences','advanced-presets','templates','admin-users','ai-lab'].includes(id)))
+  const content = { overview: <OverviewPanel onOpen={setSection} />, users: <UsersPanel />, credits: <CreditsPanel />, subscriptions: <><PlansPanel canManage={role === 'superadmin'} /><SubscriptionList /></>, generations: <GenerationsPanel />, 'provider-ops': <ProviderOpsPanel />, 'classic-layouts': <ClassicLayoutsPanel />, experiences: <ContentPanel kind="experience" />, 'advanced-presets': <AdvancedPresetsPanel />, templates: <BasicTemplatePanel />, 'ai-lab': <AiProviderLab />, 'admin-users': <ActorsPanel />, audit: <AuditPanel />, settings: <SettingsPanel /> }[section]
   return <PriceRateContext.Provider value={usdToIdr}><AdminShell sections={visibleSections} section={section} onSection={setSection} onLock={lock} onRefresh={refreshData}>{['generations', 'provider-ops'].includes(section) && <div className="admin-card"><Field label="Kurs per 1 USD (Rp)"><input type="number" min="1" step="1" value={Number.isNaN(usdToIdr) ? '' : usdToIdr} onChange={(event) => setUsdToIdr(event.target.value === '' ? NaN : Number(event.target.value))} /></Field><p className="admin-muted">Kurs awal Rp17.500 adalah asumsi perencanaan, bukan kurs real-time. Sesuaikan dengan kurs pembayaranmu. Semua kalkulasi ditampilkan dalam rupiah.</p>{(!Number.isFinite(usdToIdr) || usdToIdr <= 0) && <p role="alert">Masukkan kurs yang lebih besar dari nol.</p>}</div>}<AdminSectionBoundary key={`${section}-${dataRevision}`}>{content}</AdminSectionBoundary></AdminShell></PriceRateContext.Provider>
 }
