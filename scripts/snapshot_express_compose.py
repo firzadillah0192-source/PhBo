@@ -18,7 +18,6 @@ FILE = OUT / 'compose.express-base.json'
 SERVICES = ['photobooth-express', 'photobooth-express-worker', 'photobooth-image-helper']
 SECRET = re.compile(r'KEY|SECRET|PASSWORD|TOKEN|DATABASE_URL|REDIS_URL', re.I)
 DB_URL = 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@photobooth-postgres:5432/${POSTGRES_DB}'
-FULL_ENV_FILE = {'photobooth-express', 'photobooth-express-worker'}  # the helper deliberately gets a subset
 
 
 def dotenv():
@@ -66,20 +65,18 @@ def service_def(name, env_file):
     for k, v in env.items():
         if k in baked and baked[k] == v:
             continue
-        if k in env_file and env_file[k] == v and name not in FULL_ENV_FILE:
+        if k in env_file and env_file[k] == v:
             environment[k] = '${%s-}' % k
         elif k == 'DATABASE_URL':
             assert v == DB_URL.replace('${POSTGRES_USER}', env_file['POSTGRES_USER']).replace('${POSTGRES_PASSWORD}', env_file['POSTGRES_PASSWORD']).replace('${POSTGRES_DB}', env_file['POSTGRES_DB'])
             environment[k] = DB_URL
         elif k == 'AI_ENGINE_API_KEY':
             environment[k] = '${EXPRESS_IMAGE_ENGINE_KEY:?set from the live image helper}'
-        elif k in env_file and env_file[k] == v:
-            pass  # supplied by env_file
         else:
             assert not SECRET.search(k), f'unhandled secret {k}'
             environment[k] = v
-    if name in FULL_ENV_FILE:
-        s['env_file'] = [str(REPO / '.env')]
+    # Explicit placeholders preserve exactly the running container's environment.
+    # A broad env_file would inject newly added dotenv keys into older workers.
     s['environment'] = dict(sorted(environment.items()))  # docker returns env in arbitrary order; keep diffs stable
     return s
 
