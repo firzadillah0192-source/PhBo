@@ -1,4 +1,5 @@
 # NXBooth — Canon 2000D + Epson L8050
+> **Alur baru:** pasang `NXBooth-Setup-x.y.z.exe`, buat PIN saat pertama dibuka, update dari Menu staf. Lihat [../docs/DESKTOP_UPDATE.md](../docs/DESKTOP_UPDATE.md). Langkah ZIP dan `Start-NXBooth.cmd` di bawah adalah alur lama.
 
 Paket portable Windows 11 x64. Ekstrak **seluruh ZIP**, jangan menjalankan EXE di dalam ZIP. .NET sudah disertakan. Paket belum ditandatangani digital.
 

@@ -4,6 +4,8 @@ Target Windows x64. Electron + React/Vite untuk UI/orchestrator, C#/.NET 10 untu
 
 **Pasang di laptop Windows:** lihat [WINDOWS_SETUP.md](WINDOWS_SETUP.md) (bagian "Cepat").
 
+**Installer dan update:** lihat [../docs/DESKTOP_UPDATE.md](../docs/DESKTOP_UPDATE.md) (installer NSIS, PIN pada pembukaan pertama, update dari menu staf). Bagian di bawah yang menyebut ZIP atau `Start-NXBooth.cmd` adalah alur lama.
+
 **Status:** capture webcam (Canon melalui EOS Webcam Utility), discovery Epson L8050 dan Windows spooler sudah diimplementasikan. Jalur Chrome/Edge memakai aplikasi lokal sebagai jembatan cetak; Desktop memakai adapter yang sama. EDSDK/shutter JPEG asli belum diimplementasikan. Software telah diuji di Linux dengan Electron webcam uji dan adapter simulasi; cetak fisik Windows belum diverifikasi.
 
 Panduan operator lengkap: [WINDOWS_SETUP.md](WINDOWS_SETUP.md). Paket menyediakan `Start-NXBooth.ps1` untuk menjalankan hardware dengan PIN lokal. Driver resmi: Canon EOS Webcam Utility (link unduhan: [WINDOWS_SETUP.md](WINDOWS_SETUP.md)) dan [Epson L8050](https://www.epson.co.id/Printer-InkTank/L-Series/Epson-L8050/s/SPT_C11CK37501).

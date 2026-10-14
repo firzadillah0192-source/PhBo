@@ -4,7 +4,7 @@ import './style.css';
 import {printerMessage} from '../../frontend/src/kioskPrinter.js';
 import {openKioskCamera,stopCamera,captureCameraPhoto,cameraError} from '../../frontend/src/kioskCamera.js';
 const names={CLASSIC:'Classic Strips',BASIC:'Basic',ADVANCED:'Advanced'};
-const messages={BACKEND_NOT_CONFIGURED:'Backend belum dikonfigurasi. Foto tersimpan lokal; generation belum dijalankan.',FIXTURE_REQUIRED:'Operator perlu memilih foto untuk simulasi kamera.',CAMERA_NOT_CONNECTED:'Kamera belum terhubung.',PRINTER_NOT_CONNECTED:'Printer belum terhubung.',OPERATOR_REQUIRED:'Buka panel operator untuk membatalkan sesi ini.',PIN_INVALID:'PIN tidak sesuai.',OPERATOR_PIN_NOT_CONFIGURED:'PIN operator belum dikonfigurasi.',GENERATION_FAILED:'Generation gagal di backend. Tidak ada hasil yang dibuat.',CREDENTIAL_RECOVERY_REQUIRED:'Credential sesi tidak tersedia. Operator perlu memeriksa sesi sebelum mengulang.',PRINT_ALREADY_SUBMITTED:'Pekerjaan cetak sudah tercatat. Periksa jurnal operator.',CATALOG_UNAVAILABLE:'Katalog desain belum dapat dimuat. Periksa koneksi internet, lalu tekan Cek ulang.',SELECTION_REQUIRED:'Pilih desain terlebih dahulu.',EVENT_NAME_REQUIRED:'Isi nama event terlebih dahulu.'};
+const messages={BACKEND_NOT_CONFIGURED:'Backend belum dikonfigurasi. Foto tersimpan lokal; generation belum dijalankan.',FIXTURE_REQUIRED:'Operator perlu memilih foto untuk simulasi kamera.',CAMERA_NOT_CONNECTED:'Kamera belum terhubung.',PRINTER_NOT_CONNECTED:'Printer belum terhubung.',OPERATOR_REQUIRED:'Buka panel operator untuk membatalkan sesi ini.',PIN_INVALID:'PIN tidak sesuai.',OPERATOR_PIN_NOT_CONFIGURED:'PIN operator belum dikonfigurasi.',GENERATION_FAILED:'Generation gagal di backend. Tidak ada hasil yang dibuat.',CREDENTIAL_RECOVERY_REQUIRED:'Credential sesi tidak tersedia. Operator perlu memeriksa sesi sebelum mengulang.',PRINT_ALREADY_SUBMITTED:'Pekerjaan cetak sudah tercatat. Periksa jurnal operator.',CATALOG_UNAVAILABLE:'Katalog desain belum dapat dimuat. Periksa koneksi internet, lalu tekan Cek ulang.',SELECTION_REQUIRED:'Pilih desain terlebih dahulu.',EVENT_NAME_REQUIRED:'Isi nama event terlebih dahulu.',OPERATOR_LOCKED:'Terlalu banyak percobaan. Coba lagi sebentar lagi.',SETUP_DONE:'Pengaturan awal sudah selesai.',KEY_FROM_ENVIRONMENT:'Kunci kiosk diatur lewat environment dan tidak bisa diubah di sini.',UPDATE_ONLY_PACKAGED:'Update hanya tersedia pada aplikasi terpasang.',UPDATE_SESSION_ACTIVE:'Selesaikan atau tutup sesi foto dulu sebelum update.',UPDATE_SIGNER_NOT_CONFIGURED:'Pengaturan penanda tangan update tidak valid. Pasang ulang dari installer resmi.',UPDATE_SIGNATURE_INVALID:'Tanda tangan installer tidak cocok atau belum dipercaya di PC ini. Update dibatalkan.',UPDATE_HASH_MISMATCH:'File update rusak (hash tidak cocok). Update dibatalkan.',UPDATE_SIZE_MISMATCH:'Ukuran file update tidak sesuai. Update dibatalkan.',UPDATE_DOWNLOAD_FAILED:'Gagal mengunduh update. Periksa koneksi lalu coba lagi.',UPDATE_NOT_AVAILABLE:'Tidak ada update baru.',UPDATE_MANIFEST_INVALID:'Data update di server tidak valid.',UPDATE_UNAVAILABLE:'Server update belum siap.',UNAUTHORIZED:'Akun ini tidak lagi diizinkan memakai kiosk, atau sesi masuk berakhir. Buka Menu staf lalu Keluar dan Masuk lagi.',PIN_REQUIRED:'Masukkan PIN staf.',DEVICE_CODE_EXPIRED:'Kode kedaluwarsa. Buat kode baru.',DEVICE_CODES_BUSY:'Server sedang sibuk. Coba lagi sebentar lagi.',LOGIN_FAILED:'Tidak bisa menghubungi server. Periksa internet lalu coba lagi.',LOGIN_SAVE_FAILED:'Persetujuan diterima tetapi tidak dapat disimpan. Coba lagi.',BACKEND_REQUEST_FAILED:'Server tidak menjawab dengan benar.',ADAPTER_TIMEOUT:'Verifikasi update terlalu lama. Coba lagi.'};
 const modes=[
  {id:'CLASSIC',name:'Classic Strips',tag:'Strip foto event',desc:'Beberapa pose disusun dalam satu strip dengan frame pilihan. Tanpa AI.',color:'classic'},
  {id:'BASIC',name:'Basic',tag:'Potret bertema',desc:'Satu foto diubah menjadi potret bertema siap pakai.',color:'basic'},
@@ -34,6 +34,7 @@ function Thumb({mode,id,name,api}){
 function Row({ok,label,value,hint}){return <li className={`check ${ok===true?'ok':ok===false?'warn':'info'}`}><i aria-hidden="true">{ok===true?'✓':ok===false?'!':'i'}</i><div><b>{label}</b><span>{value}</span>{hint&&<small className="hint">{hint}</small>}</div></li>;}
 function App(){
  const [state,setState]=useState(null),[error,setError]=useState(''),[mode,setMode]=useState('CLASSIC'),[choice,setChoice]=useState(''),[panel,setPanel]=useState(false),[operator,setOperator]=useState(false),[pin,setPin]=useState('');
+ const [newPin,setNewPin]=useState(''),[newPin2,setNewPin2]=useState(''),[keyInput,setKeyInput]=useState(''),[upd,setUpd]=useState(null),[updBusy,setUpdBusy]=useState(false);
  const [eventName,setEventName]=useState(''),[pairing,setPairing]=useState(null),[view,setView]=useState('check'),[cams,setCams]=useState(null),[checking,setChecking]=useState(false),[count,setCount]=useState(0);
  const api=window.nxbooth;
  const video=useRef(null),[camera,setCamera]=useState({ready:false,error:'',source:''});
@@ -71,6 +72,17 @@ function App(){
   if(ok){setChoice('');setEventName('');}
  }
  function backHome(){setChoice('');setEventName('');setView('mode');}
+ const fail=r=>setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));
+ async function savePin(e){
+  e.preventDefault();setError('');
+  if(newPin.length<4){setError('PIN minimal 4 karakter.');return;}
+  if(newPin!==newPin2){setError('Konfirmasi PIN tidak sama.');return;}
+  const r=await api.pinCreate(newPin);setNewPin('');setNewPin2('');
+  if(r.ok)await refresh();else fail(r);
+ }
+ useEffect(()=>{if(state?.loginRequired&&state.login.status==='idle')api.loginStart().then(refresh);},[state?.loginRequired,state?.login?.status]);
+ async function checkUpdate(){setUpdBusy(true);setError('');const r=await api.updateCheck();setUpdBusy(false);if(r.ok)setUpd(r.data);else fail(r);}
+ async function installUpdate(){setUpdBusy(true);setError('');const r=await api.updateInstall();if(r.ok)setUpd({installing:true});else{setUpdBusy(false);fail(r);}}
  const phase=s?.phase;
  const step=s?(['CAPTURING','REVIEWING'].includes(phase)?3:['UPLOADING','PROCESSING'].includes(phase)?4:phase==='RESULT_READY'?5:3):view==='style'?2:view==='mode'?1:0;
  const accent={CLASSIC:'classic',BASIC:'basic',ADVANCED:'advanced'};
@@ -78,6 +90,19 @@ function App(){
  const dev=state?.device,printerOk=dev&&(dev.simulated||dev.printer==='READY');
  const needsName=personalized&&(!eventName.trim()||/[\p{Cc}\p{Cf}]/u.test(eventName));
  const catalogEmpty=!choices.length;
+ const loginView=state?.login;
+ if(state?.loginRequired)return <main className="stage"><section className="screen" aria-label="Masuk"><p className="eyebrow">MASUK</p><h1>Masuk ke NXBooth</h1>
+  <p className="lead">Komputer ini perlu diizinkan oleh staf. Admin mengatur siapa yang boleh memakai kiosk.</p>
+  {error&&<p role="alert" className="alert">{error}</p>}
+  {loginView?.status==='pending'?<div className="login-code"><p className="lead">1. Buka <b>{loginView.url}</b> di HP atau komputer lain.<br/>2. Masuk dengan akun staf.<br/>3. Masukkan kode ini:</p><div className="code" aria-label="Kode aktivasi">{loginView.userCode}</div><p role="status" className="lead row"><span className="spinner"/>Menunggu persetujuan…</p></div>
+   :loginView?.status==='approved'?<p role="status" className="lead">Berhasil masuk…</p>
+   :<p className="lead">{loginView?.status==='expired'?'Kode kedaluwarsa. ':loginView?.status==='error'?(messages[loginView.error]||'Tidak bisa menghubungi server. '):'Membuat kode…'}</p>}
+  <div className="actions"><button className="primary" disabled={loginView?.status==='pending'} onClick={()=>act('loginStart')}>{loginView?.status==='pending'?'Menunggu…':'Buat kode baru'}</button><button onClick={()=>act('loginSkip')}>Lanjut tanpa masuk (hanya ambil foto)</button></div></section></main>;
+ if(state?.pinPrompt)return <main className="stage"><section className="screen" aria-label="PIN kunci layar"><p className="eyebrow">KUNCI MENU STAF</p><h1>Buat PIN kunci layar</h1>
+  <p className="lead">Masuk sebagai {state.staff?.name||state.staff?.email||'staf'}. PIN ini hanya mencegah tamu membuka Menu staf; identitas Anda tetap akun. Boleh dilewati.</p>
+  {error&&<p role="alert" className="alert">{error}</p>}
+  <form onSubmit={savePin}><label className="field">PIN (minimal 4 karakter)<input type="password" autoComplete="off" value={newPin} onChange={e=>setNewPin(e.target.value)}/></label><label className="field">Ulangi PIN<input type="password" autoComplete="off" value={newPin2} onChange={e=>setNewPin2(e.target.value)}/></label>
+  <div className="actions"><button className="primary">Simpan PIN</button><button type="button" onClick={()=>act('pinSkip')}>Lewati</button></div></form></section></main>;
  return <main className="stage"><header className="bar"><div className="brand"><strong>NX<span>Booth</span></strong><small>DESKTOP · EVENT STATION</small></div>
   <ol className="steps" aria-label="Langkah sesi">{steps.map((n,i)=><li key={n} className={i+1<step?'done':i+1===step?'current':''} aria-current={i+1===step?'step':undefined}><i>{i+1<step?'✓':i+1}</i>{n}</li>)}</ol>
   <button className="subtle" onClick={()=>setPanel(!panel)} aria-expanded={panel}>Menu staf</button></header>
@@ -113,10 +138,24 @@ function App(){
   </div>{s.prints.map(p=><p key={p.id} className="lead">{p.status==='SIMULATED'?'Simulasi cetak tercatat. Tidak ada kertas yang dicetak.':p.status==='ACCEPTED'?'Foto sudah dikirim ke printer. Periksa kertas setelah selesai.':`Status cetak: ${p.status}. Periksa sebelum mengulang.`}</p>)}
   </section>}
   {panel&&<aside aria-label="Menu staf"><div className="drawer-head"><h2>Menu staf</h2><button className="subtle" onClick={()=>setPanel(false)}>Tutup menu</button></div>
-   <p className="lead">Area khusus petugas event, bukan untuk tamu. Di sini staf bisa memeriksa perangkat, menutup atau memulihkan sesi yang macet, memilih foto simulasi, dan menyambungkan printer ke kiosk di browser. Dilindungi PIN yang dibuat saat aplikasi dijalankan lewat <code>Start-NXBooth.cmd</code>.</p>
-   {!operator?<form onSubmit={async e=>{e.preventDefault();const r=await api.unlock(pin);setPin('');if(r.ok)setOperator(true);else setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));}}><label>PIN staf <input type="password" autoComplete="off" value={pin} onChange={e=>setPin(e.target.value)}/></label><button>Buka</button></form>:<>
+   <p className="lead">Area khusus petugas event, bukan untuk tamu. Di sini staf bisa memeriksa perangkat, menutup atau memulihkan sesi yang macet, memilih foto simulasi, dan menyambungkan printer ke kiosk di browser. Dikunci dengan PIN staf jika sudah dibuat.</p>
+   {!operator&&!state?.pinSet?<div className="actions"><button onClick={async()=>{const r=await api.openStaff();if(r.ok)setOperator(true);else fail(r);}}>Buka menu staf</button>{!state?.configured&&<button onClick={()=>{setPanel(false);act('loginShow');}}>Masuk akun</button>}</div>:!operator?<form onSubmit={async e=>{e.preventDefault();const r=await api.unlock(pin);setPin('');if(r.ok)setOperator(true);else setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));}}><label>PIN staf <input type="password" autoComplete="off" value={pin} onChange={e=>setPin(e.target.value)}/></label><button>Buka</button></form>:<>
    <p>Kamera: {state?.device.camera} · Printer: {state?.device.printer}{state?.device.printerName?` (${state.device.printerName})`:''}</p>
    <p>Credential: {state?.credentialPersistence?'tersimpan terenkripsi':'hanya memori; sesi online tidak dapat dipulihkan setelah restart'}</p>
+   <h3>Versi dan update</h3>
+   <p>Versi terpasang: {state?.version||'-'}</p>
+   <div className="actions"><button disabled={updBusy||!state?.configured} onClick={checkUpdate}>Cek update</button>
+   {upd?.available&&<button className="primary" disabled={updBusy||!!s} onClick={installUpdate}>Pasang versi {upd.version}</button>}</div>
+   {!state?.configured&&<small className="hint">Masuk akun dulu untuk memakai update.</small>}
+   {upd&&!upd.available&&!upd.installing&&<p role="status">Sudah versi terbaru.</p>}
+   {upd?.available&&<p role="status">Tersedia versi {upd.version}{upd.notes?` · ${upd.notes}`:''}. {s?'Tutup sesi foto dulu.':'Aplikasi akan menutup dan memasang update.'}</p>}
+   {upd?.installing&&<p role="status">Memasang update… aplikasi akan terbuka kembali.</p>}
+   <h3>Akun</h3>
+   <p>{state?.staff?`Masuk sebagai ${state.staff.name||state.staff.email}`:state?.configured?(state.keyFromEnvironment?'Memakai kunci kiosk dari environment':'Memakai kunci kiosk lama (bukan per akun)'):'Belum masuk'}</p>
+   <div className="actions">{state?.configured&&!state.keyFromEnvironment&&<button onClick={async()=>{const r=await api.logout();if(r.ok){setOperator(false);setPanel(false);await refresh();}else fail(r);}}>Keluar</button>}{!state?.configured&&<button onClick={()=>{setPanel(false);act('loginShow');}}>Masuk akun</button>}</div>
+   {!state?.configured&&<form onSubmit={async e=>{e.preventDefault();const r=await api.setApiKey(keyInput.trim());setKeyInput('');if(r.ok)await refresh();else fail(r);}}><label>Kunci kiosk lama (opsional) <input type="password" autoComplete="off" minLength={32} value={keyInput} onChange={e=>setKeyInput(e.target.value)}/></label><button disabled={keyInput.trim().length<32}>Simpan kunci</button></form>}
+   <h3>PIN kunci layar</h3>
+   <form onSubmit={savePin}><label>{state?.pinSet?'PIN baru':'Buat PIN'} <input type="password" autoComplete="off" value={newPin} onChange={e=>setNewPin(e.target.value)}/></label><label>Ulangi PIN <input type="password" autoComplete="off" value={newPin2} onChange={e=>setNewPin2(e.target.value)}/></label><button disabled={newPin.length<4}>Simpan PIN</button></form>
    <h3>Perangkat dan sesi</h3>
    <div className="actions">
    <button disabled={checking} onClick={async()=>{if(s)return;setView('check');setPanel(false);runCheck();}}>Cek perangkat lagi</button>

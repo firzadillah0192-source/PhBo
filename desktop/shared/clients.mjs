@@ -1,6 +1,12 @@
+import { createHash } from 'node:crypto';
+import { createWriteStream } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import { once } from 'node:events';
 import { inspectImage } from './image.mjs';
 const defaults = {control:'https://api-nxbooth.gennexbyte.com',media:'https://media-nxbooth.gennexbyte.com',storage:'https://storage-nxbooth.gennexbyte.com',web:'https://nxbooth.gennexbyte.com'};
 const segment = value => { if(typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(value)) throw new Error('INVALID_ID'); return value; };
+/** Kiosk credential: a device token `{token}` (account login) or the legacy shared key string. */
+export const authHeaders=credential=>credential&&typeof credential==='object'?{Authorization:'Bearer '+credential.token}:credential?{'X-API-Key':credential}:{};
 export function origins(config={}, test=false) {
   const result={...defaults,...config};
   for(const value of Object.values(result)) { const u=new URL(value); if(u.username||u.password||u.search||u.hash||u.pathname!=='/' || !(u.protocol==='https:' || test&&u.protocol==='http:'&&['127.0.0.1','localhost'].includes(u.hostname))) throw new Error('INVALID_ORIGIN'); }
@@ -28,7 +34,7 @@ export class ControlClient {
   async request(path,body, key) {
     if(!/^\/api\/v1\/(kiosk\/sessions|photo-sessions\/[a-zA-Z0-9_-]+\/claim|generations(?:\/[a-zA-Z0-9_-]+)?|results\/[a-zA-Z0-9_-]+(?:\/url)?|frames|templates|experiences)$/.test(path)) throw new Error('CONTROL_ROUTE_FORBIDDEN');
     const headers={'Accept':'application/json','User-Agent':'NXBoothDesktop/1.0'};
-    if(this.apiKey)headers['X-API-Key']=this.apiKey;if(this.cookie)headers.Cookie=this.cookie;if(key)headers['Idempotency-Key']=key;
+    Object.assign(headers,authHeaders(this.apiKey));if(this.cookie)headers.Cookie=this.cookie;if(key)headers['Idempotency-Key']=key;
     if(body!==undefined){jsonOnly(body);headers['Content-Type']='application/json';}
     const r=await fetch(this.config.control+path,{method:body===undefined?'GET':'POST',headers,body:body===undefined?undefined:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(30000)});
     // Store access credential before parsing the response body.
@@ -57,7 +63,7 @@ export class MediaClient {
     if(!/^\/api\/v1\/kiosk\/session\/[a-zA-Z0-9_-]+\/upload$/.test(path)) throw new Error('MEDIA_ROUTE_FORBIDDEN');
     const form=new FormData();
     for(const {id,bytes} of captures){const {mime}=inspectImage(bytes);form.append('image',new Blob([bytes],{type:mime}),segment(id)+(mime==='image/png'?'.png':'.jpg'));}
-    const r=await fetch(this.config.media+path,{method:'POST',headers:{'X-API-Key':this.apiKey,'X-Kiosk-Upload-Token':token,'Idempotency-Key':key,'Accept':'application/json','User-Agent':'NXBoothDesktop/1.0'},body:form,redirect:'error',signal:AbortSignal.timeout(120000)});
+    const r=await fetch(this.config.media+path,{method:'POST',headers:{...authHeaders(this.apiKey),'X-Kiosk-Upload-Token':token,'Idempotency-Key':key,'Accept':'application/json','User-Agent':'NXBoothDesktop/1.0'},body:form,redirect:'error',signal:AbortSignal.timeout(120000)});
     return json(r);
   }
   async download(location,cookie='') {
@@ -70,4 +76,41 @@ export class MediaClient {
     if(!r.ok)throw new Error('MEDIA_DOWNLOAD_FAILED');
     const bytes=await bounded(r,16*1024*1024);inspectImage(bytes);return bytes;
   }
+}
+/** Desktop self-update. Same kiosk key as other kiosk calls; installer bytes use the media origin. */
+export class UpdateClient {
+  constructor(config,apiKey=''){this.config=config;this.apiKey=apiKey;}
+  headers(){return {...authHeaders(this.apiKey),'Accept':'application/json','User-Agent':'NXBoothDesktop/1.0'};}
+  async check(current) {
+    if(!this.apiKey)throw new Error('BACKEND_NOT_CONFIGURED');
+    if(!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(current))throw new Error('INVALID_VERSION');
+    const r=await fetch(this.config.control+'/api/v1/desktop/update?current='+current,{headers:this.headers(),redirect:'error',signal:AbortSignal.timeout(30000)});
+    return json(r);
+  }
+  async download(info,file) {
+    if(!this.apiKey)throw new Error('BACKEND_NOT_CONFIGURED');
+    if(!Number.isInteger(info?.size)||info.size<=0||info.size>500*1024*1024||!/^[a-f0-9]{64}$/.test(info.sha256||''))throw new Error('UPDATE_MANIFEST_INVALID');
+    const r=await fetch(this.config.media+'/api/v1/desktop/update/download',{headers:this.headers(),redirect:'error',signal:AbortSignal.timeout(600000)});
+    if(!r.ok||!r.body)throw new Error('UPDATE_DOWNLOAD_FAILED');
+    if(Number(r.headers.get('content-length'))!==info.size)throw new Error('UPDATE_SIZE_MISMATCH');
+    const hash=createHash('sha256'),out=createWriteStream(file,{flags:'wx',mode:0o600});let size=0;
+    try {
+      for await(const chunk of r.body) {
+        size+=chunk.length;if(size>info.size)throw new Error('UPDATE_SIZE_MISMATCH');
+        hash.update(chunk);if(!out.write(chunk))await once(out,'drain');
+      }
+      await new Promise((resolve,reject)=>out.end(e=>e?reject(e):resolve()));
+    } catch(error) {out.destroy();await rm(file,{force:true});throw error;}
+    if(size!==info.size||hash.digest('hex')!==info.sha256){await rm(file,{force:true});throw new Error('UPDATE_HASH_MISMATCH');}
+  }
+}
+/** Device-code login endpoints (no credentials yet), through the control gateway. */
+export class DeviceClient {
+  constructor(config){this.config=config;}
+  async post(path,body) {
+    const r=await fetch(this.config.control+path,{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json','User-Agent':'NXBoothDesktop/1.0'},body:JSON.stringify(body),redirect:'error',signal:AbortSignal.timeout(30000)});
+    return json(r);
+  }
+  start(name){return this.post('/api/v1/desktop/device/code',{device_name:name});}
+  poll(deviceCode){return this.post('/api/v1/desktop/device/token',{device_code:deviceCode});}
 }

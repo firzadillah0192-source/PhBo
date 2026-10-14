@@ -8,5 +8,8 @@ contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
   printerPairing:()=>call({method:'printerPairing'}),openWebKiosk:()=>call({method:'openWebKiosk'}),
   refresh:()=>call({method:'refresh'}),thumbnail:(mode,id)=>call({method:'thumbnail',mode,id}),
   unlock:pin=>call({method:'unlock',pin}),lock:()=>call({method:'lock'}),
+  loginStart:()=>call({method:'loginStart'}),loginCancel:()=>call({method:'loginCancel'}),loginSkip:()=>call({method:'loginSkip'}),loginShow:()=>call({method:'loginShow'}),logout:()=>call({method:'logout'}),
+  openStaff:()=>call({method:'openStaff'}),pinCreate:pin=>call({method:'pinCreate',pin}),pinSkip:()=>call({method:'pinSkip'}),setApiKey:key=>call({method:'setApiKey',key}),clearApiKey:()=>call({method:'clearApiKey'}),
+  updateCheck:()=>call({method:'updateCheck'}),updateInstall:()=>call({method:'updateInstall'}),
   onChange:callback=>{const handler=()=>callback();ipcRenderer.on('desktop:changed',handler);return()=>ipcRenderer.removeListener('desktop:changed',handler);}
 }));

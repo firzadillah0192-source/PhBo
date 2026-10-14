@@ -56,6 +56,8 @@ while (await Console.In.ReadLineAsync() is { } line) {
                 // Never overwrite a previous capture, including after a retry.
                 await using (var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write)) await output.WriteAsync(bytes);
                 result = new { captureId, path = target, simulated = true }; break;
+            case "update.verify":
+                result = UpdateVerifier.Verify(Inside(Required(p, "path"))); break;
             case "printer.submit":
                 if (!simulated && !OperatingSystem.IsWindows()) throw new Exception("PRINTER_NOT_CONNECTED");
                 var jobId = SafeId(Required(p, "jobId"));
