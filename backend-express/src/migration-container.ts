@@ -35,6 +35,9 @@ import { AdminPreviewService } from './services/admin-preview.service.js';
 import { NativeRateLimitService } from './services/native-rate-limit.service.js';
 import { NativeKioskModel } from './models/native-kiosk.model.js';
 import { NativeKioskService } from './services/native-kiosk.service.js';
+import { KioskDeviceModel } from './models/kiosk-device.model.js';
+import { KioskDeviceService } from './services/kiosk-device.service.js';
+import { accountCookie } from './services/customer-credentials.service.js';
 import { nativeGenerationQueue } from './services/native-generation-queue.js';
 
 export function migrationContainer(db:PrismaClient,config:z.output<typeof migrationConfigSchema>){
@@ -53,9 +56,14 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
   const imageBase=config.IMAGE_ENGINE_BASE_URL.replace(/\/$/,'');
   const uploads=new CustomerUploadService(new CustomerUploadModel(db),new UploadImageEngineService(config.IMAGE_ENGINE_NORMALIZE_URL||(imageBase?`${imageBase}/normalize-upload`:''),config.AI_ENGINE_API_KEY),{uploadsDir:join(config.RUNTIME_DIR,'uploads'),retentionHours:config.UPLOAD_RETENTION_HOURS},objects);
   const model=new CustomerGenerationModel(db,config.WORKER_MAX_ATTEMPTS),generations=new CustomerGenerationService(model,uploads,assets,queue,config.BASIC_MODEL_EXPERIENCE_ID);
+  // Desktop kiosks sign in per account (device-code flow); see docs/DESKTOP_LOGIN_PLAN.md.
+  const devices=new KioskDeviceService(new KioskDeviceModel(db),async cookies=>{
+    if(!account.signer.unsign(cookies[accountCookie]))return null;
+    const identity=await account.resolve(cookies);return identity.account?{id:identity.account.id,email:identity.account.email}:null;
+  },{sessionDays:14,activationUrl:`${config.RESULT_CLAIM_PUBLIC_BASE_URL.replace(/\/$/,'')||'https://nxbooth.gennexbyte.com'}/kiosk-activate.html`});
   const kiosk = config.NATIVE_KIOSK_ENABLED ? new NativeKioskService(new NativeKioskModel(db),uploads,generations,results,{
     apiKey: config.KIOSK_API_KEY,ttlSeconds: config.KIOSK_PHOTO_SESSION_TTL_SECONDS,generationLimit: config.KIOSK_GENERATION_LIMIT,
-    secureCookie: account.config.cookieSecure }) : undefined;
+    secureCookie: account.config.cookieSecure,devices }) : undefined;
   const provider=config.AI_PROVIDER==='9router'?new NativeNineRouterProvider({baseUrl:config.NINEROUTER_BASE_URL,key:config.NINEROUTER_API_KEY,timeoutMs:config.NINEROUTER_TIMEOUT_SECONDS*1000,resultOrigins:config.PROVIDER_RESULT_ORIGINS}):new NativeNullProvider();
   const images=new NativeImageEngineService(imageBase,config.AI_ENGINE_API_KEY);
   const classic=new ClassicGenerationRunner(model,uploads,assets,new ClassicImageEngineService(imageBase?`${imageBase}/compose-classic`:'',config.AI_ENGINE_API_KEY));
@@ -67,5 +75,5 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
   const admin={auth:new AdminAuthService(new AdminAuthModel(db),account.signer,{token:config.ADMIN_TOKEN,defaultRole:config.ADMIN_DEFAULT_ROLE,sessionDays:config.SESSION_DAYS,cookieSecure:account.config.cookieSecure}),catalog:adminCatalog,operations,usage:new AdminUsageService(operations,results),previews};
   const queueReady=async()=>{await queue.ping();await previewQueue.ping();};
   const health=async()=>{let database='ok',redis='ok',storage='ok',dispatch='ok';try{await db.$queryRaw`SELECT 1`;}catch{database='error: unreachable';}try{await rateLimitStore.ping();}catch{redis='error: unreachable';}try{await queueReady();}catch{dispatch='error: unreachable';}try{await storageReady();}catch{storage='error: unreachable';}const connected=provider.available();return {status:database==='ok'&&redis==='ok'&&storage==='ok'&&dispatch==='ok'?'ok':'degraded',app:'NXBooth',environment:config.NODE_ENV,checks:{database,redis,storage,queue:dispatch,ai_provider:`${connected?'ok':'not_connected'} (${provider.name})`},queue_backend:config.GENERATION_QUEUE_BACKEND,ai_provider:provider.name,ai_provider_connected:connected};};
-  return {catalog,account,results,uploads,generations,kiosk,queue,previewQueue,worker,previews,leases:model.leases,admin,health,storageReady,queueReady,limiter:new NativeRateLimitService(rateLimitStore),async close(){await queue.close();await previewQueue.close();await rateLimitStore.close();}};
+  return {catalog,account,results,uploads,generations,kiosk,devices,queue,previewQueue,worker,previews,leases:model.leases,admin,health,storageReady,queueReady,limiter:new NativeRateLimitService(rateLimitStore),async close(){await queue.close();await previewQueue.close();await rateLimitStore.close();}};
 }
