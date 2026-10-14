@@ -88,3 +88,120 @@ test('restart recovery without secret does not send any request or fabricate out
  const s={id:newId(),phase:'RECOVERY_REQUIRED',mode:'CLASSIC',selectionId:'frame-1',shots:1,captures:[],remote:{code:'session1'},keys:{reserve:newId(),upload:newId(),generate:newId()}};await journal.save(s);
  try{const rt=new Runtime({journal,bridge:{},assets,secrets:new Secrets(root,null),apiKey:'fixture-key',origins:origins()});await assert.rejects(rt.process(),/CREDENTIAL_RECOVERY_REQUIRED/);assert.equal(rt.session.phase,'RECOVERY_REQUIRED');assert.equal((await rt.state()).session.result,null);}finally{journal.close();await rm(root,{recursive:true,force:true});}
 });
+
+import {hashPin,checkPin,validPin} from '../shared/operator.mjs';
+import {Updater} from '../shared/updater.mjs';
+import {UpdateClient} from '../shared/clients.mjs';
+import {createHash} from 'node:crypto';
+import {existsSync} from 'node:fs';
+import {stat} from 'node:fs/promises';
+
+test('Operator PIN is stored as a salted hash and compared exactly',()=>{
+ const record=hashPin('4321');
+ assert.ok(!JSON.stringify(record).includes('4321'));
+ assert.equal(checkPin('4321',record),true);
+ for(const bad of ['4322','','432','43210',undefined,null])assert.equal(checkPin(bad,record),false);
+ assert.notEqual(hashPin('4321').hash,record.hash);
+ assert.equal(validPin('abc'),false);assert.throws(()=>hashPin('abc'),/PIN_INVALID/);
+});
+
+const SIGNER='A'.repeat(40);
+function updateFixture(overrides={}){
+ const calls=[];const dir='/srv/photobooth/tmp/desktop-update-'+newId();
+ const info={update_available:true,version:'1.1.0',size:3,sha256:'a'.repeat(64),notes:''};
+ const u=new Updater({
+  client:{check:async v=>{calls.push('check:'+v);return overrides.info||info;},download:async(_i,file)=>{calls.push('download');await writeFile(file,'abc');}},
+  bridge:{call:async(method,params)=>{calls.push(method);assert.ok(params.path.startsWith(dir));return overrides.signature||{status:'Valid',thumbprint:SIGNER.toLowerCase()};}},
+  dir,version:'1.0.0',signer:overrides.signer??SIGNER,sessionActive:overrides.sessionActive||(()=>false),launch:async file=>{calls.push('launch:'+file);}});
+ return {u,calls,dir};
+}
+test('Updater installs only after download and a Valid pinned signature',async()=>{
+ const {u,calls,dir}=updateFixture();
+ try{
+  assert.deepEqual(await u.check(),{available:true,version:'1.1.0',notes:'',size:3});
+  const r=await u.install();assert.equal(r.launched,true);
+  assert.deepEqual(calls.filter(c=>!c.startsWith('check')),['download','update.verify','launch:'+join(dir,'NXBooth-Setup-1.1.0.exe')]);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('Updater without a pinned signer still verifies size/hash (client) and installs without a signature check',async()=>{
+ const {u,calls,dir}=updateFixture({signer:'',signature:{status:'NotSigned',thumbprint:null}});
+ try{
+  assert.equal((await u.install()).launched,true);
+  assert.ok(!calls.includes('update.verify'));assert.ok(calls.includes('download'));
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('Updater refuses wrong signer, untrusted signature, active session and missing pin, and deletes the download',async()=>{
+ for(const [name,overrides,error] of [
+  ['wrong signer',{signature:{status:'Valid',thumbprint:'B'.repeat(40)}},/UPDATE_SIGNATURE_INVALID/],
+  ['not trusted',{signature:{status:'UnknownError',thumbprint:SIGNER}},/UPDATE_SIGNATURE_INVALID/],
+  ['unsigned',{signature:{status:'NotSigned',thumbprint:null}},/UPDATE_SIGNATURE_INVALID/],
+  ['session active',{sessionActive:()=>true},/UPDATE_SESSION_ACTIVE/],
+  ['malformed pinned signer',{signer:'xyz'},/UPDATE_SIGNER_NOT_CONFIGURED/],
+  ['nothing newer',{info:{update_available:false}},/UPDATE_NOT_AVAILABLE/]]){
+  const {u,calls,dir}=updateFixture(overrides);
+  try{
+   await assert.rejects(u.install(),error,name);
+   assert.ok(!calls.some(c=>c.startsWith('launch')),name+' must not launch');
+   assert.ok(!existsSync(join(dir,'NXBooth-Setup-1.1.0.exe')),name+' must not leave the installer');
+  }finally{await rm(dir,{recursive:true,force:true});}
+ }
+});
+test('UpdateClient verifies size and hash and leaves no partial file',async()=>{
+ const body=Buffer.from('synthetic installer');const sha=createHash('sha256').update(body).digest('hex');let mode='ok';
+ const server=createServer((req,res)=>{
+  assert.equal(req.headers['x-api-key'],'k'.repeat(32));
+  if(req.url.startsWith('/api/v1/desktop/update?'))return res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({data:{update_available:true,version:'1.1.0',size:body.length,sha256:sha}}));
+  const bytes=mode==='tampered'?Buffer.from('tampered installer!'.slice(0,body.length)):body;
+  res.writeHead(200,{'content-length':bytes.length}).end(bytes);
+ });
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;
+ const dir=await mkdtemp('/srv/photobooth/tmp/desktop-update-client-');
+ try{
+  const client=new UpdateClient(origins({control:base,media:base,storage:base,web:base},true),'k'.repeat(32));
+  const info=await client.check('1.0.0');assert.equal(info.version,'1.1.0');
+  await client.download(info,join(dir,'ok.exe'));assert.equal((await stat(join(dir,'ok.exe'))).size,body.length);
+  mode='tampered';await assert.rejects(client.download(info,join(dir,'bad.exe')),/UPDATE_HASH_MISMATCH/);
+  assert.ok(!existsSync(join(dir,'bad.exe')));
+  await assert.rejects(client.download({...info,size:999},join(dir,'size.exe')),/UPDATE_SIZE_MISMATCH/);
+  await assert.rejects(client.download({...info,sha256:'xyz'},join(dir,'m.exe')),/UPDATE_MANIFEST_INVALID/);
+  await assert.rejects(new UpdateClient(origins({control:base,media:base,storage:base,web:base},true),'').check('1.0.0'),/BACKEND_NOT_CONFIGURED/);
+ }finally{server.close();await rm(dir,{recursive:true,force:true});}
+});
+
+import {DeviceLogin} from '../shared/login.mjs';
+import {authHeaders,DeviceClient} from '../shared/clients.mjs';
+test('Kiosk credential header: device token is Bearer, legacy key is X-API-Key, none is empty',()=>{
+ assert.deepEqual(authHeaders({token:'abc'}),{Authorization:'Bearer abc'});
+ assert.deepEqual(authHeaders('k'.repeat(32)),{'X-API-Key':'k'.repeat(32)});
+ assert.deepEqual(authHeaders(''),{});assert.deepEqual(authHeaders(undefined),{});
+});
+function loginFixture(polls){
+ const saved=[];let t=0;const states=[];
+ const client={start:async()=>({device_code:'d'.repeat(43),user_code:'ABCD-2345',verification_url:'https://x.example/activate',expires_in:10,interval:1}),
+  poll:async()=>{const next=polls.shift();if(next instanceof Error)throw next;return next;}};
+ const login=new DeviceLogin({client,name:'PC',now:()=>t,sleep:async ms=>{t+=ms;await new Promise(r=>setImmediate(r));},onChange:()=>states.push(login.state.status),onApproved:async r=>{saved.push(r.token);}});
+ return {login,saved,states};
+}
+const settle=async login=>{for(let i=0;i<50&&login.state.status==='pending';i++)await new Promise(r=>setImmediate(r));};
+test('Device login keeps polling through transient errors and stores the token once approved',async()=>{
+ const {login,saved,states}=loginFixture([{status:'pending'},new Error('ADAPTER_TIMEOUT'),{status:'approved',token:'tok',staff:{name:'A'}}]);
+ await login.start();assert.equal(login.state.userCode,'ABCD-2345');
+ await settle(login);assert.equal(login.state.status,'approved');assert.deepEqual(saved,['tok']);assert.deepEqual(states,['pending','approved']);
+});
+test('Device login expires, reports server expiry, and can be cancelled without storing anything',async()=>{
+ let f=loginFixture(Array.from({length:30},()=>({status:'pending'})));await f.login.start();await settle(f.login);assert.equal(f.login.state.status,'expired');assert.deepEqual(f.saved,[]);
+ f=loginFixture([Object.assign(new Error('DEVICE_CODE_EXPIRED'))]);await f.login.start();await settle(f.login);assert.equal(f.login.state.status,'expired');
+ f=loginFixture([{status:'pending'},{status:'approved',token:'late'}]);await f.login.start();f.login.cancel();await settle(f.login);await new Promise(r=>setTimeout(r,20));assert.equal(f.login.state.status,'idle');assert.deepEqual(f.saved,[]);
+ const failing=new DeviceLogin({client:{start:async()=>{throw new Error('DEVICE_CODES_BUSY');}},name:'PC',onApproved:async()=>{}});await failing.start();assert.deepEqual(failing.state,{status:'error',error:'DEVICE_CODES_BUSY'});
+});
+test('DeviceClient posts JSON to the control origin and surfaces server error codes',async()=>{
+ const seen=[];const server=createServer((req,res)=>{let body='';req.on('data',c=>body+=c);req.on('end',()=>{seen.push({url:req.url,type:req.headers['content-type'],auth:req.headers.authorization,body:JSON.parse(body)});
+  if(req.url.endsWith('/token'))return res.writeHead(410,{'content-type':'application/json'}).end(JSON.stringify({error:{code:'DEVICE_CODE_EXPIRED'}}));
+  res.writeHead(201,{'content-type':'application/json'}).end(JSON.stringify({data:{device_code:'x'}}));});});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;
+ try{const c=new DeviceClient(origins({control:base,media:base,storage:base,web:base},true));
+  assert.equal((await c.start('PC 1')).device_code,'x');
+  await assert.rejects(c.poll('d'.repeat(43)),/DEVICE_CODE_EXPIRED/);
+  assert.deepEqual(seen.map(s=>[s.url,s.type,s.auth,s.body]),[['/api/v1/desktop/device/code','application/json',undefined,{device_name:'PC 1'}],['/api/v1/desktop/device/token','application/json',undefined,{device_code:'d'.repeat(43)}]]);
+ }finally{server.close();}
+});

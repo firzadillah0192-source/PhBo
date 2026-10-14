@@ -1,6 +1,6 @@
 {
   "name": "nxbooth-desktop",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "main": "electron/main.mjs",
@@ -12,7 +12,8 @@
     "test:ui": "node tests/electron-ui.mjs",
     "bridge:build": "dotnet build native/KioskBridge -c Release",
     "package:win": "node scripts/package-windows.mjs",
-    "test:webcam-ui": "node tests/webcam-ui.mjs"
+    "test:webcam-ui": "node tests/webcam-ui.mjs",
+    "test:setup-ui": "node tests/setup-ui.mjs"
   },
   "dependencies": {
     "react": "19.3.0",
@@ -42,28 +43,39 @@
       {
         "from": "native/publish/win-x64",
         "to": "bridge"
+      },
+      {
+        "from": "native/publish/update-signer.json",
+        "to": "update-signer.json"
       }
     ],
     "win": {
       "target": [
-        "zip"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "signAndEditExecutable": false
     },
     "extraFiles": [
       {
-        "from": "scripts/Start-NXBooth.ps1",
-        "to": "Start-NXBooth.ps1"
-      },
-      {
-        "from": "scripts/Start-NXBooth.cmd",
-        "to": "Start-NXBooth.cmd"
-      },
-      {
         "from": "WINDOWS_SETUP.md",
         "to": "WINDOWS_SETUP.md"
       }
-    ]
+    ],
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "NXBooth-Setup-${version}.exe"
+    }
   },
   "description": "NXBooth Windows kiosk with webcam capture and Epson L8050 printing",
   "author": "Photobooth AI"
