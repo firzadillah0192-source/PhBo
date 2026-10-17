@@ -1,6 +1,6 @@
 # NXBooth Desktop: installer and in-app update
 
-Status at the 17 October 2026 handoff: desktop **1.1.0 release prepared**, pending Windows build and publication. Update/login routes and gateways were deployed by the previous releases. Windows hardware and the new install handover still need validation on the kiosk PC.
+Status at the 17 October 2026 handoff: desktop **1.1.0 published and verified** ([GitHub release](https://github.com/firzadillah0192-source/PhBo/releases/tag/desktop-v1.1.0)). Update/login routes and gateways were deployed by the previous releases. Windows hardware and the new install handover still need validation on the kiosk PC.
 
 ## How it works
 
@@ -65,7 +65,7 @@ Windows event capture uses the Canon USB SDK introduced in 1.0.2. Non-Windows de
 
 ### Release 1.1.0 validation, 17 October 2026
 
-Code validation: **PASS**. Release source is based on Canon commit `271040e` (1.0.2), with the event and updater changes layered on top. Owner approved commit, release and publication. The main workspace's unrelated changes were excluded by using an isolated worktree.
+Code and release validation: **PASS**. Windows Actions build succeeded; server offers 1.1.0 to 1.0.2, reports 1.1.0 up to date, and the complete media download matches the installer size and SHA-256. Web/API health checks pass. Release source is based on Canon commit `271040e` (1.0.2), with the event and updater changes layered on top. Owner approved commit, release and publication. The main workspace's unrelated changes were excluded by using an isolated worktree.
 
 - `dotnet build native/KioskBridge -c Release`: PASS, 0 warnings/errors.
 - `npm run build`: PASS.
