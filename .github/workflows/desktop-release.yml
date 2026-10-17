@@ -1,0 +1,75 @@
+# Builds the Windows NSIS installer on a Windows runner and attaches it to the GitHub Release.
+# Trigger: push a tag named desktop-v<version> (must equal "version" in desktop/package.json).
+# The installer is unsigned unless a signing step is added; see docs/DESKTOP_UPDATE.md.
+name: Desktop release
+
+on:
+  push:
+    tags: ['desktop-v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Tag must match desktop/package.json version
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tag = '${{ github.ref_name }}'
+          if ($tag -ne "desktop-v$version") { throw "Tag $tag does not match package.json version $version" }
+          "VERSION=$version" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - run: npm ci
+      - run: npm run bridge:build
+      - run: npm test
+      - run: npm run package:win
+
+      - name: Locate installer and hash it
+        run: |
+          $exe = Get-Item "release/NXBooth-Setup-$env:VERSION.exe"
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          "INSTALLER=$($exe.FullName)" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "SHA256=$hash" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "$hash  $($exe.Name)" | Out-File -Encoding ascii "release/$($exe.Name).sha256"
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = @"
+          NXBooth Desktop $env:VERSION (Windows 11 x64). Single installer, per-user, no admin rights needed.
+
+          SHA-256: ``$env:SHA256``
+
+          Install: run the installer, note the code shown, then approve it at https://nxbooth.gennexbyte.com/kiosk-activate.html with an account that has the Kiosk operator role. Later versions are installed from inside the app (Staff menu, Check for update) after the installer is published to the server with scripts/publish_desktop_update.py.
+
+          Unsigned: Windows SmartScreen may warn (More info, Run anyway). Not yet tested with physical Canon/Epson hardware.
+          "@
+          $notes | Out-File -Encoding utf8 release-notes.md
+          gh release view '${{ github.ref_name }}' *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload '${{ github.ref_name }}' $env:INSTALLER "$env:INSTALLER.sha256" --clobber
+          } else {
+            gh release create '${{ github.ref_name }}' $env:INSTALLER "$env:INSTALLER.sha256" --title "NXBooth Desktop $env:VERSION (Windows x64)" --notes-file release-notes.md --verify-tag
+          }
