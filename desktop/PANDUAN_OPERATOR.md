@@ -95,3 +95,7 @@ Bila kamera tidak ditemukan atau live view kosong, kirim log lalu beri tahu peng
 | "File update rusak (hash tidak cocok)" | Unduhan terganggu. Coba lagi; bila berulang, publish ulang installer. |
 | Tidak ada tombol Cek update aktif | Belum masuk akun. Masuk lewat Menu staf. |
 | Menu staf terkunci dan PIN lupa | Pemilik: Menu staf tidak bisa dibuka tanpa PIN. Hapus data aplikasi pengguna itu (login perlu diulang) atau pasang ulang. |
+
+### Log otomatis (1.1.1)
+
+Setelah masuk akun, aplikasi mengirim log aksi dan error kamera otomatis. Untuk masalah preview, buka sesi foto sampai error muncul dan biarkan aplikasi terbuka dengan internet selama sekitar satu menit. Tidak perlu menjalankan Tes kamera Canon atau menekan Kirim log. Foto dan preview tidak dikirim sebagai log. Saat offline, antrean log disimpan lokal dengan batas ukuran.

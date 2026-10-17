@@ -11,12 +11,12 @@ try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{
   const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
-  window.calls={open:0,frame:0,close:0,capture:0,webcam:0,disconnected:false};
+  window.calls={open:0,frame:0,close:0,capture:0,webcam:0,disconnected:false,events:[]};
   const event=localStorage.getItem('event')==='1';
   const state={version:'1.1.0',cameraBackend:'canon-sdk',device:{simulated:false,camera:'CANON_SDK',printer:'PRINTER_NOT_CONNECTED'},catalogLoaded:true,configured:true,busy:false,session:null,catalog:{CLASSIC:[{id:'frame',name:'Frame',shots:2}],BASIC:[{id:'basic',name:'Basic Test'}],ADVANCED:[]},event:event?{active:true,name:'USB Event',date:'2026-10-17',templates:[{mode:'CLASSIC',id:'frame'}],timing:{countdown:1,retake:1,reset:15}}:null};
   const ok=data=>Promise.resolve({ok:true,data:structuredClone(data)}),bad=code=>Promise.resolve({ok:false,error:{code}});
   navigator.mediaDevices.getUserMedia=()=>{window.calls.webcam++;throw Error('Webcam must not be opened');};
-  window.nxbooth={state:()=>ok(state),refresh:()=>ok(state),thumbnail:()=>ok(image),onChange:()=>()=>{},onUpdateProgress:()=>()=>{},
+  window.nxbooth={activityEvent:event=>{window.calls.events.push(event);return Promise.resolve({ok:true});},state:()=>ok(state),refresh:()=>ok(state),thumbnail:()=>ok(image),onChange:()=>()=>{},onUpdateProgress:()=>()=>{},
    start:mode=>{state.session={id:'session',phase:'CAPTURING',mode,shots:mode==='CLASSIC'?2:1,captures:[],prints:[]};return ok(state);},
    cameraOpen:()=>{window.calls.open++;return ok({source:'canon-sdk'});},cameraFrame:()=>{window.calls.frame++;return window.calls.disconnected?bad('CAMERA_DISCONNECTED'):ok({url:image});},cameraClose:()=>{window.calls.close++;return ok({closed:true});},
    capture:()=>{window.calls.capture++;const s=state.session;s.captures.push({id:String(window.calls.capture),url:image,source:'canon-sdk'});if(s.captures.length===s.shots)s.phase='REVIEWING';return ok(state);},captureWebcam:()=>{window.calls.webcam++;return bad('CAMERA_MODE_INVALID');},
@@ -28,7 +28,7 @@ try{
  await page.getByRole('button',{name:'Ambil foto',exact:true}).click();await page.getByRole('heading',{name:'Periksa foto kamu.'}).waitFor();
  await page.getByRole('button',{name:'Ulangi foto terakhir'}).click();await page.locator('.sdk-preview').waitFor();
  await page.evaluate(()=>{window.calls.disconnected=true;});await page.getByText(/Koneksi kamera terputus/).first().waitFor();assert.equal(await page.getByRole('button',{name:'Ambil foto',exact:true}).isDisabled(),true);
- let calls=await page.evaluate(()=>window.calls);assert.equal(calls.capture,1);assert.equal(calls.webcam,0);assert.ok(calls.open>=2);assert.ok(calls.close>=1);
+ let calls=await page.evaluate(()=>window.calls);assert.equal(calls.capture,1);assert.equal(calls.webcam,0);assert.ok(calls.open>=2);assert.ok(calls.close>=1);assert.ok(calls.events.some(e=>e.action==='camera.preview'&&e.code==='CAMERA_DISCONNECTED'));
  await page.evaluate(()=>{window.calls.disconnected=false;});await page.getByRole('button',{name:'Sambungkan ulang kamera'}).click();await page.getByRole('button',{name:'Ambil foto',exact:true}).waitFor();
  await page.getByRole('button',{name:'Ambil foto',exact:true}).click();await page.getByRole('heading',{name:'Periksa foto kamu.'}).waitFor();
  calls=await page.evaluate(()=>window.calls);assert.equal(calls.capture,2);assert.equal(calls.webcam,0);assert.ok(calls.open>=3);

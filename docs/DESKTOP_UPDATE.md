@@ -86,3 +86,7 @@ Physical Canon/Epson behavior and Windows silent update/restart remain unverifie
 `POST /api/v1/desktop/diagnostics` (control gateway, JSON only, <= 32 KB, same kiosk credentials as the update routes, 10 requests/minute). Strict schema (`backend-express/src/services/desktop-diagnostics.service.ts`): app/OS version, device name, device status, camera probe steps (name, ok, ms, short code, short detail, size) and a scrubbed `startup-error.log` tail. Unknown fields are rejected, so photos, tokens and cookies cannot be stored. Reports are appended to `<RUNTIME_DIR>/desktop-diagnostics/YYYY-MM-DD.jsonl` (2 MB/day cap, 30-day retention); no database change.
 
 The desktop side is `camera.probe` in `desktop/native/KioskBridge/CanonProbe.cs` (FC.SDK over WPD/PTP, Windows only; off Windows and in simulated mode it fails with `CAMERA_WINDOWS_ONLY`, never a fake result) plus the staff-menu buttons. Release script: `scripts/deploy_desktop_diagnostics.py prepare|deploy|rollback|status` (express + control gateway only).
+
+## Automatic activity logging (v1.1.1)
+
+Desktop 1.1.1 sends bounded activity batches automatically through the existing diagnostics endpoint, including session preview and native SDK failures. The schema is unchanged: `note` marks `activity/v1`, and `startup_log` carries NDJSON scalar activity records. See [DESKTOP_LIVE_LOGGING.md](DESKTOP_LIVE_LOGGING.md) for event fields, retry, privacy, local storage and limits.

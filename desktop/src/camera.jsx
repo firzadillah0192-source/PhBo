@@ -6,6 +6,7 @@ export const cameraMessage=code=>({CAMERA_NOT_CONNECTED:'Kamera Canon belum terh
 /** Only the native SDK supplies Windows preview and shutter; browser capture is for non-Windows development. */
 export function useSessionCamera(api,{active,simulated,backend}){
  const video=useRef(null),[camera,setCamera]=useState({ready:false,error:'',source:'',url:''});
+ const trace=(action,status,code,count)=>{void api.activityEvent?.({action,status,code:code&&/^[A-Z][A-Z0-9_]{0,79}$/.test(code)?code:undefined,count}).catch(()=>{});};
  const sdk=backend==='canon-sdk';
  const [epoch,setEpoch]=useState(0);
  useEffect(()=>{
@@ -13,7 +14,7 @@ export function useSessionCamera(api,{active,simulated,backend}){
   let cancelled=false,stream,timer;
   setCamera({ready:false,error:'',source:sdk?'Canon USB':'',url:''});
   if(sdk){
-   let empty=0;
+   let empty=0,readyLogged=false;
    const poll=async()=>{
     try{
      const r=await api.cameraFrame();if(cancelled)return;
@@ -21,14 +22,14 @@ export function useSessionCamera(api,{active,simulated,backend}){
       if(r.error.code==='CAPTURE_NOT_ALLOWED'){timer=setTimeout(poll,150);return;}
       throw new Error(r.error.code);
      }
-     if(r.data.url){empty=0;setCamera({ready:true,error:'',source:'Canon USB',url:r.data.url});}
-     else if(++empty>=100)throw new Error('CAMERA_PREVIEW_EMPTY');
+     if(r.data.url){empty=0;if(!readyLogged){trace('camera.preview','ok');readyLogged=true;}setCamera({ready:true,error:'',source:'Canon USB',url:r.data.url});}
+     else {empty++;if(empty===1)trace('camera.preview','empty','SDK_PREVIEW_EMPTY',empty);if(empty>=100)throw new Error('CAMERA_PREVIEW_EMPTY');}
      timer=setTimeout(poll,120);
-    }catch(e){if(!cancelled)setCamera(c=>({...c,ready:false,error:cameraMessage(e.message)}));}
+    }catch(e){if(!cancelled)trace('camera.preview','error',e.message);if(!cancelled)setCamera(c=>({...c,ready:false,error:cameraMessage(e.message)}));}
    };
-   api.cameraOpen().then(r=>{if(cancelled)return;if(!r.ok)throw new Error(r.error.code);return poll();}).catch(e=>{if(!cancelled)setCamera(c=>({...c,ready:false,error:cameraMessage(e.message)}));});
+   api.cameraOpen().then(r=>{if(cancelled)return;if(!r.ok)throw new Error(r.error.code);return poll();}).catch(e=>{if(!cancelled)trace('camera.preview','error',e.message);if(!cancelled)setCamera(c=>({...c,ready:false,error:cameraMessage(e.message)}));});
   }else{
-   openKioskCamera().then(opened=>{if(cancelled){stopCamera(opened.stream);return;}stream=opened.stream;if(video.current){video.current.srcObject=stream;video.current.play().catch(()=>{});}setCamera(c=>({...c,source:opened.source}));}).catch(e=>{if(!cancelled)setCamera(c=>({...c,error:cameraError(e)}));});
+   openKioskCamera().then(opened=>{if(cancelled){stopCamera(opened.stream);return;}stream=opened.stream;if(video.current){video.current.srcObject=stream;video.current.play().catch(()=>{});}setCamera(c=>({...c,source:opened.source}));}).catch(e=>{if(!cancelled)trace('camera.preview','error',e.message);if(!cancelled)setCamera(c=>({...c,error:cameraError(e)}));});
   }
   return()=>{cancelled=true;clearTimeout(timer);stopCamera(stream);if(sdk)api.cameraClose().catch(()=>{});};
  },[active,simulated,sdk,api,epoch]);
@@ -38,8 +39,8 @@ export function useSessionCamera(api,{active,simulated,backend}){
   const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});
   return api.captureWebcam(base64);
  }
- return {...camera,video,sdk,capture,reconnect:()=>setEpoch(n=>n+1),playing:()=>setCamera(c=>({...c,ready:true}))};
+ return {...camera,video,sdk,capture,decodeError:()=>{trace('camera.video.decode','error','PREVIEW_DECODE_FAILED');setCamera(c=>({...c,ready:false,error:'Preview kamera tidak bisa ditampilkan.'}));},reconnect:()=>{trace('camera.reconnect','begin');setEpoch(n=>n+1);},playing:()=>setCamera(c=>({...c,ready:true}))};
 }
 export function CameraPreview({camera,label='Preview kamera Canon'}){
- return camera.sdk?(camera.url?<img className="sdk-preview" src={camera.url} alt={label}/>:<p role="status">{camera.error||'Menghubungkan kamera Canon…'}</p>):<video ref={camera.video} autoPlay muted playsInline aria-label={label} onPlaying={camera.playing}/>;
+ return camera.sdk?(camera.url?<img className="sdk-preview" src={camera.url} alt={label} onError={camera.decodeError}/>:<p role="status">{camera.error||'Menghubungkan kamera Canon…'}</p>):<video ref={camera.video} autoPlay muted playsInline aria-label={label} onPlaying={camera.playing}/>;
 }
