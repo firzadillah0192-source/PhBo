@@ -190,7 +190,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
         const selected=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'Foto JPEG/PNG',extensions:['jpg','jpeg','png']}]});
         if(!selected.canceled)await runtime.setFixture(selected.filePaths[0]);return {ok:true,data:await runtime.state()};
       }
-      if(p.method==='finish'&&runtime.session?.phase!=='RESULT_READY'&&!operator)throw new Error('OPERATOR_REQUIRED');
+      if(p.method==='finish'&&!['RESULT_READY','FAILED'].includes(runtime.session?.phase)&&!operator)throw new Error('OPERATOR_REQUIRED'); // a result or a server-side failure can be closed without the staff PIN
       const data=p.method==='state'?await view():p.method==='start'?await runtime.start(p.mode,p.selectionId,p.eventName):await runtime[p.method]();
       return {ok:true,data};
     }catch(e){return {ok:false,error:{code:/^[A-Z0-9_]+$/.test(e.message)?e.message:'DESKTOP_ERROR'}};}
