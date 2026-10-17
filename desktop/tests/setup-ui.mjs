@@ -41,6 +41,15 @@ try{
  await page.getByLabel('PIN staf').fill('2468');await page.getByRole('button',{name:'Buka',exact:true}).click();
  await page.getByText('Masuk sebagai Staf Uji').first().waitFor();
  assert.equal(await page.getByRole('button',{name:'Cek update'}).isDisabled(),false,'logged in, so update check is available');
+ // Exercise the real main -> preload -> React progress subscription, without launching a Windows installer on Linux.
+ await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.send('desktop:update-progress',{stage:'downloading',bytes:1048576,total:4194304,percent:25}));
+ await page.getByText('Mengunduh update…',{exact:true}).waitFor();
+ await page.getByText('25% · 1 / 4 MB',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('progressbar',{name:'Progres unduhan update'}).getAttribute('value'),'25');
+ await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.send('desktop:update-progress',{stage:'verifying',signature:true,bytes:4194304,total:4194304,percent:100}));
+ await page.getByText('Memeriksa tanda tangan…',{exact:true}).waitFor();
+ await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].webContents.send('desktop:update-progress',{stage:'installing',bytes:4194304,total:4194304,percent:100}));
+ await page.getByText('Memasang update… aplikasi akan terbuka kembali.',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Tes kamera Canon'}).click();
  await page.getByRole('alert').filter({hasText:'hanya berjalan di Windows'}).waitFor(); // honest failure off Windows, no fake camera result
  await page.getByRole('button',{name:'Kirim log ke server'}).click();

@@ -121,5 +121,11 @@ export class Runtime {
     try{const r=await this.bridge.call('printer.submit',{jobId:id,path:join(this.assets,s.resultFile),profile:s.mode==='CLASSIC'?'classic-two-strips-4r':'photo-4r'});if(!['SIMULATED','ACCEPTED'].includes(r.status))throw new Error('PRINT_STATUS_UNSUPPORTED');await this.journal.print(id,s.id,r.status);}
     catch(e){await this.journal.print(id,s.id,notSubmitted.has(e.message)?'REJECTED':'UNKNOWN');throw e;}return this.state();
   });}
+  /** Download QR for the current result. Not exclusive: it only reads, and the finished session already holds the guest cookie. */
+  async resultClaim(){
+    const s=this.session;if(!s||s.phase!=='RESULT_READY'||!s.resultId)throw new Error('RESULT_REQUIRED');
+    const secret=await this.secrets.get(s.id);if(!secret?.cookie)throw new Error('CREDENTIAL_RECOVERY_REQUIRED');
+    return new ControlClient(this.origins,this.apiKey,secret.cookie).claimResult(s.resultId);
+  }
   async finish(){return this.exclusive(async()=>{if(!this.session)throw new Error('SESSION_REQUIRED');this.session.phase='FINISHED';await this.save();this.session=null;return this.state();});}
 }

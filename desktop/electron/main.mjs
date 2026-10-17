@@ -10,6 +10,7 @@ import { Secrets } from '../shared/secrets.mjs';
 import { Runtime } from '../shared/runtime.mjs';
 import { origins, UpdateClient, DeviceClient, DiagnosticsClient } from '../shared/clients.mjs';
 import { buildReport } from '../shared/diagnostics.mjs';
+import { EventStore, eventSchema, DEFAULT_TIMING } from '../shared/event.mjs';
 import { release as osRelease } from 'node:os';
 import { DeviceLogin } from '../shared/login.mjs';
 import { PIN_ID, KEY_ID, validPin, hashPin, checkPin } from '../shared/operator.mjs';
@@ -33,6 +34,8 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   const root=app.getPath('userData'),assets=join(root,'assets');await mkdir(assets,{recursive:true});
   rm(join(assets,'updates'),{recursive:true,force:true}).catch(()=>{}); // installers downloaded by an earlier update are no longer needed once the app has restarted
   const journal=await Journal.open(join(root,'journal.sqlite'));
+  const eventStore=new EventStore(join(root,'event.json'));await eventStore.load();
+  const timing=test&&process.env.PHBO_TEST_EVENT_TIMING?{...DEFAULT_TIMING,...JSON.parse(process.env.PHBO_TEST_EVENT_TIMING)}:DEFAULT_TIMING;
   const encrypted=safeStorage.isEncryptionAvailable()&&(process.platform==='win32'||safeStorage.getSelectedStorageBackend()!=='basic_text');
   const secrets=new Secrets(join(root,'credentials'),encrypted?safeStorage:null);
   const dll=join(here,'../native/KioskBridge/bin/Release/net10.0/KioskBridge.dll');
@@ -62,16 +65,26 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
     onChange:()=>{win?.webContents.send('desktop:changed');},
     onApproved:async r=>{staff={name:r.staff?.name||'',email:r.staff?.email||''};await secrets.set(KEY_ID,{token:r.token,...staff});await runtime.setApiKey({token:r.token},'device');}});
   let signer='';try{signer=JSON.parse(await readFile(join(process.resourcesPath,'update-signer.json'),'utf8')).thumbprint||'';}catch{}
+  let updateBusy=false;
   const updater=()=>{
     if(!app.isPackaged)throw new Error('UPDATE_ONLY_PACKAGED');
     if(!runtime.apiKey)throw new Error('BACKEND_NOT_CONFIGURED');
     return new Updater({client:new UpdateClient(config,runtime.apiKey),bridge,dir:join(assets,'updates'),version:app.getVersion(),signer,
       sessionActive:()=>!!runtime.session&&runtime.session.phase!=='FINISHED',
-      launch:async file=>{spawn(file,['/S','--updated','--force-run'],{detached:true,stdio:'ignore',windowsHide:true}).unref();setTimeout(()=>app.quit(),500);}});
+      onProgress:progress=>win?.webContents.send('desktop:update-progress',progress),
+      launch:async file=>{
+        // Quit only after Windows accepted the process; an asynchronous spawn error must leave the app open.
+        await new Promise((resolve,reject)=>{
+          const child=spawn(file,['/S','--updated','--force-run'],{detached:true,stdio:'ignore',windowsHide:true});
+          child.once('error',()=>reject(new Error('UPDATE_LAUNCH_FAILED')));
+          child.once('spawn',()=>{child.unref();resolve();});
+        });
+        setTimeout(()=>app.quit(),500);
+      }});
   };
   const view=async()=>({...await runtime.state(),cameraBackend,version:app.getVersion(),keyFromEnvironment:runtime.keySource==='env'&&!!runtime.apiKey,
     loginRequired:!runtime.apiKey&&gate&&!loginSkipped,login:login.state,staff:runtime.keySource==='device'?staff:null,
-    pinSet:pinSet(),pinPrompt:!!runtime.apiKey&&!envPin&&!pinRecord&&gate});
+    event:eventStore.get()?{...eventStore.get(),timing}:null,pinSet:pinSet(),pinPrompt:!!runtime.apiKey&&!envPin&&!pinRecord&&gate});
   const dist=resolve(here,'../dist');
   protocol.handle('nxbooth',request=>{const url=new URL(request.url);const path=resolve(dist,'.'+decodeURIComponent(url.pathname==='/' ? '/index.html':url.pathname));const rel=relative(dist,path);
     if(url.host!=='app'||rel.startsWith('..')||isAbsolute(rel))return new Response('Forbidden',{status:403});return net.fetch(pathToFileURL(path).href);});
@@ -100,7 +113,8 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
     ...['loginStart','loginCancel','loginSkip','loginShow','logout','openStaff','pinSkip'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('pinCreate'),pin:z.string().min(4).max(128)}).strict(),
     z.object({method:z.literal('setApiKey'),key:z.string().min(32).max(512).regex(/^[\x21-\x7E]+$/)}).strict(),z.object({method:z.literal('clearApiKey')}).strict(),
-    ...['cameraOpen','cameraFrame','cameraClose','updateCheck','updateInstall','cameraProbe','diagnosticsSend'].map(method=>z.object({method:z.literal(method)}).strict()),
+    z.object({method:z.literal('eventSave'),...eventSchema.shape}).strict(),
+    ...['cameraOpen','cameraFrame','cameraClose','updateCheck','updateInstall','cameraProbe','diagnosticsSend','eventReset','resultClaim'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('thumbnail'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),id:z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/)}).strict(),
     ...['capture','retake','process','print','finish','fixture','lock','printerPairing','openWebKiosk'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('captureWebcam'),base64:z.string().max(22*1024*1024)}).strict(),
@@ -150,7 +164,12 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
         await secrets.set(KEY_ID,{key:''});await runtime.setApiKey('');return {ok:true,data:await view()};
       }
       if(p.method==='updateCheck'){if(!operator)throw new Error('OPERATOR_REQUIRED');return {ok:true,data:await updater().check()};}
-      if(p.method==='updateInstall'){if(!operator)throw new Error('OPERATOR_REQUIRED');return {ok:true,data:await updater().install()};}
+      if(p.method==='updateInstall'){
+        if(!operator)throw new Error('OPERATOR_REQUIRED');
+        if(updateBusy)throw new Error('UPDATE_IN_PROGRESS');
+        updateBusy=true;
+        try{return {ok:true,data:await updater().install()};}finally{updateBusy=false;}
+      }
       if(['cameraOpen','cameraFrame','cameraClose'].includes(p.method)){
         if(cameraBackend!=='canon-sdk'||simulated)throw new Error('CAMERA_MODE_INVALID');
         if(p.method!=='cameraClose'&&(runtime.session?.phase!=='CAPTURING'||runtime.busy))throw new Error('CAPTURE_NOT_ALLOWED');
@@ -170,6 +189,19 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
           deviceStatus:{camera:status.camera,printer:status.printer??status.printing?.status},probe:lastProbe,startupLog});
         return {ok:true,data:await new DiagnosticsClient(config,runtime.apiKey).send(report)};
       }
+      if(p.method==='eventSave'){
+        if(!operator)throw new Error('OPERATOR_REQUIRED');
+        const {method:_m,...input}=p;
+        if(runtime.catalogLoaded)for(const t of input.templates)if(!runtime.catalog[t.mode]?.some(x=>x.id===t.id))throw new Error('EVENT_TEMPLATE_UNKNOWN');
+        if(input.active&&runtime.session&&runtime.session.phase!=='FINISHED')throw new Error('SESSION_ACTIVE');
+        await eventStore.save(input);return {ok:true,data:await view()};
+      }
+      if(p.method==='eventReset'){
+        // Guests restart the event kiosk without the staff PIN; only while event mode is on.
+        if(!eventStore.get()?.active)throw new Error('EVENT_MODE_OFF');
+        if(runtime.session)await runtime.finish();return {ok:true,data:await view()};
+      }
+      if(p.method==='resultClaim')return {ok:true,data:await runtime.resultClaim()};
       if(p.method==='thumbnail')return {ok:true,data:await thumbnail(p.mode,p.id)};
       if(p.method==='lock'){operator=false;return {ok:true,data:{operator:false}};}
       if(p.method==='printerPairing'){

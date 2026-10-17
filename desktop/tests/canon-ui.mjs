@@ -33,6 +33,7 @@ try{
  await page.getByRole('button',{name:'Ambil foto',exact:true}).click();await page.getByRole('heading',{name:'Periksa foto kamu.'}).waitFor();
  calls=await page.evaluate(()=>window.calls);assert.equal(calls.capture,2);assert.equal(calls.webcam,0);assert.ok(calls.open>=3);
 
- assert.deepEqual(errors,[]);
- console.log('PASS: SDK-only manual capture, preview, retake, disconnect disables shutter, no webcam fallback (mocked SDK IPC; no physical hardware).');
+ await page.evaluate(()=>localStorage.setItem('event','1'));await page.reload();await page.getByRole('button',{name:'Mulai',exact:true}).click();await page.getByRole('heading',{name:'Fotomu sudah jadi!'}).waitFor({timeout:20000});
+ calls=await page.evaluate(()=>window.calls);assert.equal(calls.capture,2);assert.equal(calls.webcam,0);assert.ok(calls.frame>0);assert.deepEqual(errors,[]);
+ console.log('PASS: SDK-only manual + event capture, preview, retake, disconnect disables shutter, no webcam fallback (mocked SDK IPC; no physical hardware).');
 }finally{await browser.close();server.close();}
