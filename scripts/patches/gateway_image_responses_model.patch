@@ -16,7 +16,7 @@ index afaf8e9..3a64106 100644
  import { PROVIDERS } from "../../config/providers.js";
  import { CODEX_CLI_VERSION } from "../../config/appConstants.js";
 +import { CODEX_IMAGES_MAIN_MODEL } from "../../config/imageConstants.js";
- 
+
  const CODEX_RESPONSES_URL = PROVIDERS["codex"].baseUrl;
  const CODEX_USER_AGENT = `codex_cli_rs/${CODEX_CLI_VERSION}`;
  const CODEX_ORIGINATOR = "codex_cli_rs";
