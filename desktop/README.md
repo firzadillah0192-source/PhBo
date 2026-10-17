@@ -6,7 +6,7 @@ Target Windows x64. Electron + React/Vite untuk UI/orchestrator, C#/.NET 10 untu
 
 **Installer dan update:** lihat [../docs/DESKTOP_UPDATE.md](../docs/DESKTOP_UPDATE.md) (installer NSIS, PIN pada pembukaan pertama, update dari menu staf). Bagian di bawah yang menyebut ZIP atau `Start-NXBooth.cmd` adalah alur lama.
 
-**Status:** capture webcam (Canon melalui EOS Webcam Utility), discovery Epson L8050 dan Windows spooler sudah diimplementasikan. Jalur Chrome/Edge memakai aplikasi lokal sebagai jembatan cetak; Desktop memakai adapter yang sama. EDSDK/shutter JPEG asli belum diimplementasikan. Software telah diuji di Linux dengan Electron webcam uji dan adapter simulasi; cetak fisik Windows belum diverifikasi.
+**Status:** Windows capture Canon USB melalui FC.SDK (lihat `docs/DESKTOP_CANON_SDK.md`); non-Windows development memakai webcam, discovery Epson L8050 dan Windows spooler sudah diimplementasikan. Jalur Chrome/Edge memakai aplikasi lokal sebagai jembatan cetak; Desktop memakai adapter yang sama. EDSDK/shutter JPEG asli belum diimplementasikan. Software telah diuji di Linux dengan Electron webcam uji dan adapter simulasi; cetak fisik Windows belum diverifikasi.
 
 Panduan operator lengkap: [WINDOWS_SETUP.md](WINDOWS_SETUP.md). Paket menyediakan `Start-NXBooth.ps1` untuk menjalankan hardware dengan PIN lokal. Driver resmi: Canon EOS Webcam Utility (link unduhan: [WINDOWS_SETUP.md](WINDOWS_SETUP.md)) dan [Epson L8050](https://www.epson.co.id/Printer-InkTank/L-Series/Epson-L8050/s/SPT_C11CK37501).
 
@@ -79,7 +79,7 @@ tests/                integration tests dan actual Electron UI smoke
 scripts/              Windows portable packaging
 ```
 
-Adapter protocol v1: `{version:1,id,method,params}` → `{version:1,id,ok,result|error}`. Command `devices.status`, `camera.setFixture`, `camera.capture`, `printer.submit`, `printer.plan`. Path hanya dihasilkan/ditentukan trusted process, tidak diberikan pelanggan. Capture hardware berjalan melalui webcam Electron, bukan `camera.capture` EDSDK. Adapter hardware non-Windows mengembalikan `PRINTER_NOT_CONNECTED`.
+Adapter protocol v1: `{version:1,id,method,params}` → `{version:1,id,ok,result|error}`. Command `devices.status`, `camera.setFixture`, `camera.capture`, `printer.submit`, `printer.plan`. Path hanya dihasilkan/ditentukan trusted process, tidak diberikan pelanggan. Capture Windows berjalan melalui `camera.open` / `camera.frame` / `camera.capture` / `camera.close` pada FC.SDK WPD/PTP; webcam hanya untuk development non-Windows. Adapter hardware non-Windows mengembalikan `PRINTER_NOT_CONNECTED`.
 
 Jembatan browser: loopback `127.0.0.1:20253`, exact Host/Origin, Bearer acak per proses yang hanya muncul setelah PIN Operator. Endpoint `/v1/status`, `/v1/jobs/:resultId`, `/v1/print`; hanya bytes hasil dan profil tetap, tanpa path/URL arbitrer. Jurnal berbagi scope result ID untuk Desktop/browser; `SUBMITTING`/`UNKNOWN` menahan cetak ulang.
 

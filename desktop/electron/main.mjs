@@ -37,6 +37,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   const secrets=new Secrets(join(root,'credentials'),encrypted?safeStorage:null);
   const dll=join(here,'../native/KioskBridge/bin/Release/net10.0/KioskBridge.dll');
   const simulated=process.env.PHBO_DEVICE_MODE==='simulated';
+  const cameraBackend=process.platform==='win32'?'canon-sdk':'browser-webcam';
   const bridge=new Bridge(app.isPackaged?join(process.resourcesPath,'bridge/KioskBridge.exe'):(process.env.PHBO_DOTNET||'dotnet'),
     [...(app.isPackaged?[]:[dll]),'--root',assets,...(simulated?['--simulated']:[])]);
   const printer=new PrinterService({bridge,journal,assets});
@@ -68,7 +69,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
       sessionActive:()=>!!runtime.session&&runtime.session.phase!=='FINISHED',
       launch:async file=>{spawn(file,['/S','--updated','--force-run'],{detached:true,stdio:'ignore',windowsHide:true}).unref();setTimeout(()=>app.quit(),500);}});
   };
-  const view=async()=>({...await runtime.state(),version:app.getVersion(),keyFromEnvironment:runtime.keySource==='env'&&!!runtime.apiKey,
+  const view=async()=>({...await runtime.state(),cameraBackend,version:app.getVersion(),keyFromEnvironment:runtime.keySource==='env'&&!!runtime.apiKey,
     loginRequired:!runtime.apiKey&&gate&&!loginSkipped,login:login.state,staff:runtime.keySource==='device'?staff:null,
     pinSet:pinSet(),pinPrompt:!!runtime.apiKey&&!envPin&&!pinRecord&&gate});
   const dist=resolve(here,'../dist');
@@ -99,7 +100,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
     ...['loginStart','loginCancel','loginSkip','loginShow','logout','openStaff','pinSkip'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('pinCreate'),pin:z.string().min(4).max(128)}).strict(),
     z.object({method:z.literal('setApiKey'),key:z.string().min(32).max(512).regex(/^[\x21-\x7E]+$/)}).strict(),z.object({method:z.literal('clearApiKey')}).strict(),
-    ...['updateCheck','updateInstall','cameraProbe','diagnosticsSend'].map(method=>z.object({method:z.literal(method)}).strict()),
+    ...['cameraOpen','cameraFrame','cameraClose','updateCheck','updateInstall','cameraProbe','diagnosticsSend'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('thumbnail'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),id:z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/)}).strict(),
     ...['capture','retake','process','print','finish','fixture','lock','printerPairing','openWebKiosk'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('captureWebcam'),base64:z.string().max(22*1024*1024)}).strict(),
@@ -150,6 +151,11 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
       }
       if(p.method==='updateCheck'){if(!operator)throw new Error('OPERATOR_REQUIRED');return {ok:true,data:await updater().check()};}
       if(p.method==='updateInstall'){if(!operator)throw new Error('OPERATOR_REQUIRED');return {ok:true,data:await updater().install()};}
+      if(['cameraOpen','cameraFrame','cameraClose'].includes(p.method)){
+        if(cameraBackend!=='canon-sdk'||simulated)throw new Error('CAMERA_MODE_INVALID');
+        if(p.method!=='cameraClose'&&(runtime.session?.phase!=='CAPTURING'||runtime.busy))throw new Error('CAPTURE_NOT_ALLOWED');
+        return {ok:true,data:await bridge.call({'cameraOpen':'camera.open','cameraFrame':'camera.frame','cameraClose':'camera.close'}[p.method])};
+      }
       if(p.method==='cameraProbe'){
         if(!operator)throw new Error('OPERATOR_REQUIRED');
         if(runtime.session&&runtime.session.phase!=='FINISHED')throw new Error('PROBE_SESSION_ACTIVE');
@@ -177,7 +183,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
         return {ok:true,data:{opened:true}};
       }
       if(p.method==='captureWebcam'){
-        if(simulated)throw new Error('CAMERA_MODE_INVALID');
+        if(simulated||cameraBackend==='canon-sdk')throw new Error('CAMERA_MODE_INVALID');
         if(p.base64.length%4||! /^[A-Za-z0-9+/]*={0,2}$/.test(p.base64))throw new Error('INVALID_IMAGE');
         const bytes=Buffer.from(p.base64,'base64');
         if(bytes.toString('base64')!==p.base64||bytes.length>16*1024*1024)throw new Error('INVALID_IMAGE');

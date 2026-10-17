@@ -2,7 +2,7 @@ import React,{useEffect,useState,useRef} from 'react';
 import {createRoot} from 'react-dom/client';
 import './style.css';
 import {printerMessage} from '../../frontend/src/kioskPrinter.js';
-import {openKioskCamera,stopCamera,captureCameraPhoto,cameraError} from '../../frontend/src/kioskCamera.js';
+import {useSessionCamera,CameraPreview,cameraMessage} from './camera.jsx';
 const names={CLASSIC:'Classic Strips',BASIC:'Basic',ADVANCED:'Advanced'};
 const messages={BACKEND_NOT_CONFIGURED:'Backend belum dikonfigurasi. Foto tersimpan lokal; generation belum dijalankan.',FIXTURE_REQUIRED:'Operator perlu memilih foto untuk simulasi kamera.',CAMERA_NOT_CONNECTED:'Kamera belum terhubung.',PRINTER_NOT_CONNECTED:'Printer belum terhubung.',OPERATOR_REQUIRED:'Buka panel operator untuk membatalkan sesi ini.',PIN_INVALID:'PIN tidak sesuai.',OPERATOR_PIN_NOT_CONFIGURED:'PIN operator belum dikonfigurasi.',GENERATION_FAILED:'Generation gagal di backend. Tidak ada hasil yang dibuat.',CREDENTIAL_RECOVERY_REQUIRED:'Credential sesi tidak tersedia. Operator perlu memeriksa sesi sebelum mengulang.',PRINT_ALREADY_SUBMITTED:'Pekerjaan cetak sudah tercatat. Periksa jurnal operator.',CATALOG_UNAVAILABLE:'Katalog desain belum dapat dimuat. Periksa koneksi internet, lalu tekan Cek ulang.',SELECTION_REQUIRED:'Pilih desain terlebih dahulu.',EVENT_NAME_REQUIRED:'Isi nama event terlebih dahulu.',OPERATOR_LOCKED:'Terlalu banyak percobaan. Coba lagi sebentar lagi.',SETUP_DONE:'Pengaturan awal sudah selesai.',KEY_FROM_ENVIRONMENT:'Kunci kiosk diatur lewat environment dan tidak bisa diubah di sini.',UPDATE_ONLY_PACKAGED:'Update hanya tersedia pada aplikasi terpasang.',UPDATE_SESSION_ACTIVE:'Selesaikan atau tutup sesi foto dulu sebelum update.',UPDATE_SIGNER_NOT_CONFIGURED:'Pengaturan penanda tangan update tidak valid. Pasang ulang dari installer resmi.',UPDATE_SIGNATURE_INVALID:'Tanda tangan installer tidak cocok atau belum dipercaya di PC ini. Update dibatalkan.',UPDATE_HASH_MISMATCH:'File update rusak (hash tidak cocok). Update dibatalkan.',UPDATE_SIZE_MISMATCH:'Ukuran file update tidak sesuai. Update dibatalkan.',UPDATE_DOWNLOAD_FAILED:'Gagal mengunduh update. Periksa koneksi lalu coba lagi.',UPDATE_NOT_AVAILABLE:'Tidak ada update baru.',UPDATE_MANIFEST_INVALID:'Data update di server tidak valid.',UPDATE_UNAVAILABLE:'Server update belum siap.',UNAUTHORIZED:'Akun ini tidak lagi diizinkan memakai kiosk, atau sesi masuk berakhir. Buka Menu staf lalu Keluar dan Masuk lagi.',PIN_REQUIRED:'Masukkan PIN staf.',DEVICE_CODE_EXPIRED:'Kode kedaluwarsa. Buat kode baru.',DEVICE_CODES_BUSY:'Server sedang sibuk. Coba lagi sebentar lagi.',LOGIN_FAILED:'Tidak bisa menghubungi server. Periksa internet lalu coba lagi.',LOGIN_SAVE_FAILED:'Persetujuan diterima tetapi tidak dapat disimpan. Coba lagi.',BACKEND_REQUEST_FAILED:'Server tidak menjawab dengan benar.',ADAPTER_TIMEOUT:'Verifikasi update terlalu lama. Coba lagi.',PRINTER_NOT_CONNECTED:'Printer belum tersambung. Sambungkan printer lalu tekan Cetak foto lagi, atau pilih Selesai tanpa cetak.',PRINTER_UNAVAILABLE:'Printer tidak bisa dipakai. Periksa kabel, daya, dan layanan cetak Windows, lalu coba lagi atau pilih Selesai tanpa cetak.',PROBE_SESSION_ACTIVE:'Tutup sesi foto dulu sebelum tes kamera.',CAMERA_WINDOWS_ONLY:'Tes kamera Canon hanya berjalan di Windows.',CAMERA_BUSY:'Tes kamera sedang berjalan.',INVALID_DIAGNOSTICS:'Laporan ditolak server.',DIAGNOSTICS_FULL:'Batas laporan hari ini tercapai. Coba lagi besok.'};
 const modes=[
@@ -11,14 +11,12 @@ const modes=[
  {id:'ADVANCED',name:'Advanced',tag:'Gaya kreatif',desc:'Satu foto diubah dengan gaya kreatif pilihan, seperti 3D atau 8-bit.',color:'advanced'}];
 const steps=['Mode','Desain','Foto','Proses','Hasil'];
 const canonLike=label=>/canon|eos/i.test(label||'');
-async function detectCameras(simulated){
- if(simulated)return {list:['Kamera simulasi (foto dipilih staf)'],note:''};
- const media=navigator.mediaDevices;if(!media?.enumerateDevices)return {list:[],note:'Windows tidak menyediakan akses kamera.'};
- let stream,note='';
- try{stream=await media.getUserMedia({video:true,audio:false});}catch(e){note=e?.name==='NotAllowedError'?'Akses kamera ditolak Windows.':e?.name==='NotReadableError'?'Kamera sedang dipakai aplikasi lain.':'';}
- try{const list=(await media.enumerateDevices()).filter(d=>d.kind==='videoinput').map(d=>d.label||'Kamera');return {list,note};}
- catch{return {list:[],note};}
- finally{stopCamera(stream);}
+async function detectCameras(device,backend){
+ if(device?.simulated)return {list:['Kamera simulasi (foto dipilih staf)'],note:''};
+ if(backend==='canon-sdk')return {list:device?.camera==='CANON_SDK'?['Canon USB']:[],note:'Hubungkan kamera Canon lewat USB, nyalakan, dan tutup aplikasi kamera lain.'};
+ const media=navigator.mediaDevices;
+ try{return {list:(await media.enumerateDevices()).filter(d=>d.kind==='videoinput').map(d=>d.label||'Kamera'),note:''};}
+ catch{return {list:[],note:'Kamera belum terhubung.'};}
 }
 function Thumb({mode,id,name,api}){
  const ref=useRef(null),[src,setSrc]=useState('');
@@ -38,31 +36,22 @@ function App(){
  const [probe,setProbe]=useState(null),[probeBusy,setProbeBusy]=useState(false),[diag,setDiag]=useState('');
  const [eventName,setEventName]=useState(''),[pairing,setPairing]=useState(null),[view,setView]=useState('check'),[cams,setCams]=useState(null),[checking,setChecking]=useState(false),[count,setCount]=useState(0);
  const api=window.nxbooth;
- const video=useRef(null),[camera,setCamera]=useState({ready:false,error:'',source:''});
- const refresh=async()=>{const r=await api.state();if(r.ok)setState(r.data);else setError(r.error.code);return r.ok?r.data:null;};
+ const latestRefresh=useRef(0);
+ const refresh=async()=>{const n=++latestRefresh.current;const r=await api.state();if(n===latestRefresh.current){if(r.ok)setState(r.data);else setError(r.error.code);}return r.ok?r.data:null;};
  async function runCheck(){
   setChecking(true);setError('');
   const r=await api.refresh();const st=r.ok?r.data:await refresh();if(r.ok)setState(r.data);
-  setCams(await detectCameras(!!st?.device.simulated));setChecking(false);
+  setCams(await detectCameras(st?.device,st?.cameraBackend));setChecking(false);
  }
  useEffect(()=>{if(!api){setError('Jalankan UI melalui aplikasi Electron.');return;}
   refresh().then(st=>{if(st&&!st.session)runCheck();else if(st)setCams({list:[],note:''});});return api.onChange(refresh);},[]);
  async function act(method,...args){setError('');const r=await api[method](...args);if(!r.ok)setError(messages[r.error.code]||(/^(PRINT|PRINTER)_/.test(r.error.code)?printerMessage(r.error.code):r.error.code));await refresh();return r.ok;}
  const s=state?.session,choices=state?.catalog[mode]||[],picked=choices.find(c=>c.id===choice),personalized=mode==='CLASSIC'&&picked?.requiresEventName;
- useEffect(()=>{
-  if(state?.device.simulated||s?.phase!=='CAPTURING')return;
-  let cancelled=false,stream;
-  setCamera({ready:false,error:'',source:''});
-  openKioskCamera().then(active=>{if(cancelled){stopCamera(active.stream);return;}stream=active.stream;if(video.current){video.current.srcObject=stream;video.current.play().catch(()=>{});}setCamera({ready:false,error:'',source:active.source});}).catch(error=>{if(!cancelled)setCamera({ready:false,error:cameraError(error),source:''});});
-  return()=>{cancelled=true;stopCamera(stream);};
- },[s?.phase,state?.device.simulated]);
+ const camera=useSessionCamera(api,{active:s?.phase==='CAPTURING',simulated:!!state?.device.simulated,backend:state?.cameraBackend});
  async function capture(){
-  if(state.device.simulated){await act('capture');return;}
-  try{
-   const file=await captureCameraPhoto(video.current);
-   const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});
-   await act('captureWebcam',base64);
-  }catch(error){setError(error.message||'Kamera belum siap.');}
+  setError('');
+  try{const r=await camera.capture();if(!r.ok)setError(r.error.code.startsWith('CAMERA_')?cameraMessage(r.error.code):messages[r.error.code]||r.error.code);await refresh();}
+  catch(error){setError(error.message||'Kamera belum siap.');}
  }
  async function countdownThenCapture(){
   for(let n=3;n>=1;n--){setCount(n);await new Promise(r=>setTimeout(r,1000));}
@@ -112,7 +101,7 @@ function App(){
   {error&&<p role="alert" className="alert">{error}</p>}
   {!s&&view==='check'&&<section className="screen" aria-label="Cek perangkat"><p className="eyebrow">PERSIAPAN</p><h1>Cek perangkat</h1><p className="lead">Pemeriksaan singkat sebelum mulai. Tidak ada yang wajib: jika perangkat belum terhubung, Anda tetap bisa lanjut dan aplikasi memakai perangkat yang terdeteksi nanti.</p>
    <ul className="checks" aria-live="polite">
-    <Row ok={checking||!cams?null:cams.list.length>0} label="Kamera" value={checking||!cams?'Memeriksa…':cams.list.length?`${cams.list.length>1?cams.list.length+' kamera: ':''}${(cams.list.find(canonLike)||cams.list[0])} ${canonLike(cams.list.find(canonLike)||'')?'· Canon terdeteksi':''}`:'Tidak ada kamera terdeteksi'} hint={!cams||checking?'':cams.list.length?'':(cams.note||'Hubungkan kamera (Canon EOS Webcam Utility) atau webcam. Aplikasi memakai kamera yang terdeteksi saat sesi foto.')}/>
+    <Row ok={checking||!cams?null:cams.list.length>0} label="Kamera" value={checking||!cams?'Memeriksa…':cams.list.length?`${cams.list.length>1?cams.list.length+' kamera: ':''}${(cams.list.find(canonLike)||cams.list[0])} ${canonLike(cams.list.find(canonLike)||'')?'· Canon terdeteksi':''}`:'Tidak ada kamera terdeteksi'} hint={!cams||checking?'':cams.list.length?'':(cams.note||'Hubungkan kamera Canon lewat USB.')}/>
     <Row ok={checking||!dev?null:!!printerOk} label="Printer" value={checking||!dev?'Memeriksa…':printerOk?(dev.simulated?'Simulasi (tidak mencetak)':dev.printerName||'Siap'):'Printer belum terdeteksi'} hint={checking||!dev||printerOk?'':'Pasang driver printer dan nyalakan. Aplikasi memakai printer yang terdeteksi saat mencetak.'}/>
     <Row ok={checking||!state?null:state.catalogLoaded?true:false} label="Server NXBooth" value={checking||!state?'Memeriksa…':state.catalogLoaded?`Terhubung · ${state.catalog.CLASSIC.length} frame, ${state.catalog.BASIC.length} tema, ${state.catalog.ADVANCED.length} gaya`:'Katalog belum bisa dimuat'} hint={checking||!state?'':state.connectionError?messages[state.connectionError]:''}/>
     <Row ok={null} label="Pemrosesan foto" value={state?.configured?'Tersambung ke server':'Belum login'} hint={state?.configured?'':'Foto bisa diambil dan ditinjau. Login Google staf untuk pemrosesan sedang disiapkan.'}/>
@@ -129,11 +118,12 @@ function App(){
   {s&&<section className="screen">
   <p className="eyebrow">{names[s.mode]} · {s.captures.length}/{s.shots} FOTO</p>
   <h1>{title}</h1>
-  {phase==='CAPTURING'&&!state.device.simulated&&<div className="desktop-camera"><video ref={video} autoPlay muted playsInline aria-label="Preview kamera Canon" onPlaying={()=>setCamera(c=>({...c,ready:true}))}/>{count>0&&<div className="count" role="status" aria-label={`Hitung mundur ${count}`}>{count}</div>}<p role="status">{camera.error||camera.source||'Membuka kamera…'}</p></div>}<div className="photos">{s.result?<img className="result" src={s.result} alt="Hasil generation dari backend"/>:s.captures.map((c,i)=><figure key={c.id}><img src={c.url} alt={`Foto ${i+1}`}/><figcaption>Foto {i+1}{state.device.simulated?' · simulasi':''}</figcaption></figure>)}</div>
-  {phase==='CAPTURING'&&<p className="lead">{state.device.simulated?'Simulasi mengambil salinan foto pilihan staf.':'Tekan Ambil foto. Ada hitung mundur 3 detik; foto diambil dari video kamera.'}</p>}
+  {phase==='CAPTURING'&&!state.device.simulated&&<div className="desktop-camera"><CameraPreview camera={camera}/>{count>0&&<div className="count" role="status" aria-label={`Hitung mundur ${count}`}>{count}</div>}<p role="status">{camera.error||camera.source||'Membuka kamera…'}</p></div>}<div className="photos">{s.result?<img className="result" src={s.result} alt="Hasil generation dari backend"/>:s.captures.map((c,i)=><figure key={c.id}><img src={c.url} alt={`Foto ${i+1}`}/><figcaption>Foto {i+1}{state.device.simulated?' · simulasi':''}</figcaption></figure>)}</div>
+  {phase==='CAPTURING'&&<p className="lead">{state.device.simulated?'Simulasi mengambil salinan foto pilihan staf.':'Tekan Ambil foto. Ada hitung mundur 3 detik; foto diambil dari kamera Canon melalui USB.'}</p>}
   {['UPLOADING','PROCESSING'].includes(phase)&&<p role="status" className="lead row"><span className="spinner"/>{s.jobStatus||'Mengirim foto ke jalur media'} · status berasal dari backend.</p>}
   {s.error&&<p className="alert">{messages[s.error]||s.error}</p>}
   <div className="actions">
+  {phase==='CAPTURING'&&camera.sdk&&camera.error&&<button onClick={camera.reconnect}>Sambungkan ulang kamera</button>}
   {phase==='CAPTURING'&&<button className="primary" disabled={state.busy||count>0||!state.device.simulated&&!camera.ready} onClick={state.device.simulated?capture:countdownThenCapture}>Ambil foto</button>}
   {['CAPTURING','REVIEWING'].includes(phase)&&s.captures.length>0&&<button disabled={state.busy||count>0} onClick={()=>act('retake')}>Ulangi foto terakhir</button>}
   {phase==='REVIEWING'&&<button className="primary" disabled={state.busy} onClick={()=>act('process')}>Proses foto</button>}

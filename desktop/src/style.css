@@ -74,3 +74,5 @@ footer{border-top:var(--border);padding-top:18px;margin-top:auto;color:var(--mut
 @media(max-width:850px){.stage{padding:0 20px 20px}.modes{grid-template-columns:1fr}.count{font-size:120px}}
 .login-code{margin:22px 0}
 .code{display:inline-block;margin:8px 0 14px;padding:14px 30px;border:var(--border);border-radius:14px;background:var(--sun);box-shadow:var(--shadow);font-family:var(--font-display);font-size:clamp(40px,7vw,72px);font-weight:800;letter-spacing:.12em;color:var(--ink)}
+
+.desktop-camera .sdk-preview{width:100%;max-height:58vh;object-fit:contain;display:block;background:#111;}

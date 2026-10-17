@@ -2,6 +2,7 @@ const {contextBridge,ipcRenderer}=require('electron');
 const call=input=>ipcRenderer.invoke('desktop:call',input);
 contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
   state:()=>call({method:'state'}),start:(mode,selectionId,eventName)=>call({method:'start',mode,selectionId,eventName}),
+  cameraOpen:()=>call({method:'cameraOpen'}),cameraFrame:()=>call({method:'cameraFrame'}),cameraClose:()=>call({method:'cameraClose'}),
   capture:()=>call({method:'capture'}),retake:()=>call({method:'retake'}),process:()=>call({method:'process'}),
   captureWebcam:base64=>call({method:'captureWebcam',base64}),
   print:()=>call({method:'print'}),finish:()=>call({method:'finish'}),chooseFixture:()=>call({method:'fixture'}),

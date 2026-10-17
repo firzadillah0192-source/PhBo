@@ -67,7 +67,7 @@ export class Runtime {
     const file=id+(result.path.endsWith('.png')?'.png':'.jpg');
     // Only accept the predetermined asset path; never trust a process-provided arbitrary path.
     if(result.path!==join(this.assets,file))throw new Error('CAPTURE_PATH_INVALID');
-    const info=inspectImage(await readFile(result.path));s.captures.push({id,file,...info,simulated:result.simulated,capturedAt:new Date().toISOString()});
+    const info=inspectImage(await readFile(result.path));s.captures.push({id,file,...info,simulated:result.simulated,source:result.source||'simulated',capturedAt:new Date().toISOString()});
     if(s.captures.length===s.shots)s.phase='REVIEWING';await this.save();return this.state();
   });}
   async captureBytes(bytes){return this.exclusive(async()=>{

@@ -1,6 +1,6 @@
 {
   "name": "nxbooth-desktop",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "main": "electron/main.mjs",
@@ -13,7 +13,8 @@
     "bridge:build": "dotnet build native/KioskBridge -c Release",
     "package:win": "node scripts/package-windows.mjs",
     "test:webcam-ui": "node tests/webcam-ui.mjs",
-    "test:setup-ui": "node tests/setup-ui.mjs"
+    "test:setup-ui": "node tests/setup-ui.mjs",
+    "test:canon-ui": "node tests/canon-ui.mjs"
   },
   "dependencies": {
     "react": "19.3.0",
@@ -77,6 +78,6 @@
       "artifactName": "NXBooth-Setup-${version}.exe"
     }
   },
-  "description": "NXBooth Windows kiosk with webcam capture and Epson L8050 printing",
+  "description": "NXBooth Windows kiosk with Canon USB SDK capture and Windows printing",
   "author": "Photobooth AI"
 }
