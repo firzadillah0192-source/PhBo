@@ -22,7 +22,7 @@ const selection = z.object({ sessionCode: publicCode, mode: z.enum(['CLASSIC','B
 export class NativeKioskService {
   constructor(private readonly model: NativeKioskModel, private readonly uploads: CustomerUploadService,
     private readonly generations: CustomerGenerationService, readonly results: CustomerResultService,
-    readonly config: { apiKey: string; ttlSeconds: number; generationLimit: number; secureCookie: boolean; devices?: { authorize(header: string | undefined): Promise<void> } }) {}
+    readonly config: { apiKey: string; ttlSeconds: number; generationLimit: number; secureCookie: boolean; devices?: { authorize(header: string | undefined): Promise<{ email: string } | void> } }) {}
   authorize(key: unknown) {
     if (!this.config.apiKey) throw new AppError(503, 'KIOSK_NOT_CONFIGURED', 'Kiosk entry is not configured');
     if (!equal(key, this.config.apiKey)) throw new AppError(401, 'UNAUTHORIZED', 'Valid Kiosk API key required');
@@ -34,6 +34,7 @@ export class NativeKioskService {
       return this.config.devices.authorize(authorization);
     }
     this.authorize(key);
+    return { email: null };
   }
   captures(session: KioskPhotoSession): string[] { return JSON.parse(session.capture_upload_ids_json ?? '[]'); }
   available(session: KioskPhotoSession | null): asserts session is KioskPhotoSession {

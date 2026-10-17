@@ -98,5 +98,6 @@ export class KioskDeviceService {
     if (!actor?.is_active || !KIOSK_ROLES.has(actor.role) || account?.status !== 'active' || !actor.email || actor.email.trim().toLowerCase() !== account.email.trim().toLowerCase()) throw deny();
     const lifetime = this.config.sessionDays * 86400000;
     if (session.expires_at.getTime() - this.now() < lifetime / 2) await this.model.extend(match[1], new Date(this.now() + lifetime));
+    return { email: actor.email.trim().toLowerCase() };
   }
 }
