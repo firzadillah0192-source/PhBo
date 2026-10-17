@@ -36,7 +36,7 @@ export class ProviderRunModel {
     await this.db.nxProviderRun.update({ where: { id: run.id }, data: { ...providerRunMetadata(meta),
       ...(image ? { provider_reported_model: image.model, provider_model: image.model } : {}),
       upstream_status: image ? 'SUCCEEDED' : String(meta.upstream_status ?? 'FAILED').slice(0, 32),
-      upstream_error_code: image ? null : failure?.code ?? 'INTERNAL_ERROR', upstream_error_message: image ? null : failure?.message ?? 'Provider execution failed.',
+      upstream_error_code: image ? null : failure?.code ?? 'INTERNAL_ERROR', upstream_error_message: image ? null : `${failure?.message ?? 'Provider execution failed.'}${typeof meta.upstream_detail === 'string' ? ` ${meta.upstream_detail}` : ''}`.slice(0, 1000),
       request_completed_at: now, total_duration_ms: Math.max(0, now.getTime() - run.request_started_at.getTime()),
       application_duration_ms: job.started_at ? Math.max(0, now.getTime() - job.started_at.getTime()) : null } });
     await this.db.nxGenerationEvent.create({ data: { id: legacyId(), job_id: job.id, event_type: image ? 'provider_run_succeeded' : 'provider_run_failed',
