@@ -17,7 +17,7 @@ export class Bridge {
   fail() { for(const p of this.pending.values()) { clearTimeout(p.timer); p.reject(new Error('ADAPTER_UNAVAILABLE')); } this.pending.clear(); }
   call(method, params={}) {
     if(this.dead) return Promise.reject(new Error('ADAPTER_UNAVAILABLE'));
-    return new Promise((resolve,reject)=> { const id=newId(); const timer=setTimeout(()=> { this.pending.delete(id); reject(new Error('ADAPTER_TIMEOUT')); },['printer.submit','update.verify'].includes(method)?120000:15000);
+    return new Promise((resolve,reject)=> { const id=newId(); const timer=setTimeout(()=> { this.pending.delete(id); reject(new Error('ADAPTER_TIMEOUT')); },['printer.submit','update.verify'].includes(method)?120000:method==='camera.probe'?100000:15000);
       this.pending.set(id,{resolve,reject,timer}); this.child.stdin.write(JSON.stringify({version:1,id,method,params})+'\n',e=>{if(e)this.fail();});
     });
   }

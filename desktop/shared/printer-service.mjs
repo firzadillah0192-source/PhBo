@@ -6,7 +6,7 @@ import {newId} from './journal.mjs';
 import {inspectImage} from './image.mjs';
 
 export const WEB_KIOSK_ORIGIN='https://nxbooth.gennexbyte.com';
-const notSubmitted=new Set(['PRINTER_NOT_CONNECTED','PRINTER_SELECTION_REQUIRED','PRINTER_MODEL_UNSUPPORTED','PRINT_4R_PAPER_UNAVAILABLE','PRINT_ENABLE_4R_BORDERLESS','PRINT_CLASSIC_SIZE_INVALID','PRINT_PROFILE_INVALID','PRINT_IMAGE_INVALID','INVALID_IMAGE']);
+export const notSubmitted=new Set(['PRINTER_UNAVAILABLE','PRINTER_NOT_CONNECTED','PRINTER_SELECTION_REQUIRED','PRINTER_MODEL_UNSUPPORTED','PRINT_4R_PAPER_UNAVAILABLE','PRINT_ENABLE_4R_BORDERLESS','PRINT_CLASSIC_SIZE_INVALID','PRINT_PROFILE_INVALID','PRINT_IMAGE_INVALID','INVALID_IMAGE']);
 export class PrinterService {
   constructor({bridge,journal,assets}){Object.assign(this,{bridge,journal,assets});this.busy=false;}
   async status(){

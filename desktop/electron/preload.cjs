@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
   loginStart:()=>call({method:'loginStart'}),loginCancel:()=>call({method:'loginCancel'}),loginSkip:()=>call({method:'loginSkip'}),loginShow:()=>call({method:'loginShow'}),logout:()=>call({method:'logout'}),
   openStaff:()=>call({method:'openStaff'}),pinCreate:pin=>call({method:'pinCreate',pin}),pinSkip:()=>call({method:'pinSkip'}),setApiKey:key=>call({method:'setApiKey',key}),clearApiKey:()=>call({method:'clearApiKey'}),
   updateCheck:()=>call({method:'updateCheck'}),updateInstall:()=>call({method:'updateInstall'}),
+  cameraProbe:()=>call({method:'cameraProbe'}),diagnosticsSend:()=>call({method:'diagnosticsSend'}),
   onChange:callback=>{const handler=()=>callback();ipcRenderer.on('desktop:changed',handler);return()=>ipcRenderer.removeListener('desktop:changed',handler);}
 }));

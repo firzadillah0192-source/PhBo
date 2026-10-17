@@ -61,6 +61,17 @@ Masuk bertahan sekitar 14 hari dan diperpanjang otomatis selama kiosk dipakai. T
 - **Tidak ada update paksa.** Kiosk baru memperbarui diri saat staf menekan tombolnya. Kiosk yang belum diperbarui tetap bisa dipakai selama API masih kompatibel.
 - **Rollback:** publish ulang installer versi sebelumnya dengan nomor versi **lebih tinggi** (misalnya isi sama dengan 1.0.0 tetapi diberi versi 1.0.2). Updater tidak menurunkan versi.
 
+## Tes kamera Canon dan kirim log (v1.0.1)
+
+Untuk menguji EOS 2000D langsung dari aplikasi (tanpa EOS Utility atau program terpisah): **Menu staf** -> **Tes kamera Canon**.
+
+1. Kamera ON, mode foto (bukan Auto lock), kabel USB terhubung. Tutup EOS Utility, Zoom, dan aplikasi lain yang memakai kamera. Tidak boleh ada sesi foto yang berjalan.
+2. Tes membaca daftar kamera lewat USB, mencoba live view (3 frame), lalu mengambil satu foto uji yang langsung dihapus. Tiap langkah tampil dengan OK/GAGAL, waktu (ms), dan kode error.
+3. **Kirim log ke server** mengirim ringkasan: versi aplikasi, versi Windows, nama PC, status perangkat, hasil tes kamera (model, empat digit akhir serial), dan sisa `startup-error.log` bila ada. Tidak ada foto, token, atau cookie. Perlu sudah masuk akun.
+4. Di server, laporan ada di `/srv/photobooth/desktop-diagnostics/YYYY-MM-DD.jsonl` (satu baris JSON per laporan, disimpan 30 hari, maksimum 2 MB per hari).
+
+Bila kamera tidak ditemukan atau live view kosong, kirim log lalu beri tahu pengembang; jalur cadangan (digiCamControl) menyusul sesuai hasilnya.
+
 ## E. Kendala umum
 
 | Gejala | Penyebab dan tindakan |

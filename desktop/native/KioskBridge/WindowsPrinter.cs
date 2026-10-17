@@ -57,10 +57,18 @@ internal static class WindowsPrinter
     public static object Status()
     {
         try { var settings = Settings(); return new { printer = "READY", printerName = settings.PrinterName, profiles = new[] { "classic-two-strips-4r", "photo-4r" } }; }
-        catch (Exception e) { return new { printer = e.Message, printerName = (string?)null, profiles = Array.Empty<string>() }; }
+        catch (Exception e) { return new { printer = System.Text.RegularExpressions.Regex.IsMatch(e.Message, "^[A-Z0-9_]+$") ? e.Message : "PRINTER_UNAVAILABLE", printerName = (string?)null, profiles = Array.Empty<string>() }; }
     }
 
+    // Anything that is not a coded error was raised before the job reached the spooler (printer lookup, paper, image), so nothing was sent.
+    // After the receipt is written only coded errors can escape, which keeps an ambiguous outcome distinct (PRINT_OUTCOME_UNKNOWN).
     public static object Submit(string path, string jobId, string root, string profile)
+    {
+        try { return SubmitCore(path, jobId, root, profile); }
+        catch (Exception e) when (!System.Text.RegularExpressions.Regex.IsMatch(e.Message, "^[A-Z0-9_]+$")) { throw new Exception("PRINTER_UNAVAILABLE"); }
+    }
+
+    private static object SubmitCore(string path, string jobId, string root, string profile)
     {
         var settings = Settings();
         var paper = settings.PaperSizes.Cast<PaperSize>()

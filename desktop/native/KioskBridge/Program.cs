@@ -56,6 +56,9 @@ while (await Console.In.ReadLineAsync() is { } line) {
                 // Never overwrite a previous capture, including after a retry.
                 await using (var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write)) await output.WriteAsync(bytes);
                 result = new { captureId, path = target, simulated = true }; break;
+            case "camera.probe":
+                if (simulated || !OperatingSystem.IsWindows()) throw new Exception("CAMERA_WINDOWS_ONLY");
+                result = await CanonProbe.Run(root, Guid.NewGuid().ToString("N")); break;
             case "update.verify":
                 result = UpdateVerifier.Verify(Inside(Required(p, "path"))); break;
             case "printer.submit":
@@ -70,7 +73,7 @@ while (await Console.In.ReadLineAsync() is { } line) {
         }
         Console.WriteLine(JsonSerializer.Serialize(new { version = 1, id, ok = true, result }));
     } catch (Exception e) {
-        var code = Regex.IsMatch(e.Message, "^[A-Z_]+$") ? e.Message : "ADAPTER_ERROR";
+        var code = Regex.IsMatch(e.Message, "^[A-Z0-9_]+$") ? e.Message : "ADAPTER_ERROR";
         Console.WriteLine(JsonSerializer.Serialize(new { version = 1, id, ok = false, error = new { code } }));
     }
 }

@@ -8,7 +8,9 @@ import { Journal } from '../shared/journal.mjs';
 import { Bridge } from '../shared/bridge.mjs';
 import { Secrets } from '../shared/secrets.mjs';
 import { Runtime } from '../shared/runtime.mjs';
-import { origins, UpdateClient, DeviceClient } from '../shared/clients.mjs';
+import { origins, UpdateClient, DeviceClient, DiagnosticsClient } from '../shared/clients.mjs';
+import { buildReport } from '../shared/diagnostics.mjs';
+import { release as osRelease } from 'node:os';
 import { DeviceLogin } from '../shared/login.mjs';
 import { PIN_ID, KEY_ID, validPin, hashPin, checkPin } from '../shared/operator.mjs';
 import { Updater } from '../shared/updater.mjs';
@@ -42,7 +44,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   if(process.platform==='win32'||test&&process.env.PHBO_WEB_BRIDGE_TEST==='1')try{
     printerServer=await startPrinterServer(printer,{port:test?0:20253});
   }catch{printerServerError='PRINTER_APP_PORT_UNAVAILABLE';}
-  let operator=false;let unlockFailures=0;let lockedUntil=0;
+  let operator=false;let lastProbe=null;let unlockFailures=0;let lockedUntil=0;
   // Pinned HTTPS endpoints; renderer cannot change destinations. Only unpackaged tests may point elsewhere.
   const config=test&&process.env.PHBO_TEST_ORIGINS?origins(JSON.parse(process.env.PHBO_TEST_ORIGINS),true):origins();
   let saved=null;try{saved=await secrets.get(KEY_ID)||null;}catch{}
@@ -97,7 +99,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
     ...['loginStart','loginCancel','loginSkip','loginShow','logout','openStaff','pinSkip'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('pinCreate'),pin:z.string().min(4).max(128)}).strict(),
     z.object({method:z.literal('setApiKey'),key:z.string().min(32).max(512).regex(/^[\x21-\x7E]+$/)}).strict(),z.object({method:z.literal('clearApiKey')}).strict(),
-    ...['updateCheck','updateInstall'].map(method=>z.object({method:z.literal(method)}).strict()),
+    ...['updateCheck','updateInstall','cameraProbe','diagnosticsSend'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('thumbnail'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),id:z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/)}).strict(),
     ...['capture','retake','process','print','finish','fixture','lock','printerPairing','openWebKiosk'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('captureWebcam'),base64:z.string().max(22*1024*1024)}).strict(),
@@ -148,6 +150,20 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
       }
       if(p.method==='updateCheck'){if(!operator)throw new Error('OPERATOR_REQUIRED');return {ok:true,data:await updater().check()};}
       if(p.method==='updateInstall'){if(!operator)throw new Error('OPERATOR_REQUIRED');return {ok:true,data:await updater().install()};}
+      if(p.method==='cameraProbe'){
+        if(!operator)throw new Error('OPERATOR_REQUIRED');
+        if(runtime.session&&runtime.session.phase!=='FINISHED')throw new Error('PROBE_SESSION_ACTIVE');
+        lastProbe=await bridge.call('camera.probe');return {ok:true,data:lastProbe};
+      }
+      if(p.method==='diagnosticsSend'){
+        if(!operator)throw new Error('OPERATOR_REQUIRED');
+        if(!runtime.apiKey)throw new Error('BACKEND_NOT_CONFIGURED');
+        let startupLog='';try{startupLog=(await readFile(join(root,'startup-error.log'),'utf8')).slice(-2000);}catch{}
+        const status=await bridge.call('devices.status').catch(()=>({}));
+        const report=buildReport({version:app.getVersion(),platform:process.platform,osVersion:osRelease(),deviceName:process.env.COMPUTERNAME||process.env.HOSTNAME,
+          deviceStatus:{camera:status.camera,printer:status.printer??status.printing?.status},probe:lastProbe,startupLog});
+        return {ok:true,data:await new DiagnosticsClient(config,runtime.apiKey).send(report)};
+      }
       if(p.method==='thumbnail')return {ok:true,data:await thumbnail(p.mode,p.id)};
       if(p.method==='lock'){operator=false;return {ok:true,data:{operator:false}};}
       if(p.method==='printerPairing'){

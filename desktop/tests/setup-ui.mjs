@@ -5,12 +5,13 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 // First run with account login: device code shown, approved on "the web", optional lock PIN, staff menu, logout.
-const TOKEN='t'.repeat(64);let approved=false;const bearers=[];
+const TOKEN='t'.repeat(64);let approved=false;const bearers=[],reports=[];
 const server=createServer((req,res)=>{
  const reply=(code,body)=>res.writeHead(code,{'content-type':'application/json'}).end(JSON.stringify(body));
  if(req.headers.authorization)bearers.push(req.headers.authorization);
  if(req.method==='POST'&&req.url==='/api/v1/desktop/device/code')return reply(201,{data:{device_code:'d'.repeat(43),user_code:'ABCD-2345',verification_url:'https://nxbooth.example/kiosk/activate',expires_in:600,interval:1}});
  if(req.method==='POST'&&req.url==='/api/v1/desktop/device/token')return reply(200,{data:approved?{status:'approved',token:TOKEN,expires_at:new Date(Date.now()+864e5).toISOString(),staff:{name:'Staf Uji',email:'staf@example.com'}}:{status:'pending'}});
+ if(req.method==='POST'&&req.url==='/api/v1/desktop/diagnostics'){let b='';req.on('data',c=>b+=c);req.on('end',()=>{reports.push({auth:req.headers.authorization,body:JSON.parse(b)});reply(201,{data:{id:'abc123',stored:true}});});return;}
  if(req.method==='GET'&&/^\/api\/v1\/(frames|templates|experiences)$/.test(req.url))return reply(200,{data:[]});
  reply(404,{error:{code:'NOT_FOUND'}});
 });
@@ -40,8 +41,14 @@ try{
  await page.getByLabel('PIN staf').fill('2468');await page.getByRole('button',{name:'Buka',exact:true}).click();
  await page.getByText('Masuk sebagai Staf Uji').first().waitFor();
  assert.equal(await page.getByRole('button',{name:'Cek update'}).isDisabled(),false,'logged in, so update check is available');
+ await page.getByRole('button',{name:'Tes kamera Canon'}).click();
+ await page.getByRole('alert').filter({hasText:'hanya berjalan di Windows'}).waitFor(); // honest failure off Windows, no fake camera result
+ await page.getByRole('button',{name:'Kirim log ke server'}).click();
+ await page.getByText('Terkirim (kode abc123)').waitFor();
+ assert.equal(reports.length,1);assert.equal(reports[0].auth,'Bearer '+TOKEN,'log is sent with the device token');
+ assert.deepEqual(Object.keys(reports[0].body).sort().filter(k=>!['startup_log','device_name','device_status'].includes(k)),['app_version','captured_at','os_version','platform']);
  await page.getByRole('button',{name:'Keluar',exact:true}).click();
  await page.getByRole('heading',{name:'Masuk ke NXBooth'}).waitFor();
- console.log('PASS: device-code login, token used for API calls, optional lock PIN, staff menu, logout.');
+ console.log('PASS: device-code login, token used for API calls, optional lock PIN, staff menu, camera test refusal off Windows, diagnostics upload, logout.');
 }catch(e){if(app){for(const w of await app.windows())console.error(await w.locator('body').innerText().catch(()=>''));}throw e;}
 finally{await app?.close();server.close();await rm(data,{recursive:true,force:true});}
