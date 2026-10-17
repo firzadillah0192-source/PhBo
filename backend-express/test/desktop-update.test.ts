@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { createMigrationApp } from '../src/migration-app.js';
 import { NativeKioskService } from '../src/services/native-kiosk.service.js';
 import { isNewer } from '../src/services/desktop-update.service.js';
+import { DesktopDiagnosticsService } from '../src/services/desktop-diagnostics.service.js';
 
 const key = 'k'.repeat(32);
 async function fixture(publish: boolean) {
@@ -73,4 +74,65 @@ test('version comparison is numeric, not lexical', () => {
   assert.equal(isNewer('1.10.0', '1.9.9'), true);
   assert.equal(isNewer('1.2.0', '1.2.0'), false);
   assert.equal(isNewer('0.9.0', '1.0.0'), false);
+});
+
+async function diagnosticsFixture() {
+  const dir = await mkdtemp(join(tmpdir(), 'desktop-diag-'));
+  const service = new NativeKioskService({} as never, {} as never, {} as never, {} as never,
+    { apiKey: key, ttlSeconds: 86400, generationLimit: 3, secureCookie: true });
+  const app = createMigrationApp({} as never, { corsOrigins: ['https://nxbooth.example'], kiosk: service, desktopDiagnosticsDir: dir });
+  return { app, dir };
+}
+const report = () => ({
+  app_version: '1.0.1', platform: 'win32', os_version: '10.0.26100', device_name: 'KIOSK-1', captured_at: new Date().toISOString(),
+  device_status: { camera: 'BROWSER_WEBCAM', printer: 'READY' },
+  camera_probe: { ok: false, total_ms: 1800, cameras: [{ name: 'Canon EOS 2000D' }], model: 'Canon EOS 2000D', serial_tail: '1234',
+    steps: [{ name: 'enumerate', ok: true, ms: 40 }, { name: 'liveview', ok: false, ms: 900, code: 'LIVEVIEW_FAILED', detail: 'error=0x8D01', size_bytes: 0 }] }
+});
+
+test('desktop diagnostics require kiosk credentials', async () => {
+  const f = await diagnosticsFixture();
+  await request(f.app).post('/api/v1/desktop/diagnostics').send(report()).expect(401);
+  await request(f.app).post('/api/v1/desktop/diagnostics').set('X-API-Key', 'wrong').send(report()).expect(401);
+  assert.deepEqual(await readdir(f.dir).catch(() => []), []);
+});
+
+test('desktop diagnostics are stored as one JSON line with only the allowed fields', async () => {
+  const f = await diagnosticsFixture();
+  const ok = await request(f.app).post('/api/v1/desktop/diagnostics').set('X-API-Key', key).send(report()).expect(201);
+  assert.equal(ok.body.data.stored, true);
+  const files = await readdir(f.dir);
+  assert.equal(files.length, 1);
+  assert.match(files[0], /^\d{4}-\d{2}-\d{2}\.jsonl$/);
+  const lines = (await readFile(join(f.dir, files[0]), 'utf8')).trim().split('\n');
+  assert.equal(lines.length, 1);
+  const saved = JSON.parse(lines[0]);
+  assert.equal(saved.id, ok.body.data.id);
+  assert.equal(saved.report.camera_probe.steps[1].code, 'LIVEVIEW_FAILED');
+  assert.equal(saved.from, null);
+});
+
+test('desktop diagnostics reject unknown fields, secrets-shaped keys and oversize text', async () => {
+  const f = await diagnosticsFixture();
+  const post = (body: unknown) => request(f.app).post('/api/v1/desktop/diagnostics').set('X-API-Key', key).send(body as object);
+  await post({ ...report(), token: 'x'.repeat(40) }).expect(400);
+  await post({ ...report(), image: 'AAAA' }).expect(400);
+  await post({ ...report(), app_version: 'latest' }).expect(400);
+  await post({ ...report(), note: 'x'.repeat(501) }).expect(400);
+  await post({ ...report(), startup_log: 'bad\u0000byte' }).expect(400);
+  await post({ ...report(), camera_probe: { ...report().camera_probe, steps: Array.from({ length: 17 }, () => ({ name: 's', ok: true, ms: 1 })) } }).expect(400);
+  assert.deepEqual(await readdir(f.dir).catch(() => []), []);
+});
+
+test('desktop diagnostics stop after the daily size limit and drop files older than 30 days', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'desktop-diag-'));
+  const now = new Date('2026-10-20T10:00:00Z');
+  await writeFile(join(dir, '2026-08-01.jsonl'), 'old\n');
+  await writeFile(join(dir, '2026-10-19.jsonl'), 'recent\n');
+  await writeFile(join(dir, 'notes.txt'), 'keep');
+  const service = new DesktopDiagnosticsService(dir, () => now);
+  await service.record('ops@example.com', report());
+  assert.deepEqual((await readdir(dir)).sort(), ['2026-10-19.jsonl', '2026-10-20.jsonl', 'notes.txt']);
+  await writeFile(join(dir, '2026-10-20.jsonl'), 'x'.repeat(2 * 1024 * 1024));
+  await assert.rejects(() => service.record('ops@example.com', report()), /Too many diagnostics/);
 });

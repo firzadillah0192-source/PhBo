@@ -57,3 +57,9 @@ The gateways answer 404 for unlisted routes, so these two edits in `api-gateway/
 - Express deploy: `desktopUpdateRoutes` is in `backend-express/src/routes/desktop-update.routes.ts`, wired in `migration-app.ts` / `migration-server.ts`. Needs a normal `scripts/deploy_*.py` release with approval.
 - Windows installer build, signing, silent install and `update.verify` (PowerShell `Get-AuthenticodeSignature`) are **untested**; the VPS is Linux. Unit tests cover the logic with a fake bridge.
 - A first-time check `GET /api/v1/desktop/update` returns `update_available:false` until something is published.
+
+## Camera test and support log (v1.0.1)
+
+`POST /api/v1/desktop/diagnostics` (control gateway, JSON only, <= 32 KB, same kiosk credentials as the update routes, 10 requests/minute). Strict schema (`backend-express/src/services/desktop-diagnostics.service.ts`): app/OS version, device name, device status, camera probe steps (name, ok, ms, short code, short detail, size) and a scrubbed `startup-error.log` tail. Unknown fields are rejected, so photos, tokens and cookies cannot be stored. Reports are appended to `<RUNTIME_DIR>/desktop-diagnostics/YYYY-MM-DD.jsonl` (2 MB/day cap, 30-day retention); no database change.
+
+The desktop side is `camera.probe` in `desktop/native/KioskBridge/CanonProbe.cs` (FC.SDK over WPD/PTP, Windows only; off Windows and in simulated mode it fails with `CAMERA_WINDOWS_ONLY`, never a fake result) plus the staff-menu buttons. Release script: `scripts/deploy_desktop_diagnostics.py prepare|deploy|rollback|status` (express + control gateway only).
