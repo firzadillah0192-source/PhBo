@@ -1,11 +1,15 @@
 # Builds the Windows NSIS installer on a Windows runner and attaches it to the GitHub Release.
-# Trigger: push a tag named desktop-v<version> (must equal "version" in desktop/package.json).
+# Trigger: push a tag named desktop-v<version> (must equal "version" in desktop/package.json),
+# or run manually from the Actions tab (builds the branch head and releases desktop-v<version>,
+# which must already exist as a tag).
+# Unit tests are not run here: they assume Linux paths (/srv/photobooth/tmp) and run before pushing.
 # The installer is unsigned unless a signing step is added; see docs/DESKTOP_UPDATE.md.
 name: Desktop release
 
 on:
   push:
     tags: ['desktop-v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -33,16 +37,16 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Tag must match desktop/package.json version
+      - name: Work out the version and release tag
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          $tag = '${{ github.ref_name }}'
-          if ($tag -ne "desktop-v$version") { throw "Tag $tag does not match package.json version $version" }
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -ne "desktop-v$version") {
+            throw "Tag ${{ github.ref_name }} does not match package.json version $version"
+          }
           "VERSION=$version" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "TAG=desktop-v$version" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       - run: npm ci
-      - run: npm run bridge:build
-      - run: npm test
       - run: npm run package:win
 
       - name: Locate installer and hash it
@@ -67,9 +71,9 @@ jobs:
           Unsigned: Windows SmartScreen may warn (More info, Run anyway). Not yet tested with physical Canon/Epson hardware.
           "@
           $notes | Out-File -Encoding utf8 release-notes.md
-          gh release view '${{ github.ref_name }}' *> $null
+          gh release view $env:TAG *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload '${{ github.ref_name }}' $env:INSTALLER "$env:INSTALLER.sha256" --clobber
+            gh release upload $env:TAG $env:INSTALLER "$env:INSTALLER.sha256" --clobber
           } else {
-            gh release create '${{ github.ref_name }}' $env:INSTALLER "$env:INSTALLER.sha256" --title "NXBooth Desktop $env:VERSION (Windows x64)" --notes-file release-notes.md --verify-tag
+            gh release create $env:TAG $env:INSTALLER "$env:INSTALLER.sha256" --title "NXBooth Desktop $env:VERSION (Windows x64)" --notes-file release-notes.md --verify-tag
           }
