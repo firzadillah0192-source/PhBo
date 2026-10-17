@@ -35,7 +35,7 @@ input:focus-visible,button:focus-visible,.btn:focus-visible{outline:3px solid va
   <section class="card" id="step-code">
     <form id="lookup" autocomplete="off">
       <label for="code">Kode di layar kiosk</label>
-      <input id="code" name="code" maxlength="9" inputmode="latin" placeholder="ABCD-2345" required autofocus>
+      <input id="code" name="code" type="text" maxlength="9" inputmode="text" enterkeyhint="go" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="ABCD-2345" required autofocus>
       <button id="check" type="submit">Cek kode</button>
     </form>
   </section>
@@ -48,7 +48,7 @@ input:focus-visible,button:focus-visible,.btn:focus-visible{outline:3px solid va
   <div id="message" role="status" aria-live="polite" hidden></div>
   <a class="btn" id="signin" href="/" hidden>Masuk ke NXBooth dulu</a>
 </main>
-<script>
+<script data-cfasync="false">
 (function(){
   var $=function(id){return document.getElementById(id)};
   var message=$('message'),code=$('code'),CODES={
