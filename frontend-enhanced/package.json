@@ -1,0 +1,27 @@
+{
+  "name": "nxbooth-v2",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "customer",
+    "admin",
+    "kiosk"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "node --test shared/*.test.mjs",
+    "test:ui": "node scripts/browser-check.mjs",
+    "test:live-read": "node scripts/live-read-check.mjs"
+  },
+  "dependencies": {
+    "qrcode.react": "4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "playwright": "^1.64.0"
+  }
+}

@@ -10,7 +10,13 @@ export class CatalogAssetError extends Error {
 }
 
 export type ClassicSlot = { x: number; y: number; width: number; height: number; fit?: 'cover' };
-export type LayoutConfig = { slots: ClassicSlot[]; theme_slug?: string; theme_name?: string };
+export type LayoutConfig = { slots: ClassicSlot[]; theme_slug?: string; theme_name?: string; event_personalization?: boolean };
+
+export function requiresEventName(row: Pick<NxClassicLayout, 'id' | 'layout_config_json'>) {
+  if (row.id === 'classic-floral-event-001') return true;
+  try { return JSON.parse(row.layout_config_json).event_personalization === true; }
+  catch { return false; }
+}
 
 export function reviewedSlots(row: NxClassicLayout): LayoutConfig {
   let config: LayoutConfig;
@@ -200,6 +206,15 @@ export class CatalogAssetsService {
     const original = row.frame_asset_path!;
     const previewRef = original.startsWith('minio://catalog/') ? original.replace(/\/([^/]+)$/, '/previews/$1') : join(dirname(original), 'previews', basename(original));
     const preview = await this.file(previewRef);
+    if (preview && original.startsWith('minio://catalog/') && this.objects) {
+      // Cache file mtimes describe download order, not artwork freshness.
+      const [sourceInfo, previewInfo] = await Promise.all([this.objects.info(original), this.objects.info(previewRef)]);
+      if (!sourceInfo || !previewInfo) return master;
+      const sourceMtime = Number(sourceInfo.metaData['nxbooth-source-mtime']);
+      const previewMtime = Number(previewInfo.metaData['nxbooth-source-mtime']);
+      const importedTimes = sourceMtime > 0 && previewMtime > 0;
+      return (importedTimes ? previewMtime >= sourceMtime : previewInfo.lastModified.getTime() >= sourceInfo.lastModified.getTime()) ? preview : master;
+    }
     return preview && (await stat(preview)).mtimeMs >= (await stat(master)).mtimeMs ? preview : master;
   }
 }

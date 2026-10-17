@@ -141,8 +141,8 @@ export default function PhotoStage({ mode, busy, onFile, onBack }) {
   return (
     <section className="photo-stage customer-stage-enter">
       {flash && <div className="camera-flash" aria-hidden="true" />}
+      <nav className="capture-navigation" aria-label="Photo navigation"><button className="customer-inline-button" onClick={onBack} disabled={busy}>← {mode === 'BASIC' ? 'Change studio' : 'Back to frame style'}</button></nav>
       <header className="stage-heading">
-        <button className="customer-inline-button stage-back" onClick={onBack} disabled={busy}>← {mode === 'BASIC' ? 'Change studio' : 'Back to frame style'}</button>
         <p className="customer-kicker">Your photograph</p>
         <h1>Enter the studio.</h1>
         <p>Face the light, relax your shoulders, and look toward the lens.</p>

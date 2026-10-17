@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { modeRoute } from '../../customerRoute.js'
 
 export const CREATION_MODES = [
@@ -8,9 +8,19 @@ export const CREATION_MODES = [
 ]
 
 export function CatalogImage({ src, alt, loading = 'lazy', fallback = 'Preview coming soon' }) {
+  return <CatalogImageContent key={src || ''} src={src} alt={alt} loading={loading} fallback={fallback} />
+}
+
+function CatalogImageContent({ src, alt, loading, fallback }) {
   const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    if (!src || !failed || attempt !== 0) return
+    const timer = setTimeout(() => { setAttempt(1); setFailed(false) }, 750)
+    return () => clearTimeout(timer)
+  }, [src, failed, attempt])
   return src && !failed
-    ? <img src={src} alt={alt} loading={loading} decoding="async" onError={() => setFailed(true)} />
+    ? <img key={attempt} src={src} alt={alt} loading={loading} decoding="async" onError={() => setFailed(true)} />
     : <span className="landing-image-fallback">{fallback}</span>
 }
 

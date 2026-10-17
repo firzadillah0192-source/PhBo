@@ -5,11 +5,18 @@ export async function loadKioskWebCatalog(){
  const value=i=>results[i].status==='fulfilled'?results[i].value:null
  return {CLASSIC:(value(0)||[]).filter(x=>x.enabled!==false),BASIC:(value(1)?.templates||[]).filter(x=>x.enabled!==false&&x.basic_available!==false),ADVANCED:(value(2)?.experiences||[]).filter(x=>x.enabled!==false),styles:(value(3)||[]).filter(x=>x.enabled!==false),usage:value(4),errors:results.slice(0,4).some(x=>x.status==='rejected')}
 }
-export function selectionOptions(mode,selection,styleId,ids){
+export function selectionOptions(mode,selection,styleId,ids,personalization={}){
  if(!selection?.id||!['CLASSIC','BASIC','ADVANCED'].includes(mode))throw new Error('Pilih desain terlebih dahulu.')
  const shots=mode==='CLASSIC'?selection.shot_count:1
  if(!Number.isInteger(shots)||shots<1||shots>4||ids.length!==shots||new Set(ids).size!==shots)throw new Error('Jumlah foto belum sesuai desain.')
- return {layoutId:mode==='CLASSIC'?selection.id:undefined,captureUploadIds:mode==='CLASSIC'?ids:undefined,frameStyleId:mode==='ADVANCED'?styleId:undefined,ornamentIds:[]}
+ const details={}
+ if(mode==='CLASSIC'&&selection.requires_event_name){
+  const name=personalization.eventName?.trim()
+  if(!name||name.length>80||/[\p{Cc}\p{Cf}]/u.test(name))throw new Error('Isi nama event yang valid (1–80 karakter).')
+  if(!Number.isFinite(Date.parse(personalization.capturedAt)))throw new Error('Waktu pengambilan foto tidak tersedia.')
+  details.eventName=name.normalize('NFC');details.capturedAt=personalization.capturedAt
+ }
+ return {layoutId:mode==='CLASSIC'?selection.id:undefined,captureUploadIds:mode==='CLASSIC'?ids:undefined,frameStyleId:mode==='ADVANCED'?styleId:undefined,ornamentIds:[],...details}
 }
 export function readKioskWebJob(storage=globalThis.sessionStorage){try{const s=JSON.parse(storage.getItem(KEY));return s&&/^[a-zA-Z0-9_-]{1,128}$/.test(s.jobId)&&['CLASSIC','BASIC','ADVANCED'].includes(s.mode)?s:null}catch{return null}}
 export function saveKioskWebJob(job,storage=globalThis.sessionStorage){try{storage.setItem(KEY,JSON.stringify({jobId:job.jobId,mode:job.mode}))}catch{}}

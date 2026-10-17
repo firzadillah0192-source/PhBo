@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { migrationConfigSchema } from './config/migration-env.js';
 import { createMigrationApp } from './migration-app.js';
 import { migrationContainer } from './migration-container.js';
+import { join } from 'node:path';
 import { failedStage, startupStage } from './lib/startup-stage.js';
 
 const config=migrationConfigSchema.parse(process.env);
@@ -19,7 +20,7 @@ try{
   if (services.kiosk) {
     await startupStage('kiosk-schema',async()=>{await db.$queryRaw`SELECT public_code,access_token_hash FROM kiosk_sessions LIMIT 0`;await db.$queryRaw`SELECT owner_scope,request_key FROM generation_requests LIMIT 0`;});
   }
-  const server=createMigrationApp(services.catalog,{corsOrigins:config.CORS_ORIGINS,uploadMaxBytes:config.UPLOAD_MAX_BYTES,trustProxy:config.TRUST_PROXY,admin:services.admin,health:services.health,limiter:services.limiter,kiosk:services.kiosk},services.account,services.results,services.uploads,services.generations).listen(config.PORT,config.HOST);
+  const server=createMigrationApp(services.catalog,{corsOrigins:config.CORS_ORIGINS,uploadMaxBytes:config.UPLOAD_MAX_BYTES,trustProxy:config.TRUST_PROXY,admin:services.admin,health:services.health,limiter:services.limiter,kiosk:services.kiosk,devices:services.devices,desktopUpdateDir:join(config.RUNTIME_DIR,'desktop-updates'),desktopDiagnosticsDir:join(config.RUNTIME_DIR,'desktop-diagnostics')},services.account,services.results,services.uploads,services.generations).listen(config.PORT,config.HOST);
   server.on('listening',()=>console.log('NXBooth Express migration candidate listening'));
   let stopping=false;
   const stop=()=>{if(stopping)return;stopping=true;const timeout=setTimeout(()=>process.exit(1),10000).unref();server.close(async()=>{await shutdownAnalytics();await services.close();await db.$disconnect();clearTimeout(timeout);});};

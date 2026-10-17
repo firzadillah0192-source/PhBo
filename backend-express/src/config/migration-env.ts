@@ -52,6 +52,8 @@ export const migrationConfigSchema = z.object({
   PROVIDER_RESULT_ORIGINS: z.string().default('').transform(value => value.split(',').map(item => item.trim()).filter(Boolean)),
   GOOGLE_CLIENT_ID: z.string().default(''),
   ADMIN_TOKEN: z.string().default(''),
+  // AI Provider Lab only: encrypts Lab provider credentials at rest. Never reuse a production secret here.
+  LAB_ENCRYPTION_KEY: z.string().default(''),
   ADMIN_DEFAULT_ROLE: z.enum(['superadmin', 'operator', 'content_manager']).default('superadmin'),
   UPLOAD_MIN_DIMENSION: z.coerce.number().int().positive().default(256),
   UPLOAD_MAX_DIMENSION: z.coerce.number().int().positive().default(8000),

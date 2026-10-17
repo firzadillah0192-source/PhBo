@@ -24,8 +24,14 @@ import type { NativeRateLimitService } from './services/native-rate-limit.servic
 import type { NativeKioskService } from './services/native-kiosk.service.js';
 import { kioskWebAccess } from './routes/kiosk-web.routes.js';
 import { nativeKioskRoutes } from './routes/native-kiosk.routes.js';
+import { desktopUpdateRoutes } from './routes/desktop-update.routes.js';
+import { desktopDiagnosticsRoutes } from './routes/desktop-diagnostics.routes.js';
+import { DesktopDiagnosticsService } from './services/desktop-diagnostics.service.js';
+import { DesktopUpdateService } from './services/desktop-update.service.js';
+import { desktopDeviceApiRoutes, desktopDeviceApproveRoutes } from './routes/desktop-device.routes.js';
+import type { KioskDeviceService } from './services/kiosk-device.service.js';
 
-export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService };
+export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService; desktopUpdateDir?: string; desktopDiagnosticsDir?: string; devices?: KioskDeviceService };
 
 // Candidate /api contract, independent of the incompatible upstream /api/v1 API.
 // Unported routes remain unavailable; there is no forwarding to FastAPI.
@@ -58,6 +64,9 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
   app.use(cookieParser());
   installAnalytics(app);
   if (config.kiosk) app.use('/api/v1',nativeKioskRoutes(config.kiosk,catalog,config.uploadMaxBytes ?? 12*1024*1024));
+  if (config.devices) { app.use('/api/v1',desktopDeviceApiRoutes(config.devices)); app.use('/api/desktop-device',desktopDeviceApproveRoutes(config.devices)); }
+  if (config.kiosk && config.desktopUpdateDir) app.use('/api/v1',desktopUpdateRoutes(config.kiosk,new DesktopUpdateService(config.desktopUpdateDir)));
+  if (config.kiosk && config.desktopDiagnosticsDir) app.use('/api/v1',desktopDiagnosticsRoutes(config.kiosk,new DesktopDiagnosticsService(config.desktopDiagnosticsDir)));
   app.get('/health', (_req, res) => { res.json({ status: 'ok', service: 'nxbooth-express' }); });
   if(config.health)app.get('/api/health',async(_req,res)=>{res.json(await config.health!());});
   if(config.admin)app.use('/api/admin',nativeAdminRoutes(config.admin,config.uploadMaxBytes??12*1024*1024));

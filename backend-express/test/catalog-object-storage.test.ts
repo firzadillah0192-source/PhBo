@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
-import { mkdtemp, readFile, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, mkdir, writeFile, rm, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -13,15 +13,35 @@ import { AdminCatalogService } from '../src/services/admin-catalog.service.js';
 
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 function fixture() {
-  const files = new Map<string, { bytes: Buffer; metadata: Record<string,string> }>();
+  const files = new Map<string, { bytes: Buffer; metadata: Record<string,string>; modified: Date }>();
+  let clock = Date.now();
   const objects = new NativeObjectStorage({
-    async putObject(_bucket: string, key: string, bytes: Buffer, _size: number, metadata: Record<string,string>) { files.set(key, { bytes, metadata }); },
+    async putObject(_bucket: string, key: string, bytes: Buffer, _size: number, metadata: Record<string,string>) { files.set(key, { bytes, metadata, modified: new Date(clock++) }); },
     async getObject(_bucket: string, key: string) { return Readable.from([files.get(key)!.bytes]); },
-    async statObject(_bucket: string, key: string) { const row=files.get(key);if (!row) throw Object.assign(new Error(),{code:'NoSuchKey'}); return { size:row.bytes.length,etag:hash(row.bytes),lastModified:new Date(),metaData:{'nxbooth-source-mtime':row.metadata['X-Amz-Meta-Nxbooth-Source-Mtime']} }; },
+    async statObject(_bucket: string, key: string) { const row=files.get(key);if (!row) throw Object.assign(new Error(),{code:'NoSuchKey'}); return { size:row.bytes.length,etag:hash(row.bytes),lastModified:row.modified,metaData:{'nxbooth-source-mtime':row.metadata['X-Amz-Meta-Nxbooth-Source-Mtime']} }; },
     async removeObject(_bucket: string, key: string) { files.delete(key); },async bucketExists(){return true;},
   } as never, 'synthetic-test');
   return { objects, files };
 }
+
+test('Classic sample preview freshness uses object revision time regardless of cache download order', async () => {
+  const root=await mkdtemp('/srv/photobooth/tmp/preview-freshness-');
+  try {
+    const {objects}=fixture();const assets=new CatalogAssetsService([root],root,objects,join(root,'.cache'));
+    const frame=await sharp({create:{width:12,height:36,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).png().toBuffer();
+    const preview=await sharp({create:{width:12,height:36,channels:4,background:'gold'}}).png().toBuffer();
+    const ref=objects.catalogReference('frame/revision/blank.png'),pref=objects.catalogReference('frame/revision/previews/blank.png');
+    await objects.put(ref,frame,'image/png');await objects.put(pref,preview,'image/png');
+    const cachedPreview=(await assets.file(pref))!,cachedMaster=(await assets.file(ref))!;
+    await utimes(cachedPreview,new Date(1000),new Date(1000));await utimes(cachedMaster,new Date(9000),new Date(9000));
+    const row={id:'fixture',frame_asset_path:ref,canvas_width:12,canvas_height:36,shot_count:1,layout_config_json:JSON.stringify({slots:[{x:1,y:1,width:10,height:10}]})} as never;
+    assert.equal(await assets.classicPreview(row),cachedPreview);
+    // A replaced master really does invalidate its older preview.
+    await objects.put(ref,frame,'image/png');
+    assert.deepEqual(await readFile(await assets.classicPreview(row)),frame);
+    await objects.remove(pref);assert.deepEqual(await readFile(await assets.classicPreview(row)),frame);
+  } finally {await rm(root,{recursive:true,force:true});}
+});
 
 test('Basic snapshots freeze actual PNG dimensions and survive template replacement in MinIO', async () => {
   const root=await mkdtemp(join(tmpdir(),'nxbooth-basic-freeze-test-'));

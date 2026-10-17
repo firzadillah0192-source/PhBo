@@ -144,6 +144,10 @@ export default function ResultStage({ resultId, uploadId, mode, chargedCredits, 
 
   return (
     <section className={`result-stage customer-stage-enter ${revealed ? 'is-revealed' : ''}`}>
+      <nav className="result-navigation" aria-label="Result navigation">
+        <button className="customer-inline-button" onClick={onReset}>Create another</button>
+        <button className="customer-inline-button" onClick={onTryLook}>Try another look</button>
+      </nav>
       <header>
         <div><p className="customer-kicker">{mode === 'CLASSIC' ? 'Photo Booth' : 'Your finished portrait'}</p><h1>{mode === 'CLASSIC' ? 'Your moments.' : 'Another you.'}</h1>{chargedCredits != null && <p>{chargeEstimated ? 'Estimasi biaya: ' : ''}{chargedCredits} kredit dipakai untuk hasil ini.</p>}</div>
         {original && <button className={`compare-toggle ${comparing ? 'is-active' : ''}`} onClick={() => setComparing((value) => !value)}>{comparing ? 'Close comparison' : 'Compare before / after'}</button>}
@@ -165,8 +169,6 @@ export default function ResultStage({ resultId, uploadId, mode, chargedCredits, 
       </figure>
       <footer>
         <div>
-          <button className="customer-inline-button" onClick={onReset}>Create another</button>
-          <button className="customer-inline-button" onClick={onTryLook}>Try another look</button>
           <button className="customer-inline-button" onClick={shareResult} disabled={claimBusy || !claim}>Share</button>
           <button className="customer-inline-button" onClick={() => window.print()}>Print</button>
           {printDownload && <a className="customer-inline-button" href={printDownload} download>Download print · 2 × 6 in</a>}

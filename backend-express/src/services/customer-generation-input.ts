@@ -18,8 +18,8 @@ export const generationInput = z.object({
   if (value.mode === 'BASIC' && (!value.template_id || value.experience_id)) invalid('Basic requires only a template');
   if (value.mode === 'ADVANCED' && (!value.experience_id || value.template_id)) invalid('Advanced requires only an experience');
   if (value.mode !== 'CLASSIC' && (value.layout_id || value.capture_upload_ids.length)) invalid('Captures are only accepted for Classic');
-  if (value.event_name && (value.mode !== 'CLASSIC' || value.layout_id !== 'classic-floral-event-001')) invalid('Event name is only accepted for the event strip');
-  if (value.captured_at && (value.mode !== 'CLASSIC' || value.layout_id !== 'classic-floral-event-001')) invalid('Capture time is only accepted for the event strip');
+  if (value.event_name && value.mode !== 'CLASSIC') invalid('Event name is only accepted for Classic');
+  if (value.captured_at && value.mode !== 'CLASSIC') invalid('Capture time is only accepted for Classic');
   if (value.mode !== 'ADVANCED' && (value.frame_style_id || value.ornament_ids.length)) invalid('Frame styles and ornaments are only accepted for Advanced');
 });
 export type GenerationInput = z.infer<typeof generationInput>;

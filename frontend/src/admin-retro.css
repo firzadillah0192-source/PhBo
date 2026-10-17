@@ -90,3 +90,18 @@
 }
 @media(max-width:600px){.admin-retro .admin-shell{padding:18px 16px 26px}.admin-workspace-line{font-size:7px;gap:10px;align-items:start}.admin-retro .admin-session-status{font-size:7px;padding:4px 6px}.admin-retro .admin-topbar{display:block;margin-bottom:25px}.admin-retro .admin-topbar h1{font-size:34px}.admin-retro .admin-refresh{margin-top:18px;font-size:11px;min-height:44px}.admin-retro .admin-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.admin-retro .admin-metric{padding:14px}.admin-retro .admin-metric strong{font-size:32px}.admin-retro .admin-metric span{font-size:8px;min-height:26px}.admin-retro .admin-card{padding:18px}.admin-retro .admin-form-grid{grid-template-columns:1fr}.admin-retro .admin-content-card{grid-template-columns:1fr}.admin-retro .admin-section-head{display:block}.admin-retro .admin-section-head>button{margin-top:14px}.admin-retro .admin-field{margin-bottom:6px}.admin-retro .admin-dl{grid-template-columns:110px minmax(0,1fr);gap:12px}.admin-retro .admin-gate{padding:25px}.admin-retro .admin-gate h1{font-size:36px}.admin-retro .admin-workspace-footer{font-size:7px}.admin-retro .admin-pagination{flex-wrap:wrap}.admin-retro .admin-mobile-bar{padding-inline:16px}.admin-retro .admin-template-asset-heading{gap:8px;flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.admin-retro *, .admin-retro *::before,.admin-retro *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* AI Provider Lab */
+.lab-warning{margin-bottom:16px}
+.lab .admin-filter-row{flex-wrap:wrap}
+.lab-images{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:14px 0}
+.lab-images img,.lab-compare-col img{width:100%;height:auto;border:1.5px solid #26201a;border-radius:7px;background:#f3e6cb}
+.lab-images figcaption{font:10px/1.6 ui-monospace,monospace;color:#665b4c;margin-top:6px}
+.lab-compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.lab-compare-col{min-width:0}
+.lab-bar{display:block;height:10px;background:#1d659b;border-radius:3px;min-width:2px}
+.lab fieldset{border:1.5px solid #ddd1bb;border-radius:7px;margin:12px 0;padding:10px 14px}
+.lab fieldset label{display:inline-block;margin-right:14px}
+.lab-estimate .admin-table{min-width:0}
+.admin-badge.ok{background:#e0edcd}.admin-badge.bad{background:#f6d5cf}
+@media(max-width:700px){.lab .admin-table td input[type=password]{width:100%}}
