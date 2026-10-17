@@ -114,3 +114,13 @@ export class DeviceClient {
   start(name){return this.post('/api/v1/desktop/device/code',{device_name:name});}
   poll(deviceCode){return this.post('/api/v1/desktop/device/token',{device_code:deviceCode});}
 }
+/** Support log: one JSON report per request, sent only by an operator action, with the same kiosk credential as other kiosk calls. */
+export class DiagnosticsClient {
+  constructor(config,apiKey=''){this.config=config;this.apiKey=apiKey;}
+  async send(report) {
+    if(!this.apiKey)throw new Error('BACKEND_NOT_CONFIGURED');
+    jsonOnly(report);
+    const r=await fetch(this.config.control+'/api/v1/desktop/diagnostics',{method:'POST',headers:{...authHeaders(this.apiKey),'Accept':'application/json','Content-Type':'application/json','User-Agent':'NXBoothDesktop/1.0'},body:JSON.stringify(report),redirect:'error',signal:AbortSignal.timeout(30000)});
+    return json(r);
+  }
+}

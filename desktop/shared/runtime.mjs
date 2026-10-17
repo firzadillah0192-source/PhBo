@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { newId } from './journal.mjs';
 import { inspectImage } from './image.mjs';
 import { ControlClient, MediaClient, fetchCatalogImage } from './clients.mjs';
+import { notSubmitted } from './printer-service.mjs';
 
 export class Runtime {
   constructor({journal,bridge,assets,origins,apiKey='',secrets,printer=null,publicCatalog=false,onChange=()=>{}}) {
@@ -110,7 +111,7 @@ export class Runtime {
       throw new Error('PROCESSING_TIMEOUT');
     }catch(e){s.error=/^[A-Z0-9_]+$/.test(e.message)?e.message:'CONNECTION_FAILED';s.phase=s.error==='GENERATION_FAILED'?'FAILED':'RECOVERY_REQUIRED';await this.save();throw new Error(s.error);}
   });}
-  async print(){return this.exclusive(async()=>{const s=this.session;if(!s||s.phase!=='RESULT_READY')throw new Error('RESULT_REQUIRED');if(this.journal.prints(s.id).length)throw new Error('PRINT_ALREADY_SUBMITTED');
+  async print(){return this.exclusive(async()=>{const s=this.session;if(!s||s.phase!=='RESULT_READY')throw new Error('RESULT_REQUIRED');if(this.journal.prints(s.id).some(p=>p.status!=='REJECTED'))throw new Error('PRINT_ALREADY_SUBMITTED');
     if(inspectImage(await readFile(join(this.assets,s.resultFile))).sha256!==s.resultHash)throw new Error('RESULT_CHANGED');
     if(this.printer&&s.resultId){
       await this.printer.submit({resultId:s.resultId,profile:s.mode==='CLASSIC'?'classic-two-strips-4r':'photo-4r',base64:(await readFile(join(this.assets,s.resultFile))).toString('base64')});
@@ -118,7 +119,7 @@ export class Runtime {
     }
     const id=newId();await this.journal.print(id,s.id,'SUBMITTING');
     try{const r=await this.bridge.call('printer.submit',{jobId:id,path:join(this.assets,s.resultFile),profile:s.mode==='CLASSIC'?'classic-two-strips-4r':'photo-4r'});if(!['SIMULATED','ACCEPTED'].includes(r.status))throw new Error('PRINT_STATUS_UNSUPPORTED');await this.journal.print(id,s.id,r.status);}
-    catch(e){await this.journal.print(id,s.id,'UNKNOWN');throw e;}return this.state();
+    catch(e){await this.journal.print(id,s.id,notSubmitted.has(e.message)?'REJECTED':'UNKNOWN');throw e;}return this.state();
   });}
   async finish(){return this.exclusive(async()=>{if(!this.session)throw new Error('SESSION_REQUIRED');this.session.phase='FINISHED';await this.save();this.session=null;return this.state();});}
 }
