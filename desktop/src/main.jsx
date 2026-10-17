@@ -155,6 +155,7 @@ function App(){
    <h3>Mode event</h3>
    <EventSetup key={JSON.stringify(state?.event||null)} api={api} state={state} refresh={refresh} fail={fail}/>
    <h3>Kamera Canon dan log</h3>
+   <p>Log aktivitas dan error kamera dikirim otomatis saat sudah masuk akun. Jika internet terputus, log diantrekan di komputer ini untuk dikirim kembali.</p>
    <p>Tes membaca kamera lewat USB (tanpa EOS Utility): live view, lalu satu foto uji yang langsung dihapus. Kamera ON, mode foto, tutup EOS Utility/Zoom.</p>
    <div className="actions"><button disabled={probeBusy||!!s} onClick={runProbe}>{probeBusy?'Menguji…':'Tes kamera Canon'}</button>
    <button disabled={probeBusy||!state?.configured} onClick={sendDiagnostics}>Kirim log ke server</button></div>

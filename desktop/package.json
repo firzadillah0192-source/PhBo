@@ -1,6 +1,6 @@
 {
   "name": "nxbooth-desktop",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "main": "electron/main.mjs",
@@ -15,7 +15,8 @@
     "test:webcam-ui": "node tests/webcam-ui.mjs",
     "test:setup-ui": "node tests/setup-ui.mjs",
     "test:event-ui": "node tests/event-ui.mjs",
-    "test:canon-ui": "node tests/canon-ui.mjs"
+    "test:canon-ui": "node tests/canon-ui.mjs",
+    "test:activity-ui": "node tests/activity-ui.mjs"
   },
   "dependencies": {
     "qrcode.react": "4.2.0",

@@ -15,12 +15,13 @@ export function scrub(raw, max, home = homedir()) {
   if (home) value = value.split(home).join('~');
   return value.slice(-max);
 }
-export function buildReport({ version, platform, osVersion, deviceName, deviceStatus, probe, startupLog, now = new Date(), home }) {
+export function buildReport({ version, platform, osVersion, deviceName, deviceStatus, probe, startupLog, note, now = new Date(), home }) {
   const status = {};
   for (const [key, val] of Object.entries(deviceStatus ?? {})) if (typeof val === 'string' && Object.keys(status).length < 8) status[scrub(key, 40, home)] = scrub(val, 80, home);
   return report.parse(dropNull({
     app_version: version, platform: scrub(platform, 40, home), os_version: scrub(osVersion, 60, home), device_name: deviceName ? scrub(deviceName, 100, home) : undefined,
     captured_at: now.toISOString(), device_status: Object.keys(status).length ? status : undefined, camera_probe: probe ?? undefined,
-    startup_log: startupLog ? scrub(startupLog, 2000, home) : undefined
+    startup_log: startupLog ? scrub(startupLog, 2000, home) : undefined,
+    note: note ? scrub(note, 500, home) : undefined
   }));
 }
