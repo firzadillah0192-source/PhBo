@@ -122,7 +122,7 @@
 .retro-app .advanced-option-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
 .retro-app .advanced-option-tabs button { min-height: 44px; padding: 8px 16px; border: var(--retro-border); border-radius: 8px; background: var(--white); color: var(--ink); font-size: var(--fs-sm); font-weight: 750; box-shadow: 2px 2px 0 var(--ink); }
 .retro-app .advanced-option-tabs button[aria-pressed='true'] { background: var(--sun); }
-.retro-app .advanced-style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; margin: 0; padding: 0; }
+.retro-app .advanced-style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; margin: 0; padding: 0; }
 .retro-app .advanced-style-card { display: grid; gap: 8px; align-content: start; min-height: 0; padding: 12px; text-align: left; }
 .retro-app .advanced-style-card strong { font-size: var(--fs-lg); }
 .retro-app .advanced-style-card small { font-size: var(--fs-sm); line-height: 1.45; }

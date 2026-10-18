@@ -24,7 +24,9 @@ REMOVE = [C + 'ProgressRail.jsx']
 STRIP = (re.compile(r' eventName=\{eventName\} onEventNameChange=\{value => \{ setEventName\(value\); updateCustomerFlow\(\{ eventName: value\.trim\(\) \|\| null \}\) \}\}'), '')
 
 
-def prepare():
+def prepare(only=None):
+    global FILES, REMOVE
+    if only: FILES, REMOVE = only, []
     web = v.inspect(v.WEB)
     assert web['State'].get('Health', {}).get('Status') == 'healthy', 'Live web is unhealthy'
     old_hash = v.live_hash('/usr/share/nginx/html/index.html')
@@ -38,7 +40,8 @@ def prepare():
         ignore=shutil.ignore_patterns('node_modules', 'dist', '.env*', '.vite'), symlinks=True)
     for name in FILES:
         dest = target / name; dest.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(REPO / 'frontend' / name, dest)
-    app = target / 'src/App.jsx'; text = app.read_text(); text, n = STRIP[0].subn(STRIP[1], text); assert n == 1, 'event-name prop not found'; app.write_text(text)
+    if 'src/App.jsx' in FILES:
+        app = target / 'src/App.jsx'; text = app.read_text(); text, n = STRIP[0].subn(STRIP[1], text); assert n == 1, 'event-name prop not found'; app.write_text(text)
     for name in REMOVE: (target / name).unlink(missing_ok=True)
     (target / 'node_modules').symlink_to(REPO / 'frontend/node_modules')
     fixtures = release / 'backend/app/data'; fixtures.mkdir(parents=True)
@@ -79,8 +82,9 @@ def prepare():
 
 def main():
     p = argparse.ArgumentParser(description=__doc__); p.add_argument('action', choices=['prepare', 'deploy', 'rollback', 'status'])
-    action = p.parse_args().action
-    if action == 'prepare': return prepare()
+    p.add_argument('--only', nargs='+', help='prepare: overlay only these frontend-relative files on the live source')
+    a = p.parse_args(); action = a.action
+    if action == 'prepare': return prepare(a.only)
     release = Path(POINTER.read_text().strip()); m = json.loads((release / 'manifest.json').read_text())
     cmd = v.compose(m, action == 'rollback'); v.run(cmd + ['config', '--quiet'])
     if action == 'deploy': assert v.inspect(v.WEB)['Image'] == m['previous_id'], 'Live web changed since prepare'
