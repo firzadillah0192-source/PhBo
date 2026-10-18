@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useT } from '../../i18n.js'
 
 // Keep only the foremost dialog interactive, including payment over top-up.
 const layers = []
@@ -14,6 +15,7 @@ function syncLayers() {
 }
 
 export default function StudioModal({ title, onBack, onClose, children, wide = false, returnFocus }) {
+  const t = useT()
   const dialog = useRef(null)
   const close = useRef(onClose)
   close.current = onClose
@@ -50,5 +52,5 @@ export default function StudioModal({ title, onBack, onClose, children, wide = f
     }
   }, [])
   if (typeof document === 'undefined') return null
-  return createPortal(<div className="studio-popup-layer" onClick={event => { if (event.target === event.currentTarget) onClose() }}><section ref={dialog} role="dialog" aria-modal="true" aria-label={title} tabIndex="-1" className={`studio-popup retro-app ${wide ? 'is-wide' : ''}`}><header className="studio-popup-nav"><button type="button" className="studio-popup-back" onClick={onBack || onClose}><span aria-hidden="true">←</span> Back</button><strong>{title}</strong><button type="button" className="studio-popup-close" onClick={onClose} aria-label="Tutup popup"><span aria-hidden="true">×</span></button></header><div className="studio-popup-body">{children}</div></section></div>, document.body)
+  return createPortal(<div className="studio-popup-layer" onClick={event => { if (event.target === event.currentTarget) onClose() }}><section ref={dialog} role="dialog" aria-modal="true" aria-label={title} tabIndex="-1" className={`studio-popup retro-app ${wide ? 'is-wide' : ''}`}><header className="studio-popup-nav"><button type="button" className="studio-popup-back" onClick={onBack || onClose}><span aria-hidden="true">←</span> {t('Kembali', 'Back')}</button><strong>{title}</strong><button type="button" className="studio-popup-close" onClick={onClose} aria-label={t('Tutup jendela', 'Close dialog')}><span aria-hidden="true">×</span></button></header><div className="studio-popup-body">{children}</div></section></div>, document.body)
 }

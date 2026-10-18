@@ -45,6 +45,8 @@ test('featured previews contain only public records with their own art and are c
 
 test('landing, chooser, sign-in and mobile component structure render through the real application shell', async () => {
   const vite = await createServer({ configFile: false, plugins: [react()], server: { middlewareMode: true }, appType: 'custom', logLevel: 'silent' })
+  const i18n = await vite.ssrLoadModule('/src/i18n.js')
+  i18n.setLanguage('en') // these assertions cover the English copy; Indonesian is the default and is asserted below
   const originalWindow = globalThis.window
   const originalStorage = globalThis.sessionStorage
   const saved = JSON.stringify({ mode: 'ADVANCED', uploadId: 'saved-upload', experienceId: 'published-world', frameStyleId: 'modern', ornamentIds: ['sparkles'], stage: 'review' })
@@ -61,9 +63,10 @@ test('landing, chooser, sign-in and mobile component structure render through th
       assert.match(photo, />Upload photo<\/button>/)
       assert.doesNotMatch(photo, /Use phone camera|Resume preview|capture="user"/)
       assert.match(photo, /accept="image\/\*,\.heic,\.heif"/)
-      assert.equal((photo.match(/class="customer-outline-button/g) || []).length, 2)
+      assert.equal((photo.match(/class="customer-outline-button/g) || []).length, 1)
+      assert.match(photo, /class="customer-solid-button shutter-button"/)
       const blockedPhoto = renderToStaticMarkup(React.createElement(PhotoStage, { mode, busy: true, onFile: () => {}, onBack: () => {} }))
-      assert.match(blockedPhoto, /class="customer-outline-button shutter-button"[^>]*disabled=""/)
+      assert.match(blockedPhoto, /class="customer-solid-button shutter-button"[^>]*disabled=""/)
       assert.match(blockedPhoto, /class="customer-outline-button" disabled="">Preparing photo…<\/button>/)
     }
     globalThis.window = { location: { pathname: '/', search: '' }, innerWidth: 390, sessionStorage: storage }
@@ -107,7 +110,17 @@ test('landing, chooser, sign-in and mobile component structure render through th
     const empty = renderToStaticMarkup(React.createElement(LandingPage, { error: true, onRetry: () => {} }))
     assert.match(empty, /Reload previews/)
     assert.doesNotMatch(empty, /Anime|Mini Me|8-Bit Gamer/)
+
+    i18n.setLanguage('id')
+    const indonesian = renderToStaticMarkup(React.createElement(LandingPage, {}))
+    for (const copy of ['Cara kerja', 'Tiga cara berkreasi', 'Pengalaman Pilihan', 'Coba NXBooth Gratis']) assert.ok(indonesian.includes(copy), copy)
+    assert.doesNotMatch(indonesian, /How it works|Three ways to create|Try NXBooth Free/)
+    const indonesianNav = renderToStaticMarkup(React.createElement(CustomerNav, navProps))
+    assert.match(indonesianNav, />Masuk</)
+    assert.match(indonesianNav, /2 kredit/)
+    assert.match(indonesianNav, /aria-pressed="true"[^>]*>ID</)
   } finally {
+    i18n.setLanguage('id')
     globalThis.window = originalWindow
     globalThis.sessionStorage = originalStorage
     await vite.close()

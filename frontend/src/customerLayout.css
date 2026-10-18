@@ -1,0 +1,352 @@
+/* Customer layout: natural-flow pages on one shared grid.
+   Replaces customerViewport.css, which forced every studio screen into 100svh (tiny type,
+   clipped controls, empty gutters). Here the page scrolls normally, header / rail / content
+   share one container, and the side space carries real content (progress, summary, credit,
+   order and action panels) instead of decoration. Kiosk (no .retro-app) is untouched. */
+
+.customer-app.retro-app {
+  --nx-max: 1600px;
+  --nx-gutter: clamp(16px, 2.6vw, 40px);
+  --nx-rail: 272px;
+  --nx-sticky: 104px;
+  --nx-card: var(--white);
+  --nx-card-shadow: 3px 3px 0 var(--ink);
+}
+
+/* ---- Decoration: marketing pages only. Work pages use the gutters for content. ---- */
+.customer-app.retro-app:not(.is-marketing)::before,
+.customer-app.retro-app:not(.is-marketing)::after { display: none; }
+
+/* ---- Shared helpers ---- */
+.retro-app .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.retro-app .payment-error { margin: 0; padding: 10px 14px; border: var(--retro-border); border-radius: 8px; background: #ffe6d9; color: var(--ink); font-size: var(--fs-sm); }
+
+/* ---- Header aligned to the same container as the content ---- */
+.customer-app.retro-app .customer-nav:not(.landing-nav) {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px;
+  padding-inline: max(var(--nx-gutter), calc((100vw - var(--nx-max)) / 2 + var(--nx-gutter)));
+}
+.customer-app.retro-app .customer-nav:not(.landing-nav) .customer-logo { justify-self: start; }
+.customer-app.retro-app .customer-nav .customer-account { justify-self: end; display: flex; align-items: center; gap: 10px; }
+.retro-app .language-toggle { display: inline-flex; overflow: hidden; border: var(--retro-border); border-radius: 8px; background: var(--white); }
+.retro-app .language-toggle button { min-width: 40px; min-height: 40px; padding: 4px 10px; border: 0; background: transparent; color: var(--muted); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .04em; cursor: pointer; }
+.retro-app .language-toggle button + button { border-left: var(--retro-border); }
+.retro-app .language-toggle button.is-active { background: var(--sun); color: var(--ink); }
+.retro-app .customer-credit { white-space: nowrap; }
+
+/* ---- Studio shell: left rail + content ---- */
+.customer-app.retro-app .studio-shell {
+  display: grid; grid-template-columns: var(--nx-rail) minmax(0, 1fr); gap: 0 32px; align-items: start;
+  box-sizing: border-box; width: 100%; max-width: var(--nx-max); margin: 0 auto; padding: 28px var(--nx-gutter) 72px;
+}
+.customer-app.retro-app .studio-shell.is-account { grid-template-columns: minmax(0, 1fr); }
+.customer-app.retro-app .studio-content { min-width: 0; }
+.customer-app.retro-app .customer-main { max-width: none; min-height: 0; margin: 0; padding: 0; }
+.customer-app.retro-app .studio-content .creation-chooser { width: 100%; max-width: none; padding-inline: 0; padding-top: 0; }
+.customer-app.retro-app .studio-content .creation-chooser>header { margin-block: 0 24px; text-align: left; }
+.customer-app.retro-app .studio-content .creation-chooser .studio-breadcrumb { display: none; }
+.customer-app.retro-app .customer-notice { width: 100%; max-width: none; margin: 0 0 20px; }
+
+.retro-app .studio-rail { position: sticky; top: var(--nx-sticky); display: grid; gap: 16px; min-width: 0; }
+.retro-app .studio-rail>* { padding: 18px; border: var(--retro-border); border-radius: 12px; background: var(--nx-card); box-shadow: var(--nx-card-shadow); }
+.retro-app .studio-rail .customer-progress { display: grid; gap: 14px; width: auto; max-width: none; margin: 0; padding: 18px; }
+.retro-app .studio-rail .customer-progress>span { grid-row: auto; text-align: left; color: var(--muted); font: 700 var(--fs-xs) var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+.retro-app .studio-rail .customer-progress ol { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.retro-app .studio-rail .customer-progress li { flex-direction: row; font-size: var(--fs-sm); }
+.retro-app .studio-rail .customer-progress>i { display: none; }
+.retro-app .studio-rail-summary { display: grid; gap: 12px; margin: 0; }
+.retro-app .studio-rail-summary>div { display: grid; gap: 2px; min-width: 0; }
+.retro-app .studio-rail-summary dt, .retro-app .studio-rail-credit small { color: var(--muted); font: 700 var(--fs-xs) var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+.retro-app .studio-rail-summary dd { margin: 0; font-size: var(--fs-sm); font-weight: 700; overflow-wrap: anywhere; }
+.retro-app .studio-rail-credit { display: grid; gap: 2px; background: var(--mint); }
+.retro-app .studio-rail-credit strong { font: 800 var(--fs-2xl) var(--font-display); line-height: 1.1; }
+.retro-app .studio-rail-credit span { color: var(--ink); font-size: var(--fs-xs); }
+
+/* Mode chooser (/create without a mode) sits outside the shell: give it the same container. */
+.customer-app.retro-app:not(.is-marketing)>.creation-chooser { box-sizing: border-box; width: 100%; max-width: var(--nx-max); margin-inline: auto; padding: 28px var(--nx-gutter) 72px; }
+
+/* ---- Stage headings: one left-aligned scale on every screen ---- */
+.retro-app .studio-content :is(.stage-heading, .gallery-heading) { max-width: none; margin: 0 0 24px; text-align: left; }
+.retro-app .studio-content :is(.stage-heading h1, .gallery-heading h1, .processing-copy h1, .result-stage h1) { margin: 6px 0 0; font-size: clamp(28px, 2.6vw, 40px); line-height: 1.12; }
+.retro-app .studio-content :is(.stage-heading, .gallery-heading)>p:last-child { max-width: 62ch; margin: 8px 0 0; font-size: var(--fs-md); }
+.retro-app .studio-content .customer-kicker { font-size: var(--fs-xs); }
+.retro-app .capture-navigation, .retro-app .result-navigation { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; }
+.retro-app .studio-content .customer-empty { max-width: 720px; margin: 24px auto; text-align: center; }
+.retro-app .studio-content .customer-empty h1 { font-size: clamp(26px, 2.4vw, 36px); }
+.retro-app .studio-content .customer-empty .customer-solid-button, .retro-app .studio-content .customer-empty .customer-outline-button { margin: 8px 4px 0; }
+
+/* ---- Photo ---- */
+.retro-app .photo-stage { max-width: none; margin: 0; }
+.retro-app .photo-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); gap: 28px; align-items: start; }
+.retro-app .photo-layout .camera-stage { width: 100%; max-height: calc(100svh - 260px); min-height: 300px; aspect-ratio: 4/3; margin: 0; }
+.retro-app .photo-panel { display: grid; gap: 16px; padding: 20px; border: var(--retro-border); border-radius: 12px; background: var(--nx-card); box-shadow: var(--nx-card-shadow); position: sticky; top: var(--nx-sticky); }
+.retro-app .photo-panel .camera-actions { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 10px; margin: 0; }
+.retro-app .photo-panel .camera-actions>* { width: 100%; }
+.retro-app .photo-panel .camera-message { margin: 0; text-align: left; }
+.retro-app .photo-tips h2 { margin: 0 0 8px; font-size: var(--fs-lg); }
+.retro-app .photo-panel .photo-guidance { display: grid; justify-content: start; justify-items: start; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.retro-app .photo-panel .photo-guidance li { font-size: var(--fs-sm); letter-spacing: 0; text-transform: none; }
+.retro-app .photo-panel .photo-file-note { margin: 0; text-align: left; font-size: var(--fs-xs); }
+.retro-app .camera-reticle small, .retro-app .camera-reticle span { font-size: var(--fs-xs); }
+
+/* ---- Review ---- */
+.retro-app .review-stage { max-width: none; margin: 0; }
+.retro-app .review-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, .9fr); gap: 28px; align-items: start; }
+.retro-app .review-composition { max-width: none; margin: 0; grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr); }
+.retro-app .review-composition figure, .retro-app .review-source, .retro-app .review-destination { transform: none; }
+.retro-app .review-composition img { aspect-ratio: 4/5; max-height: calc(100svh - 290px); object-fit: cover; }
+.retro-app .review-composition figcaption { font-size: var(--fs-sm); }
+.retro-app .review-bridge { width: 40px; height: 40px; margin-inline: auto; }
+.retro-app .review-panel { position: sticky; top: var(--nx-sticky); display: grid; gap: 16px; padding: 20px; border: var(--retro-border); border-radius: 12px; background: var(--nx-card); box-shadow: var(--nx-card-shadow); }
+.retro-app .review-panel .advanced-review-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; }
+.retro-app .review-panel .advanced-review-summary span { display: grid; gap: 2px; min-width: 0; padding: 10px 12px; font-size: var(--fs-sm); }
+.retro-app .review-panel .advanced-review-summary strong { overflow-wrap: anywhere; }
+.retro-app .review-panel .review-event-details { max-width: none; margin: 0; padding: 14px; box-shadow: none; }
+.retro-app .review-panel .review-event-details input { min-height: 48px; }
+.retro-app .review-lane { display: grid; gap: 8px; margin: 0; padding: 12px 14px; border: var(--retro-border); border-radius: 8px; }
+.retro-app .review-lane legend { padding-inline: 6px; font-weight: 700; }
+.retro-app .review-lane label { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); }
+.retro-app .review-panel .review-create { display: grid !important; gap: 12px !important; align-items: stretch !important; }
+.retro-app .review-cost { display: grid; gap: 8px; margin: 0; padding: 12px 14px; border: var(--retro-border); border-radius: 8px; background: var(--paper); }
+.retro-app .review-cost>div { display: flex; justify-content: space-between; gap: 12px; }
+.retro-app .review-cost dt { color: var(--muted); font-size: var(--fs-sm); }
+.retro-app .review-cost dd { margin: 0; font-weight: 800; text-align: right; }
+.retro-app .review-note { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.55; }
+.retro-app .review-note.is-warning { color: var(--ink); }
+.retro-app .review-generate { width: 100%; min-height: 56px; font-size: var(--fs-md); }
+.retro-app .review-stage.is-creating .review-composition { transform: none; filter: none; opacity: .6; }
+
+/* ---- Advanced options ---- */
+.retro-app .gallery-page.advanced-options { max-width: none; margin: 0; }
+.retro-app .advanced-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
+.retro-app .advanced-option-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.retro-app .advanced-option-tabs button { min-height: 44px; padding: 8px 16px; border: var(--retro-border); border-radius: 8px; background: var(--white); color: var(--ink); font-size: var(--fs-sm); font-weight: 750; box-shadow: 2px 2px 0 var(--ink); }
+.retro-app .advanced-option-tabs button[aria-pressed='true'] { background: var(--sun); }
+.retro-app .advanced-style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; margin: 0; padding: 0; }
+.retro-app .advanced-style-card { display: grid; gap: 8px; align-content: start; min-height: 0; padding: 12px; text-align: left; }
+.retro-app .advanced-style-card strong { font-size: var(--fs-lg); }
+.retro-app .advanced-style-card small { font-size: var(--fs-sm); line-height: 1.45; }
+.retro-app .advanced-ornaments { margin: 0; padding: 0; }
+.retro-app .advanced-ornaments h2 { margin: 0 0 6px; font-size: var(--fs-xl); }
+.retro-app .advanced-ornaments p { margin: 0 0 14px; font-size: var(--fs-sm); color: var(--muted); }
+.retro-app .advanced-ornaments>div { display: flex; flex-wrap: wrap; gap: 10px; }
+.retro-app .advanced-ornaments button { padding: 8px 16px; font-size: var(--fs-sm); }
+.retro-app .advanced-options .selection-dock {
+  position: sticky; top: var(--nx-sticky); bottom: auto; display: grid; gap: 14px; width: auto; margin: 0; padding: 20px; inset-inline: auto; transform: none;
+}
+.retro-app .advanced-options .selection-dock>span { display: grid; gap: 2px; max-width: none; }
+.retro-app .advanced-options .selection-dock strong { overflow: visible; white-space: normal; font-size: var(--fs-lg); }
+.retro-app .advanced-options .selection-dock small { font-size: var(--fs-xs); }
+.retro-app .advanced-options .selection-dock .customer-solid-button { width: 100%; min-height: 52px; }
+
+/* ---- Processing ---- */
+.retro-app .processing-stage { grid-template-columns: minmax(260px, 400px) minmax(0, 1fr); gap: clamp(28px, 6vw, 88px); align-items: center; max-width: none; min-height: 0; margin: 12px 0 0; }
+.retro-app .processing-portal { width: 100%; margin: 0; }
+.retro-app .processing-copy>p:not(.customer-kicker) { max-width: 52ch; font-size: var(--fs-md); }
+.retro-app .processing-steps { display: grid; gap: 10px; margin: 22px 0 0; padding: 0; list-style: none; }
+.retro-app .processing-steps li { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: var(--fs-sm); }
+.retro-app .processing-steps li::before { content: ''; flex: 0 0 auto; width: 16px; height: 16px; border: var(--retro-border); border-radius: 50%; background: var(--white); }
+.retro-app .processing-steps li.is-done::before { background: var(--mint); }
+.retro-app .processing-steps li.is-active { color: var(--ink); font-weight: 750; }
+.retro-app .processing-steps li.is-active::before { background: var(--sun); }
+.retro-app .processing-copy>small { margin-top: 16px; font-size: var(--fs-sm); }
+
+/* ---- Result ---- */
+.retro-app .result-stage { max-width: none; margin: 0; }
+.retro-app .result-stage>header { align-items: flex-end; margin-bottom: 20px; }
+.retro-app .result-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
+.retro-app .result-frame { width: 100%; max-width: none; height: min(78svh, 800px); min-height: 360px; max-height: none; aspect-ratio: auto; margin: 0; background: var(--neutral); }
+.retro-app .result-frame>img, .retro-app .compare-before img { background: transparent; }
+.retro-app .result-side { position: sticky; top: var(--nx-sticky); display: grid; gap: 14px; }
+.retro-app .result-download { width: 100%; min-height: 56px; font-size: var(--fs-md); }
+.retro-app .result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.retro-app .result-actions>a { grid-column: 1 / -1; }
+.retro-app .result-share-message { color: var(--muted); font-size: var(--fs-sm); }
+.retro-app .result-phone-panel { display: grid; justify-items: center; gap: 12px; padding: 20px; text-align: center; }
+.retro-app .result-phone-panel svg { width: min(220px, 100%); height: auto; }
+.retro-app .result-phone-panel p, .retro-app .result-phone-panel small { margin: 4px 0 0; font-size: var(--fs-sm); }
+
+/* ---- Classic capture: frame preview beside the camera ---- */
+.retro-app .classic-capture { display: grid; grid-template-columns: minmax(180px, .3fr) minmax(0, 1fr); gap: 16px 28px; align-items: start; max-width: none; margin: 0; height: auto; grid-template-rows: none; }
+.retro-app .classic-capture>.capture-navigation, .retro-app .classic-capture>.stage-heading { grid-column: 1 / -1; grid-row: auto; margin: 0; }
+.retro-app .classic-capture>.classic-selected-frame { grid-column: 1; grid-row: 3 / span 4; position: sticky; top: var(--nx-sticky); width: 100%; margin: 0; height: auto; display: grid; gap: 8px; padding: 12px; }
+.retro-app .classic-capture .classic-selected-frame img { width: 100%; height: auto; max-height: 68svh; object-fit: contain; }
+.retro-app .classic-selected-frame figcaption { font-size: var(--fs-sm); }
+.retro-app .classic-capture .camera-stage { grid-column: 2; grid-row: auto; width: 100%; height: auto; min-height: 0; max-height: calc(100svh - 300px); aspect-ratio: 4/3; margin: 0; }
+.retro-app .classic-capture>.camera-actions, .retro-app .classic-capture>.classic-shot-review, .retro-app .classic-capture>.camera-message, .retro-app .classic-event-stage>.classic-event-details { grid-column: 2; grid-row: auto; margin: 0; justify-content: flex-start; }
+.retro-app .classic-capture .stage-heading p, .retro-app .classic-capture-heading p { font-size: var(--fs-sm); margin: 4px 0 0; }
+.retro-app .classic-capture-status { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.retro-app .classic-capture .classic-capture-heading h1 { font-size: clamp(24px, 2.2vw, 32px); }
+
+/* ---- Picker dialog ---- */
+.studio-popup.is-wide { width: min(1240px, 100%); height: min(860px, calc(100dvh - 48px)); max-height: calc(100dvh - 48px); }
+.studio-popup.is-wide .studio-popup-body:has(.studio-picker-grid) { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.studio-popup.is-wide .studio-picker-count { margin: 0; }
+.studio-popup.is-wide .studio-picker-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); grid-template-rows: none; grid-auto-rows: auto; align-content: start; gap: 16px; flex: 1; overflow: visible; }
+.studio-popup.is-wide .studio-picker-card { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.studio-popup.is-wide .studio-picker-image { aspect-ratio: 4/5; height: auto; min-height: 0; }
+.studio-popup.is-wide .studio-picker-card strong { font-size: var(--fs-md); line-height: 1.3; -webkit-line-clamp: 2; }
+.studio-popup.is-wide .studio-picker-card small { font-size: var(--fs-sm); -webkit-line-clamp: 2; }
+.studio-picker-pages { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: auto; padding-top: 12px; }
+.studio-picker-pages button { min-height: 44px; padding: 8px 16px; border: 2px solid #263449; border-radius: 8px; background: #fffdf7; color: #18283e; font: inherit; font-weight: 700; cursor: pointer; }
+.studio-picker-pages button:disabled { opacity: .5; cursor: default; }
+
+/* ---- Account center ---- */
+.retro-app .account-center-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
+.retro-app .account-center-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: start; }
+.retro-app .account-center-side { position: sticky; top: var(--nx-sticky); display: grid; gap: 16px; }
+.retro-app .account-center-profile { display: flex; align-items: center; gap: 12px; padding: 16px; border: var(--retro-border); border-radius: 12px; background: var(--nx-card); box-shadow: var(--nx-card-shadow); }
+.retro-app .account-center-profile>span { display: grid; gap: 2px; min-width: 0; }
+.retro-app .account-center-profile strong, .retro-app .account-center-profile small { overflow: hidden; text-overflow: ellipsis; }
+.retro-app .account-center-profile .account-plan-badge { justify-self: start; margin-top: 6px; padding: 2px 10px; border: var(--retro-border); border-radius: 99px; background: var(--sun); color: var(--ink); font-size: var(--fs-xs); font-style: normal; font-weight: 800; }
+.retro-app .account-section-nav { display: grid; gap: 6px; padding: 8px; border: var(--retro-border); border-radius: 12px; background: var(--nx-card); box-shadow: var(--nx-card-shadow); }
+.retro-app .account-section-nav button { width: 100%; padding: 10px 14px; border: 2px solid transparent; border-radius: 8px; text-align: left; font-size: var(--fs-sm); font-weight: 700; }
+.retro-app .account-center-content { display: grid; gap: 20px; min-width: 0; align-content: start; }
+.retro-app .account-center-content>* { margin: 0; }
+.retro-app .account-page-heading { margin: 0; }
+.retro-app .account-page-heading h1 { margin: 6px 0 8px; max-width: none; font-size: clamp(28px, 2.6vw, 40px); line-height: 1.12; }
+.retro-app .account-page-heading>p:not(.customer-kicker) { max-width: 62ch; font-size: var(--fs-md); }
+.retro-app .account-panel { padding: 22px; }
+.retro-app .account-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.retro-app .account-panel-heading h2, .retro-app .account-panel h2 { margin: 2px 0 0; font-size: var(--fs-xl); }
+.retro-app .account-overview-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 20px; align-items: start; }
+.retro-app .account-overview-side { display: grid; gap: 14px; }
+.retro-app .account-overview-side .account-credit-summary { grid-template-columns: minmax(0, 1fr); }
+.retro-app .account-profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+.retro-app .account-profile-fields label { display: grid; gap: 6px; min-width: 0; font-size: var(--fs-sm); font-weight: 700; }
+.retro-app .account-profile-fields :is(input, select) { box-sizing: border-box; width: 100%; height: 48px; padding: 0 12px; border: var(--retro-border); border-radius: 8px; background: var(--white); color: var(--ink); font: inherit; font-size: var(--fs-sm); }
+.retro-app .account-profile-fields input[readonly] { background: var(--paper); color: var(--muted); }
+.retro-app .account-profile-fields small { color: var(--muted); font-size: var(--fs-xs); font-weight: 400; }
+.retro-app .language-select { display: grid; gap: 6px; min-width: 0; font-size: var(--fs-sm); font-weight: 700; }
+.retro-app .language-select select { box-sizing: border-box; width: 100%; height: 48px; padding: 0 12px; border: var(--retro-border); border-radius: 8px; background: var(--white); color: var(--ink); font: inherit; font-size: var(--fs-sm); }
+.retro-app .language-select small { color: var(--muted); font-size: var(--fs-xs); font-weight: 400; }
+.retro-app .account-settings-panel .account-preference { align-items: center; }
+.retro-app .account-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; }
+.retro-app .account-creation-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+.retro-app .account-creation-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.retro-app .account-creation-actions .account-outline-button { min-height: 40px; padding: 6px 12px; font-size: var(--fs-sm); text-decoration: none; }
+.retro-app .account-privacy-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.retro-app .account-info-panel { display: block; }
+.retro-app .account-credit-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; overflow: hidden; }
+.retro-app .account-credit-stat { display: grid; align-content: start; gap: 4px; padding: 18px; border-right: 1px solid rgba(38, 32, 26, .18); }
+.retro-app .account-credit-stat:last-child { border-right: 0; }
+.retro-app .account-overview-side .account-credit-stat { border-right: 0; border-bottom: 1px solid rgba(38, 32, 26, .18); }
+.retro-app .account-overview-side .account-credit-stat:last-child { border-bottom: 0; }
+.retro-app .account-credit-stat small { color: var(--muted); font: 700 var(--fs-xs) var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+.retro-app .account-credit-stat strong { font: 800 var(--fs-2xl) var(--font-display); line-height: 1.1; }
+.retro-app .account-credit-stat span { color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
+
+/* ---- Plans & checkout ---- */
+.retro-app .subscription-section { container-type: inline-size; margin: 0; padding: 22px; }
+.retro-app .subscription-section>h2 { margin: 0 0 6px; }
+.retro-app .subscription-section>p { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.retro-app .subscription-plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; margin-top: 18px; }
+.retro-app .subscription-plan-card { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 18px; }
+.retro-app .subscription-plan-card.is-current { outline: 3px solid var(--accent); outline-offset: 3px; background: #fff0be; }
+.retro-app .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.retro-app .plan-head h3 { margin: 0; font-size: var(--fs-xl); }
+.retro-app .account-current-badge { padding: 2px 10px; border: var(--retro-border); border-radius: 99px; background: var(--sun); font-size: var(--fs-xs); font-weight: 800; white-space: nowrap; }
+.retro-app .plan-price { display: flex; align-items: baseline; gap: 4px; margin: 0; }
+.retro-app .plan-price strong { font: 800 28px/1.1 var(--font-display); }
+.retro-app .plan-price span { color: var(--muted); font-size: var(--fs-sm); }
+.retro-app .plan-features { display: grid; gap: 12px; margin: 0; padding: 14px 0 0; border-top: 2px dashed rgba(38, 32, 26, .3); list-style: none; }
+.retro-app .plan-features li { display: grid; gap: 2px; }
+.retro-app .plan-features b { font-size: var(--fs-md); }
+.retro-app .plan-features span { color: var(--muted); font-size: var(--fs-sm); line-height: 1.45; }
+.retro-app .subscription-plan-card>small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+.retro-app .subscription-plan-card>button { width: 100%; margin-top: auto; }
+@container (min-width: 760px) and (max-width: 1059px) {
+  .retro-app .subscription-plan-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .retro-app .subscription-plan-grid>.subscription-plan-card { grid-column: span 2; }
+  .retro-app .subscription-plan-grid>.subscription-plan-card:nth-child(4) { grid-column: 2 / span 2; }
+  .retro-app .subscription-plan-grid>.subscription-plan-card:nth-child(5) { grid-column: 4 / span 2; }
+}
+@container (min-width: 1060px) {
+  .retro-app .subscription-plan-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+.retro-app .subscription-topup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 24px; align-items: start; }
+.retro-app .topup-form { display: grid; gap: 14px; align-content: start; }
+.retro-app .topup-form h2, .retro-app .topup-summary h3 { margin: 0; }
+.retro-app .topup-form>p { margin: 0; }
+.retro-app .topup-presets { display: flex; flex-wrap: wrap; gap: 10px; }
+.retro-app .topup-presets button { min-height: 44px; padding: 8px 16px; border: var(--retro-border); border-radius: 8px; background: var(--white); font-size: var(--fs-sm); font-weight: 750; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.retro-app .topup-presets button.is-selected { background: var(--sun); }
+.retro-app .subscription-topup label { display: grid; gap: 6px; max-width: none; margin: 0; font-size: var(--fs-sm); font-weight: 700; }
+.retro-app .subscription-topup input { box-sizing: border-box; width: 100%; max-width: 280px; height: 48px; padding: 0 12px; border: var(--retro-border); border-radius: 8px; font: inherit; }
+.retro-app .topup-summary { display: grid; gap: 14px; padding: 18px; border: var(--retro-border); border-radius: 10px; background: var(--paper); }
+.retro-app .topup-summary dl { display: grid; gap: 10px; margin: 0; }
+.retro-app .topup-summary dl>div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px dashed rgba(38, 32, 26, .3); }
+.retro-app .topup-summary dt { color: var(--muted); font-size: var(--fs-sm); }
+.retro-app .topup-summary dd { margin: 0; font-weight: 800; text-align: right; }
+.retro-app .topup-total { font: 800 var(--fs-xl) var(--font-display); color: var(--accent); }
+.retro-app .topup-summary .customer-solid-button { width: 100%; min-height: 52px; }
+.retro-app .topup-notes { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+.retro-app .topup-history-link { margin: 0; }
+
+/* ---- Payment history table ---- */
+.retro-app .payment-history { margin: 0; }
+.retro-app .payment-history .account-panel-heading p { margin: 4px 0 0; color: var(--muted); font-size: var(--fs-sm); }
+.retro-app .payment-table-wrap { overflow-x: auto; }
+.retro-app .payment-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.retro-app .payment-table th { padding: 10px 12px; border-bottom: 2px solid var(--ink); color: var(--muted); font: 700 var(--fs-xs) var(--font-display); letter-spacing: .06em; text-align: left; text-transform: uppercase; }
+.retro-app .payment-table td { padding: 12px; border-bottom: 1px solid rgba(38, 32, 26, .15); vertical-align: middle; overflow-wrap: anywhere; }
+.retro-app .payment-table td:last-child { text-align: right; }
+.retro-app .payment-table code { font-size: var(--fs-xs); }
+.retro-app .payment-status { display: inline-block; padding: 2px 10px; border: var(--retro-border); border-radius: 99px; background: var(--sun); font-size: var(--fs-xs); font-weight: 800; }
+.retro-app .payment-status.is-paid { background: var(--mint); }
+.retro-app .payment-status.is-failed { background: #ffd5cc; }
+.retro-app .payment-pages { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+
+/* ---- Tablet and below: single column, rail becomes a progress strip ---- */
+@media (max-width: 1100px) {
+  .customer-app.retro-app { --nx-rail: 220px; }
+  .retro-app .review-layout, .retro-app .photo-layout { grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); }
+  .retro-app .result-layout { grid-template-columns: minmax(0, 1fr) 320px; }
+  .retro-app .advanced-layout { grid-template-columns: minmax(0, 1fr) 280px; }
+  .retro-app .account-center-layout { grid-template-columns: 220px minmax(0, 1fr); gap: 24px; }
+  .retro-app .account-overview-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  .customer-app.retro-app .customer-nav:not(.landing-nav) { grid-template-columns: minmax(0, 1fr) auto; min-height: 0; padding-block: 10px; }
+  .customer-app.retro-app .customer-nav:not(.landing-nav) .customer-mode-nav { grid-row: 2; grid-column: 1 / -1; justify-self: stretch; }
+  .customer-app.retro-app .customer-nav:not(.landing-nav) .customer-mode-nav button { flex: 1; }
+  .customer-app.retro-app .studio-shell { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 16px; }
+  .retro-app .studio-rail { position: static; }
+  .retro-app .studio-rail-summary, .retro-app .studio-rail-credit { display: none; }
+  .retro-app .studio-rail .customer-progress { padding: 12px 14px; gap: 10px; }
+  .retro-app .studio-rail .customer-progress ol { display: flex; justify-content: space-between; gap: 6px; }
+  .retro-app .studio-rail .customer-progress li { font-size: var(--fs-xs); }
+  .retro-app .studio-rail .customer-progress>i { display: block; }
+  .retro-app .photo-layout, .retro-app .review-layout, .retro-app .result-layout, .retro-app .advanced-layout, .retro-app .processing-stage, .retro-app .classic-capture, .retro-app .subscription-topup { grid-template-columns: minmax(0, 1fr); }
+  .retro-app :is(.photo-panel, .review-panel, .result-side, .advanced-options .selection-dock, .classic-capture>.classic-selected-frame, .account-center-side) { position: static; }
+  .retro-app .classic-capture>.classic-selected-frame { grid-column: 1 / -1; grid-row: auto; }
+  .retro-app .classic-capture>.classic-selected-frame img { max-height: 160px; }
+  .retro-app .classic-capture .camera-stage, .retro-app .classic-capture>.camera-actions, .retro-app .classic-capture>.classic-shot-review, .retro-app .classic-capture>.camera-message, .retro-app .classic-event-stage>.classic-event-details { grid-column: 1 / -1; }
+  .retro-app .photo-layout .camera-stage { max-height: none; aspect-ratio: 4/5; }
+  .retro-app .classic-capture .camera-stage { max-height: none; }
+  .retro-app .review-composition img { max-height: none; }
+  .retro-app .result-frame { height: auto; min-height: 280px; aspect-ratio: 4/5; max-height: 70svh; }
+  .retro-app .account-center-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .retro-app .account-section-nav { display: flex; overflow-x: auto; gap: 4px; }
+  .retro-app .account-section-nav button { width: auto; flex: 0 0 auto; white-space: nowrap; }
+  .retro-app .account-credit-summary { grid-template-columns: minmax(0, 1fr); }
+  .retro-app .account-credit-stat { border-right: 0; border-bottom: 1px solid rgba(38, 32, 26, .18); }
+  .retro-app .account-credit-stat:last-child { border-bottom: 0; }
+  .retro-app .account-profile-fields { grid-template-columns: minmax(0, 1fr); }
+  .retro-app .processing-portal { max-width: 360px; }
+  .studio-popup.is-wide { height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); }
+  .studio-popup.is-wide .studio-picker-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+@media (max-width: 640px) {
+  .customer-app.retro-app .customer-nav:not(.landing-nav) .customer-credit { display: none; }
+  .retro-app .review-composition { grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); }
+  .retro-app .review-bridge { width: 28px; height: 28px; font-size: var(--fs-xs); }
+  .retro-app .review-panel .advanced-review-summary { grid-template-columns: minmax(0, 1fr); }
+  .retro-app .advanced-style-grid { grid-template-columns: minmax(0, 1fr); }
+  .retro-app .account-panel, .retro-app .subscription-section { padding: 16px; }
+  .retro-app .payment-table thead { display: none; }
+  .retro-app .payment-table tr { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid rgba(38, 32, 26, .15); }
+  .retro-app .payment-table td { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; border: 0; }
+  .retro-app .payment-table td[data-label]::before { content: attr(data-label); color: var(--muted); font-weight: 700; }
+  .retro-app .payment-table td:last-child { justify-content: flex-end; }
+}

@@ -57,6 +57,8 @@ test('generation payloads follow Classic, Basic, and Advanced contracts', async 
 
 test('customer screens render all three choices and their required steps', async () => {
   const vite = await createServer({ configFile: false, plugins: [react()], server: { middlewareMode: true }, appType: 'custom', logLevel: 'silent' })
+  const i18n = await vite.ssrLoadModule('/src/i18n.js')
+  i18n.setLanguage('en') // these assertions cover the English copy; Indonesian is the default and is asserted below
   try {
     const ModeSelector = (await vite.ssrLoadModule('/src/components/home/ModeSelector.jsx')).default
     const ExperienceBrowser = (await vite.ssrLoadModule('/src/components/customer/ExperienceBrowser.jsx')).default
@@ -78,5 +80,10 @@ test('customer screens render all three choices and their required steps', async
     }
     const review = renderToStaticMarkup(React.createElement(ReviewStage, { mode: 'ADVANCED', upload: { upload_id: 'a' }, selection: { name: 'Mini Me' }, frameStyle: { name: 'Modern' }, ornaments: [{ name: 'Sparkles' }], onCreate: () => {} }))
     assert.match(review, /Experience/); assert.match(review, /Frame style/); assert.match(review, /Ornaments/); assert.match(review, /Photo/)
-  } finally { await vite.close() }
+
+    i18n.setLanguage('id')
+    const indonesianReview = renderToStaticMarkup(React.createElement(ReviewStage, { mode: 'ADVANCED', upload: { upload_id: 'a' }, selection: { name: 'Mini Me' }, frameStyle: { name: 'Modern' }, ornaments: [{ name: 'Sparkles' }], onCreate: () => {} }))
+    assert.match(indonesianReview, /Pengalaman/); assert.match(indonesianReview, /Gaya bingkai/); assert.match(indonesianReview, /Ornamen/); assert.match(indonesianReview, /Buat dengan AI/)
+    assert.doesNotMatch(indonesianReview, /Frame style|Generate AI/)
+  } finally { i18n.setLanguage('id'); await vite.close() }
 })

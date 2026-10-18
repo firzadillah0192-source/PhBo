@@ -1,12 +1,14 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { login, logout, signInWithGoogle, signup } from '../../api.js'
 import GoogleSignInButton from './GoogleSignInButton.jsx'
+import { LanguageToggle } from './LanguageSwitch.jsx'
+import { useT } from '../../i18n.js'
 
 const ACCOUNT_MENU = [
-  ['overview', 'Profile'],
-  ['plan', 'Tambah Bekal'],
-  ['creations', 'My Creations'],
-  ['personalization', 'Settings'],
+  ['overview', 'Profil', 'Profile'],
+  ['plan', 'Paket & Kredit', 'Plans & Credits'],
+  ['creations', 'Kreasi Saya', 'My Creations'],
+  ['personalization', 'Pengaturan', 'Settings'],
 ]
 
 function initials(account) {
@@ -21,6 +23,7 @@ function AccountAvatar({ account }) {
 }
 
 export default function CustomerNav({ usage, account, mode, onHome, onMode, onUsageChanged, onAccountNavigate, openRequest, marketing = false }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [register, setRegister] = useState(true)
   const [email, setEmail] = useState('')
@@ -71,7 +74,7 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
       setOpen(false)
       await onUsageChanged()
     } catch {
-      setMessage(register ? 'We could not create that account.' : 'Those sign-in details did not work.')
+      setMessage(register ? t('Akun belum bisa dibuat.', 'We could not create that account.') : t('Email atau password tidak cocok.', 'Those sign-in details did not work.'))
     } finally {
       setBusy(false)
     }
@@ -85,12 +88,12 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
       await signInWithGoogle(credential)
     } catch (error) {
       const errors = {
-        GOOGLE_AUTH_UNAVAILABLE: 'Google sign-in is not configured yet.',
-        GOOGLE_TOKEN_INVALID: 'Google could not verify this sign-in. Please try again.',
-        ACCOUNT_SUSPENDED: 'This account is currently unavailable.',
-        AUTH_IDENTITY_ORPHANED: 'This Google account is not linked to an active NXBooth account.',
+        GOOGLE_AUTH_UNAVAILABLE: t('Masuk dengan Google belum dikonfigurasi.', 'Google sign-in is not configured yet.'),
+        GOOGLE_TOKEN_INVALID: t('Google tidak dapat memverifikasi login ini. Silakan coba lagi.', 'Google could not verify this sign-in. Please try again.'),
+        ACCOUNT_SUSPENDED: t('Akun ini sedang tidak tersedia.', 'This account is currently unavailable.'),
+        AUTH_IDENTITY_ORPHANED: t('Akun Google ini belum terhubung ke akun NXBooth yang aktif.', 'This Google account is not linked to an active NXBooth account.'),
       }
-      setMessage(errors[error?.errorCode] || 'Google sign-in failed. Please try again or use email and password.')
+      setMessage(errors[error?.errorCode] || t('Masuk dengan Google gagal. Coba lagi atau gunakan email dan password.', 'Google sign-in failed. Please try again or use email and password.'))
       setBusy(false)
       return
     }
@@ -118,22 +121,23 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
 
   return (
     <header className={`customer-nav ${marketing ? 'landing-nav' : ''}`}>
-      <button type="button" className="customer-logo" onClick={onHome} aria-label="NXBooth" title="Back to home"><svg className="studio-logo-icon" aria-hidden="true" width="30" height="30" viewBox="0 0 30 30" fill="none"><rect x="3" y="7" width="24" height="19" rx="5" stroke="currentColor" strokeWidth="2" /><path d="M9 7l2-3h8l2 3" stroke="currentColor" strokeWidth="2" /><circle cx="15" cy="16" r="5" stroke="currentColor" strokeWidth="2" /><circle cx="23" cy="11" r="1" fill="currentColor" /></svg>NXBooth</button>
-      {marketing ? <nav className="landing-nav-links" aria-label="Explore NXBooth">
-        <a href="#experiences">Experiences</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="#modes">Modes</a>
-      </nav> : <nav className="customer-mode-nav" aria-label="Studios">
+      <button type="button" className="customer-logo" onClick={onHome} aria-label="NXBooth" title={t('Kembali ke beranda', 'Back to home')}><svg className="studio-logo-icon" aria-hidden="true" width="30" height="30" viewBox="0 0 30 30" fill="none"><rect x="3" y="7" width="24" height="19" rx="5" stroke="currentColor" strokeWidth="2" /><path d="M9 7l2-3h8l2 3" stroke="currentColor" strokeWidth="2" /><circle cx="15" cy="16" r="5" stroke="currentColor" strokeWidth="2" /><circle cx="23" cy="11" r="1" fill="currentColor" /></svg>NXBooth</button>
+      {marketing ? <nav className="landing-nav-links" aria-label={t('Jelajahi NXBooth', 'Explore NXBooth')}>
+        <a href="#experiences">{t('Pengalaman', 'Experiences')}</a>
+        <a href="#how-it-works">{t('Cara Kerja', 'How It Works')}</a>
+        <a href="#modes">{t('Mode', 'Modes')}</a>
+      </nav> : <nav className="customer-mode-nav" aria-label={t('Studio', 'Studios')}>
         <button aria-pressed={mode === 'CLASSIC'} className={mode === 'CLASSIC' ? 'is-active' : ''} onClick={() => onMode('CLASSIC')}>Photo Booth</button>
         <button aria-pressed={mode === 'BASIC'} className={mode === 'BASIC' ? 'is-active' : ''} onClick={() => onMode('BASIC')}>Scene Remix</button>
         <button aria-pressed={mode === 'ADVANCED'} className={mode === 'ADVANCED' ? 'is-active' : ''} onClick={() => onMode('ADVANCED')}>Creative Studio</button>
       </nav>}
       <div className="customer-account" ref={accountRoot}>
-        {marketing && <a className="landing-nav-cta" href="/create">Try for Free <span aria-hidden="true">↗</span></a>}
-        {!marketing && usage && <span className="customer-credit">{usage.ai_remaining} {usage.ai_remaining === 1 ? 'credit' : 'credits'}</span>}
+        {marketing && <a className="landing-nav-cta" href="/create">{t('Coba Gratis', 'Try for Free')} <span aria-hidden="true">↗</span></a>}
+        <LanguageToggle />
+        {!marketing && usage && <span className="customer-credit">{usage.subscription ? `AI ${usage.ai_remaining} · Classic ${usage.subscription.classic.remaining}` : `${usage.ai_remaining} ${t('kredit', usage.ai_remaining === 1 ? 'credit' : 'credits')}`}</span>}
         <button ref={accountTrigger} type="button" className="customer-account-trigger" aria-controls={panelId} aria-expanded={open} onClick={() => { if (!usage?.authenticated) setRegister(false); setOpen((value) => !value) }}>
           {usage?.authenticated && <AccountAvatar account={account} />}
-          <span>{usage?.authenticated ? 'Account' : 'Sign In'}</span>
+          <span>{usage?.authenticated ? t('Akun', 'Account') : t('Masuk', 'Sign In')}</span>
           {usage?.authenticated && <b aria-hidden="true">⌄</b>}
         </button>
         {open && (
@@ -142,29 +146,29 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
               <>
                 <div className="customer-account-summary">
                   <AccountAvatar account={account} />
-                  <span><strong>{account?.display_name || 'Your account'}</strong><small>{account?.email}</small></span>
+                  <span><strong>{account?.display_name || t('Akun Anda', 'Your account')}</strong><small>{account?.email}</small></span>
                 </div>
-                <nav className="customer-account-menu" aria-label="Account">
-                  {ACCOUNT_MENU.map(([tab, label]) => <button key={tab} type="button" onClick={() => openAccount(tab)}>{label}<b aria-hidden="true">→</b></button>)}
+                <nav className="customer-account-menu" aria-label={t('Akun', 'Account')}>
+                  {ACCOUNT_MENU.map(([tab, id, en]) => <button key={tab} type="button" onClick={() => openAccount(tab)}>{t(id, en)}<b aria-hidden="true">→</b></button>)}
                 </nav>
-                <button type="button" className="customer-account-signout" disabled={busy} onClick={signOut}>Sign out</button>
+                <button type="button" className="customer-account-signout" disabled={busy} onClick={signOut}>{t('Keluar', 'Sign out')}</button>
               </>
             ) : (
               <form onSubmit={submit}>
-                <p className="customer-kicker">{register ? 'Join the studio' : 'Welcome back'}</p>
-                <h2>{register ? 'Create your account' : 'Sign in'}</h2>
-                {register && <small>50 kredit gratis, diperbarui setiap 14 hari.</small>}
+                <p className="customer-kicker">{register ? t('Bergabung ke studio', 'Join the studio') : t('Selamat datang kembali', 'Welcome back')}</p>
+                <h2>{register ? t('Buat akun Anda', 'Create your account') : t('Masuk', 'Sign in')}</h2>
+                {register && <small>{usage?.subscription ? t('500 Classic Credit per bulan, maksimal 2 hasil per hari pada paket Free.', '500 Classic Credit per month, up to 2 results per day on the Free plan.') : t('50 kredit gratis, diperbarui setiap 14 hari.', '50 free credits, refreshed every 14 days.')}</small>}
                 <label>Email<input type="email" autoComplete="email" value={email} required onChange={(event) => setEmail(event.target.value)} /></label>
                 <label>Password<input type="password" autoComplete={register ? 'new-password' : 'current-password'} minLength="8" value={password} required onChange={(event) => setPassword(event.target.value)} /></label>
                 {message && <p className="customer-form-error" role="alert">{message}</p>}
-                <button className="customer-solid-button" disabled={busy} type="submit">{busy ? 'One moment…' : register ? 'Create account' : 'Sign in'}</button>
-                <div className="customer-auth-divider" aria-hidden="true"><span>or</span></div>
+                <button className="customer-solid-button" disabled={busy} type="submit">{busy ? t('Sebentar…', 'One moment…') : register ? t('Buat akun', 'Create account') : t('Masuk', 'Sign in')}</button>
+                <div className="customer-auth-divider" aria-hidden="true"><span>{t('atau', 'or')}</span></div>
                 <GoogleSignInButton
                   text={register ? 'signup_with' : 'signin_with'}
                   disabled={busy}
                   onCredential={googleSignIn}
                 />
-                <button className="customer-inline-button" type="button" onClick={() => { setRegister((value) => !value); setMessage('') }}>{register ? 'Already have an account?' : 'Create an account'}</button>
+                <button className="customer-inline-button" type="button" onClick={() => { setRegister((value) => !value); setMessage('') }}>{register ? t('Sudah punya akun?', 'Already have an account?') : t('Buat akun baru', 'Create an account')}</button>
               </form>
             )}
           </div>
