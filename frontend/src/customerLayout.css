@@ -429,3 +429,42 @@
   .retro-app .account-settings-panel .account-preference>.language-select>small { order: 2; }
   .retro-app .account-settings-panel .account-preference>.language-select select { order: 3; }
 }
+
+/* ---- /developers (DeveloperDocs): same card/type system as the customer pages. CSS only; markup stays with its owner. ---- */
+.api-docs { box-sizing: border-box; min-height: 100vh; padding: 20px max(var(--nx-gutter, 16px), calc((100vw - 1040px) / 2)) 72px; color: var(--ink); }
+.api-docs nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 28px; }
+.api-docs nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border: var(--retro-border); border-radius: 8px; background: var(--white); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); font-size: var(--fs-sm); font-weight: 800; text-decoration: none; }
+.api-docs nav a:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.api-docs>header { margin-bottom: 8px; }
+.api-docs>header .customer-kicker { margin: 0 0 6px; }
+.api-docs>header h1 { margin: 0 0 10px; font-family: var(--font-display); font-size: clamp(2rem, 4.5vw, 3.2rem); font-weight: 800; line-height: 1.1; letter-spacing: -.025em; }
+.api-docs>header p { margin: 4px 0; color: var(--muted); font-size: var(--fs-md, 1rem); }
+.api-docs>header p[role="status"] { display: inline-block; margin-top: 10px; padding: 4px 12px; border: var(--retro-border); border-radius: 999px; background: #c5e6b4; color: var(--ink); font-size: var(--fs-xs); font-weight: 800; }
+.api-docs .account-panel { margin: 20px 0; padding: 24px; border: var(--retro-border); border-radius: 12px; background: var(--nx-card, var(--white)); box-shadow: var(--nx-card-shadow, 3px 3px 0 var(--ink)); color: var(--ink); }
+.api-docs .account-panel h2 { margin: 0 0 12px; font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 800; letter-spacing: -.01em; }
+.api-docs .account-panel p, .api-docs .account-panel li, .api-docs .account-panel small { font-size: var(--fs-sm); line-height: 1.6; }
+.api-docs .account-panel p, .api-docs .account-panel small { color: var(--muted); }
+.api-docs .account-panel ol { margin: 0 0 14px; padding-left: 22px; }
+.api-docs code { padding: 1px 6px; border-radius: 5px; background: rgba(38, 32, 26, .08); font-size: .92em; }
+.api-docs pre { margin: 14px 0; padding: 16px; border: var(--retro-border); border-radius: 10px; }
+.api-docs pre code { padding: 0; background: transparent; }
+.api-docs .account-panel a:not(.customer-solid-button) { color: var(--accent, #b1361e); font-weight: 800; text-underline-offset: 3px; }
+.api-docs .api-endpoints article { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px dashed rgba(38, 32, 26, .25); }
+.api-docs .api-endpoints article:first-child { padding-top: 0; }
+.api-docs .api-endpoints article code { justify-self: start; padding: 3px 10px; border: var(--retro-border); border-radius: 6px; background: var(--sun, #ffd84d); color: var(--ink); font-size: var(--fs-sm); font-weight: 700; overflow-wrap: anywhere; }
+.api-docs .api-endpoints article p { margin: 0; }
+.api-docs .api-key-form label { font-size: var(--fs-sm); }
+.api-docs .api-key-form input:not([type="checkbox"]), .api-docs .api-key-form select, .api-docs .api-key-form textarea { border: var(--retro-border); background: var(--white); }
+@media (max-width: 700px) {
+  .api-docs { padding-inline: 16px; }
+  .api-docs .account-panel { padding: 18px; }
+}
+/* The theme tokens live on .customer-app.retro-app; the docs page is a standalone <main>, so it declares the same ones. */
+main.api-docs.retro-app {
+  --paper: #fff4dd; --white: #fffdf7; --ink: #26201a; --graphite: #40382f; --muted: #665b4c; --accent: #ac3515;
+  --sun: #ffda50; --orange: #ff693b; --rose: #ffbdd0; --sky: #abddfa; --mint: #c4e5b4;
+  --font-display: 'Baloo 2', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --retro-border: 2px solid var(--ink); --nx-gutter: clamp(16px, 2.6vw, 40px);
+  --nx-card: var(--white); --nx-card-shadow: 3px 3px 0 var(--ink);
+  background: var(--paper); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: var(--fs-md); line-height: 1.6;
+}
