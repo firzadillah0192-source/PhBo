@@ -396,3 +396,15 @@
 .api-docs .api-key-form .account-outline-button { min-height: 48px; padding: 10px 18px; border: var(--retro-border, 2px solid #26201a); border-radius: 8px; background: var(--orange, #ff6b3d); color: var(--ink, #26201a); font: inherit; font-weight: 800; box-shadow: 3px 3px 0 var(--ink, #26201a); cursor: pointer; }
 .api-docs .api-key-form .account-outline-button:disabled { opacity: .5; cursor: not-allowed; }
 .api-docs .api-key-form .account-text-button { min-height: 44px; padding: 8px 14px; border: var(--retro-border, 2px solid #26201a); border-radius: 8px; background: var(--white, #fff); color: var(--ink, #26201a); font: inherit; font-weight: 700; cursor: pointer; justify-self: start; }
+
+/* "Paket Anda" badge: a tag on the card's top edge, so it never crowds the plan name or shifts the rows across the 5-across cards. */
+.retro-app .subscription-plan-card.is-current { position: relative; overflow: visible; }
+.retro-app .subscription-plan-card.is-current .account-current-badge { position: absolute; top: -14px; right: 14px; padding: 2px 10px; letter-spacing: .02em; box-shadow: 2px 2px 0 var(--ink); }
+
+/* Account profile card in the narrow (220px) rail: stack the avatar over the text and ellipsize long emails. */
+.retro-app .account-center-profile strong, .retro-app .account-center-profile small { white-space: nowrap; }
+.retro-app .account-center-profile .account-plan-badge { justify-self: start; max-width: 100%; box-sizing: border-box; }
+@media (min-width: 901px) and (max-width: 1100px) {
+  .retro-app .account-center-profile { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .retro-app .account-center-profile>span:last-child { width: 100%; }
+}
