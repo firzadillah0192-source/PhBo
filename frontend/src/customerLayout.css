@@ -350,3 +350,15 @@
   .retro-app .payment-table td[data-label]::before { content: attr(data-label); color: var(--muted); font-weight: 700; }
   .retro-app .payment-table td:last-child { justify-content: flex-end; }
 }
+
+/* Personalization rows: the stacked mobile layout must stretch (the desktop centering above would shrink and center them). */
+.retro-app .account-settings-panel .language-select { width: 100%; max-width: none; margin: 0; justify-self: stretch; }
+@media (max-width: 700px) {
+  .retro-app .account-settings-panel .account-preference { align-items: stretch; }
+}
+@media (min-width: 701px) {
+  .retro-app .account-settings-panel .language-select { grid-template-columns: minmax(0, 1fr) 220px; align-items: center; column-gap: 20px; padding: 16px 0; border-bottom: 1px solid rgba(17, 18, 22, .08); }
+  .retro-app .account-settings-panel .language-select small { grid-column: 1; grid-row: 2; margin-top: -4px; }
+  .retro-app .account-settings-panel .language-select span { grid-column: 1; grid-row: 1; }
+  .retro-app .account-settings-panel .language-select select { grid-column: 2; grid-row: 1 / span 2; min-height: 42px; height: 42px; }
+}
