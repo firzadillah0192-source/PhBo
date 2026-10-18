@@ -408,3 +408,9 @@
   .retro-app .account-center-profile { flex-direction: column; align-items: flex-start; gap: 10px; }
   .retro-app .account-center-profile>span:last-child { width: 100%; }
 }
+
+/* Empty creations state: a clear next step instead of bare text. */
+.retro-app .account-empty { gap: 10px; padding: 44px 18px; justify-items: center; }
+.retro-app .account-empty span { max-width: 46ch; font-size: var(--fs-sm); }
+.retro-app .account-empty .account-empty-cta { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 6px; padding: 10px 22px; text-decoration: none; }
+@media (max-width: 700px) { .retro-app .account-empty .account-empty-cta { width: 100%; box-sizing: border-box; } }
