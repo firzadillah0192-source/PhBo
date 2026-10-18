@@ -414,3 +414,18 @@
 .retro-app .account-empty span { max-width: 46ch; font-size: var(--fs-sm); }
 .retro-app .account-empty .account-empty-cta { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 6px; padding: 10px 22px; text-decoration: none; }
 @media (max-width: 700px) { .retro-app .account-empty .account-empty-cta { width: 100%; box-sizing: border-box; } }
+
+/* Language row inside the preferences list: same rhythm and type as the other preference rows
+   (the wrapper already supplies the row padding and separator). */
+.retro-app .account-settings-panel .account-preference>.language-select { padding: 0; border-bottom: 0; row-gap: 4px; }
+.retro-app .account-settings-panel .account-preference>.language-select>span { font-size: var(--fs-xs); font-weight: 600; }
+.retro-app .account-settings-panel .account-preference>.language-select>small { margin: 0; font-size: var(--fs-sm); font-weight: 400; }
+.retro-app .account-settings-panel .account-preference>.language-select select { font-weight: 400; padding: 0 11px; }
+@media (min-width: 701px) {
+  .retro-app .account-settings-panel .account-preference>.language-select { grid-template-columns: minmax(0, 1fr) 180px; flex: 1; }
+}
+@media (max-width: 700px) {
+  .retro-app .account-settings-panel .account-preference>.language-select>span { order: 1; }
+  .retro-app .account-settings-panel .account-preference>.language-select>small { order: 2; }
+  .retro-app .account-settings-panel .account-preference>.language-select select { order: 3; }
+}
