@@ -379,3 +379,20 @@
   .customer-app.retro-app .customer-nav .customer-logo { font-size: 0; gap: 0; flex: none; }
   .customer-app.retro-app .customer-nav .customer-account { gap: 6px; }
 }
+
+/* API & Integrasi: key status pill, danger action and the /developers explorer buttons.
+   CSS-only so DeveloperApi.jsx stays with its owner; [data-status] colors apply once the markup sets it. */
+.retro-app .developer-api .api-key-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; }
+.retro-app .developer-api .api-key-row>strong { grid-column: 1; }
+.retro-app .developer-api .api-key-row>code { grid-column: 1 / -1; font-size: var(--fs-sm); }
+.retro-app .developer-api .api-key-row>span { grid-column: 2; grid-row: 1; justify-self: end; padding: 4px 12px; border: var(--retro-border, 2px solid #26201a); border-radius: 999px; background: var(--white, #fff); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.retro-app .developer-api .api-key-row>span[data-status="active"] { background: #c5e6b4; }
+.retro-app .developer-api .api-key-row>span[data-status="expired"] { background: #ffd84d; }
+.retro-app .developer-api .api-key-row>span[data-status="revoked"] { background: #ffd5cf; }
+.retro-app .developer-api .api-key-row>small, .retro-app .developer-api .api-key-row>.api-actions { grid-column: 1 / -1; }
+.retro-app .developer-api .api-actions .account-danger-button { border-color: #922f3a; background: #fff1ec; color: #922f3a; box-shadow: 2px 2px 0 #922f3a; font-weight: 800; }
+.retro-app .developer-api .api-actions .account-outline-button, .retro-app .developer-api .api-actions .account-danger-button { min-height: 44px; }
+/* Explorer: the submit button is the primary action; the "Hapus ..." text buttons get a real tap target. */
+.api-docs .api-key-form .account-outline-button { min-height: 48px; padding: 10px 18px; border: var(--retro-border, 2px solid #26201a); border-radius: 8px; background: var(--orange, #ff6b3d); color: var(--ink, #26201a); font: inherit; font-weight: 800; box-shadow: 3px 3px 0 var(--ink, #26201a); cursor: pointer; }
+.api-docs .api-key-form .account-outline-button:disabled { opacity: .5; cursor: not-allowed; }
+.api-docs .api-key-form .account-text-button { min-height: 44px; padding: 8px 14px; border: var(--retro-border, 2px solid #26201a); border-radius: 8px; background: var(--white, #fff); color: var(--ink, #26201a); font: inherit; font-weight: 700; cursor: pointer; justify-self: start; }
