@@ -4,6 +4,8 @@ import { z } from 'zod';
 import type { CustomerAccountService } from '../services/customer-account.service.js';
 import { accountCookie, guestCookie, tokenHash } from '../services/customer-credentials.service.js';
 import { AppError } from '../lib/errors.js';
+import { randomUUID } from 'node:crypto';
+import { checkoutInput, paymentId } from '../services/payment.service.js';
 
 const credentials = z.object({ email: z.string().min(3).max(320), password: z.string().min(8).max(256) });
 const profile = z.object({ display_name: z.string().max(255).nullable().optional() });
@@ -24,11 +26,25 @@ export function customerAccountController(service: CustomerAccountService): Reco
     me: async (req, res) => { const identity=await resolve(req,res);res.json({...await service.me(identity),analytics_id:identity.account?'phbo-account:'+identity.account.id:null}); },
     center: async (req, res) => { res.json(await service.center(await resolve(req, res))); },
     checkout: async (req, res) => {
-      service.requireAccount(await resolve(req, res));
-      z.object({ credits: z.number().int().positive().max(Math.floor(Number.MAX_SAFE_INTEGER / 100)) }).strict().parse(req.body);
-      // Replace this unavailable boundary with a server-created gateway checkout.
-      // Selection alone must never create a payment or grant wallet credits.
+      const account = service.requireAccount(await resolve(req, res));
+      const input = checkoutInput.parse(req.body);
+      if (service.payments) { res.json(await (service.subscriptions ? service.payments.checkoutV2(account, input, req.get('Idempotency-Key') ?? randomUUID()) : service.payments.checkout(account, input.credits, req.get('Idempotency-Key') ?? randomUUID()))); return; }
       throw new AppError(503, 'PAYMENT_GATEWAY_UNAVAILABLE', 'Pembayaran saat ini belum tersedia. Hubungi support@gennexbyte.com.');
+    },
+    payments: async (req, res) => {
+      const account = service.requireAccount(await resolve(req, res));
+      if (!service.payments) throw new AppError(503, 'PAYMENT_GATEWAY_UNAVAILABLE', 'Pembayaran belum tersedia.');
+      res.json(await service.payments.list(req.query, account.id));
+    },
+    refreshPayment: async (req, res) => {
+      const account = service.requireAccount(await resolve(req, res));
+      if (!service.payments) throw new AppError(503, 'PAYMENT_GATEWAY_UNAVAILABLE', 'Pembayaran belum tersedia.');
+      res.json(await service.payments.refresh(paymentId.parse(req.params.id), account.id));
+    },
+    payment: async (req, res) => {
+      const account = service.requireAccount(await resolve(req, res));
+      if (!service.payments) throw new AppError(503, 'PAYMENT_GATEWAY_UNAVAILABLE', 'Pembayaran belum tersedia.');
+      res.json(await service.payments.detail(paymentId.parse(req.params.id), account.id));
     },
     google: async (req, res) => {
       const input = z.object({ id_token: z.string().min(20).max(16384) }).parse(req.body);

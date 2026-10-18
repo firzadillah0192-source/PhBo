@@ -4,6 +4,8 @@ import { AppError } from '../lib/errors.js';
 
 const id = z.string().min(1);
 export const generationInput = z.object({
+  folder_id: z.string().regex(/^[a-f0-9]{32}$/).nullable().optional(),
+  lane: z.enum(['standard', 'fast']).optional(),
   upload_id: id, mode: z.enum(['CLASSIC', 'BASIC', 'ADVANCED']),
   template_id: id.nullish(), experience_id: id.nullish(), layout_id: id.nullish(), frame_style_id: id.nullish(),
   capture_upload_ids: z.array(z.string()).default([]), ornament_ids: z.array(z.string()).default([]),
@@ -12,6 +14,7 @@ export const generationInput = z.object({
 }).strict().superRefine((value, context) => {
   const invalid = (message: string) => context.addIssue({ code: 'custom', message });
   if (value.mode === 'CLASSIC') {
+    if (value.lane && value.lane !== 'standard') invalid('Classic does not use an AI lane');
     if (!value.layout_id || !value.capture_upload_ids.length || value.upload_id !== value.capture_upload_ids[0]) invalid('Classic layout and ordered captures are required');
     if (value.template_id || value.experience_id || value.frame_style_id || value.ornament_ids.length) invalid('AI selections are not accepted for Classic');
   }

@@ -1,0 +1,15 @@
+.developer-api {color:var(--ink,#211d19);overflow-wrap:anywhere;min-width:0}
+.developer-api h1 {font-size:clamp(1.7rem,4vw,3rem);line-height:1.15}
+.developer-api a {color:inherit;text-decoration:underline;text-underline-offset:3px}
+.developer-api .account-panel {margin-block:20px;padding:24px;background:var(--paper,#fff9ed);color:var(--ink,#211d19)}
+.developer-api label {display:grid;gap:8px;font-weight:650}
+.developer-api input,.developer-api select,.developer-api textarea {font:inherit;min-width:0;width:100%;padding:12px;border:2px solid currentColor;border-radius:8px;background:var(--white,#fff);color:var(--ink,#211d19);box-sizing:border-box}
+.developer-api input:focus-visible,.developer-api select:focus-visible,.developer-api textarea:focus-visible,.developer-api button:focus-visible,.developer-api a:focus-visible {outline:3px solid #be6414;outline-offset:3px}
+.developer-api textarea {min-height:110px;resize:vertical;word-break:break-all}
+.api-key-form {display:grid;gap:16px}.developer-api .api-checkbox {display:flex;align-items:center}.developer-api input[type=checkbox] {width:20px;height:20px;flex-shrink:0}
+.api-key-row {display:grid;gap:10px;border-top:1px solid currentColor;padding-block:20px}.api-actions {display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+.developer-api pre {max-width:100%;white-space:pre-wrap;word-break:break-word;background:#211d19;color:#fff9ed;border-radius:8px;padding:16px;font-size:.85rem}
+.api-docs {min-height:100vh;padding:24px max(16px,calc((100vw - 960px)/2));background:var(--paper,#fff9ed)}
+.api-docs nav {display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap;margin-bottom:40px}.api-endpoints article {padding-block:15px;border-bottom:1px solid currentColor}
+@media(max-width:480px){.developer-api .account-panel {padding:16px}.api-actions button {flex:1}.api-docs {padding-inline:16px}}
+.api-input-preview {display:block;max-width:220px;width:100%;max-height:220px;object-fit:contain;border-radius:8px}

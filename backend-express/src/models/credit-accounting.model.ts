@@ -2,11 +2,12 @@ import type { PrismaClient, Prisma } from '@prisma/client';
 import { legacyId } from '../services/customer-credentials.service.js';
 import { CreditWalletModel } from './credit-wallet.model.js';
 import { priceCompletedGeneration, readGenerationCharge } from '../services/generation-credit-charge.service.js';
+import type { SubscriptionWalletModel } from './subscription-wallet.model.js';
 import { AppError } from '../lib/errors.js';
 
 export type CreditOwner = { account_id: string | null; guest_id: string | null };
 export class CreditAccountingModel {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: PrismaClient, private readonly subscriptions?: SubscriptionWalletModel) {}
 
   // Preserve the existing kiosk generation allowance independently of customer wallets.
   async reserveKioskIn(tx: Prisma.TransactionClient, job_id: string, owner: CreditOwner) {
@@ -59,6 +60,10 @@ export class CreditAccountingModel {
   }
 
   async settleIn(tx: Prisma.TransactionClient, job_id: string, successful: boolean) {
+      if (this.subscriptions) {
+        const settled = await this.subscriptions.settleIn(tx, job_id, successful);
+        if (settled !== null) return settled;
+      }
       // Lock the persisted reservation so multiple workers/refund requests cannot
       // consume or refund the same credit twice.
       const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM quota_reservations WHERE job_id = ${job_id} FOR UPDATE`;

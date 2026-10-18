@@ -7,7 +7,9 @@ import type { AdminOperationsService } from '../services/admin-operations.servic
 import type { AdminUsageService } from '../services/admin-usage.service.js';
 import type { AdminPreviewService } from '../services/admin-preview.service.js';
 import type { LabService } from '../lab/service.js';
-export type NativeAdminServices = { auth:AdminAuthService; catalog:AdminCatalogService; operations:AdminOperationsService; usage:AdminUsageService; previews:AdminPreviewService; lab?:LabService };
+import type { GenerationApiRoutesService } from '../services/generation-api-routes.service.js';
+import type { PaymentService } from '../services/payment.service.js';
+export type NativeAdminServices = { auth:AdminAuthService; catalog:AdminCatalogService; operations:AdminOperationsService; usage:AdminUsageService; previews:AdminPreviewService; lab?:LabService; payments?:PaymentService; apiRoutes?:GenerationApiRoutesService };
 const id=(req:Request,key='id')=>z.string().min(1).max(128).parse(req.params[key]);
 export function adminController(services:NativeAdminServices){
   const {auth,catalog,operations,usage,previews}=services;

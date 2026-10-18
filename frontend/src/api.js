@@ -68,7 +68,7 @@ export function getOrnaments() { return request('/advanced/ornaments') }
 export function getUsage() { return request('/account/usage') }
 export function getAccountMe() { return request('/account/me') }
 export function getAccountCenter() { return request('/account/center') }
-export function createTopUpCheckout(credits) { return request('/account/topups/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credits }) }) }
+export function createTopUpCheckout(credits, requestKey = globalThis.crypto.randomUUID()) { return request('/account/topups/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestKey }, body: JSON.stringify({ credits }) }) }
 export function updateAccountProfile(body) { return request('/account/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) }
 export function revokeAccountSession(id) { return request('/account/sessions/' + encodeURIComponent(id) + '/revoke', { method: 'POST' }) }
 export function revokeAllAccountSessions() { return request('/account/sessions/revoke-all', { method: 'POST' }) }
@@ -101,6 +101,8 @@ export async function createGeneration(uploadId, mode, templateId = null, experi
     if (options.eventName) body.event_name = options.eventName
     if (options.capturedAt) body.captured_at = options.capturedAt
   }
+  if (Object.hasOwn(options,'folderId')) body.folder_id = options.folderId
+  if (mode !== 'CLASSIC' && options.lane) body.lane = options.lane
   if (mode === 'BASIC') body.template_id = templateId
   if (mode === 'ADVANCED') {
     body.experience_id = experienceId
@@ -283,3 +285,85 @@ export function labUpload(path, payload, files) {
 }
 export const labImageUrl = (runId, slot, download = false) => `${BASE}${lab}/runs/${encodeURIComponent(runId)}/image/${encodeURIComponent(slot)}${download ? '?download=1' : ''}`
 export const labExportUrl = (query = '') => `${BASE}${lab}/export.csv${query}`
+export const labReportUrl = (query = '') => `${BASE}${lab}/report.csv${query}`
+
+// Payment reads deliberately bypass the Admin read cache so provider callbacks appear immediately.
+export function getTopUpPayments(query = {}) { return request('/account/topups?' + new URLSearchParams(query)) }
+export function refreshTopUpPayment(id) { return request('/account/topups/' + encodeURIComponent(id) + '/refresh', { method: 'POST' }) }
+export function getAdminPaymentConfig() { return fetchRequest('/admin/payments/config') }
+export function getAdminPayments(query = {}) { const params = Object.fromEntries(Object.entries(query).filter(([, value]) => value !== '')); return fetchRequest('/admin/payments?' + new URLSearchParams(params)) }
+export function getAdminPayment(id) { return fetchRequest('/admin/payments/' + encodeURIComponent(id)) }
+export function refreshAdminPayment(id) { return request('/admin/payments/' + encodeURIComponent(id) + '/refresh', { method: 'POST' }) }
+
+export function createSubscriptionCheckout(planCode, requestKey) { return request('/account/subscriptions/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestKey }, body: JSON.stringify({ plan_code: planCode }) }) }
+export function getGenerationApiRoutes() { return request('/admin/generation-api-routes') }
+export function saveGenerationApiRoute(lane, body) { return request('/admin/generation-api-routes/' + encodeURIComponent(lane), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) }
+
+// Folder metadata; generated photo bytes remain in existing private MinIO storage.
+export function getPhotoFolders(){return request('/account/photo-folders')}
+export function createPhotoFolder(name){return request('/account/photo-folders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})})}
+export function renamePhotoFolder(id,name){return request('/account/photo-folders/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})})}
+export function deletePhotoFolder(id){return request('/account/photo-folders/'+encodeURIComponent(id),{method:'DELETE'})}
+export function setDefaultPhotoFolder(folder_id){return request('/account/photo-folders/default',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder_id})})}
+export function getFolderPhotos(filter='all',cursor=null){const q=new URLSearchParams();if(filter!=='all')q.set('folder_id',filter);if(cursor)q.set('cursor',cursor);return request('/account/photos?'+q)}
+export function movePhotoToFolder(id,folder_id){return request('/account/photos/'+encodeURIComponent(id)+'/folder',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({folder_id})})}
+export function getFolderShares(id){return request('/account/photo-folders/'+encodeURIComponent(id)+'/shares')}
+export function createFolderShare(id,expires_at){return request('/account/photo-folders/'+encodeURIComponent(id)+'/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expires_at})})}
+export function revokeFolderShare(id){return request('/account/photo-folder-shares/'+encodeURIComponent(id),{method:'DELETE'})}
+export function getSharedFolder(token,cursor=null){return request('/public/photo-folders/'+encodeURIComponent(token)+(cursor?'?cursor='+encodeURIComponent(cursor):''))}
+
+// Management uses the signed-in web session. Secrets must never enter analytics.
+export function getIntegrationCapabilities() { return request('/public/v1/capabilities') }
+export function listIntegrationKeys() { return request('/account/api-keys') }
+export function createIntegrationKey(body) { return request('/account/api-keys', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}) }
+export function rotateIntegrationKey(id) { return request(`/account/api-keys/${encodeURIComponent(id)}/rotate`, {method:'POST'}) }
+export function revokeIntegrationKey(id) { return request(`/account/api-keys/${encodeURIComponent(id)}/revoke`, {method:'POST'}) }
+
+// Fixed same-origin GET destinations only. No cookies, telemetry, persistence or redirects.
+export async function exploreStorageApi({token,endpoint,folderId='',cursor='',resultId='',signal}) {
+  const routes={folders:'/storage/folders',photos:'/storage/photos',usage:'/usage'}
+  if(!/^nxb_live_[a-f0-9]{16}_[A-Za-z0-9_-]{43}$/.test(token)) throw new Error('Secret Key tidak valid.')
+  let path=routes[endpoint]
+  if(endpoint==='download') {
+    if(!/^[a-f0-9]{32}$/.test(resultId)) throw new Error('Result ID harus 32 karakter heksadesimal.')
+    path=`/storage/photos/${resultId}/download`
+  }
+  if(!path) throw new Error('Endpoint tidak didukung.')
+  const query=new URLSearchParams()
+  if(endpoint==='photos') {query.set('limit','20');if(folderId)query.set('folder_id',folderId);if(cursor)query.set('cursor',cursor)}
+  const response=await fetch(`${BASE}/public/v1${path}${query.size?'?'+query:''}`,{method:'GET',credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',headers:{Authorization:`Bearer ${token}`},signal})
+  if(!response.ok) {
+    const code=response.status===401?'Key salah, kedaluwarsa, atau dicabut.':response.status===403?'Key tidak memiliki izin atau akun tidak tersedia.':response.status===429?'Terlalu banyak request. Coba lagi setelah jeda.':`Request gagal (${response.status}).`
+    throw new Error(code)
+  }
+  if(endpoint==='download') return {status:response.status,blob:await response.blob()}
+  return {status:response.status,data:await response.json()}
+}
+
+// Explicit Generation Explorer actions; secret stays in the Authorization header.
+export async function exploreGenerationApi({token,action,file,body,id,requestKey,signal}) {
+  if(!/^nxb_live_[a-f0-9]{16}_[A-Za-z0-9_-]{43}$/.test(token)) throw new Error('Secret Key tidak valid.')
+  let path,method='GET',payload
+  const headers={Authorization:`Bearer ${token}`}
+  if(action==='templates') path='/templates'
+  else if(action==='status') {
+    if(!/^[a-f0-9]{32}$/.test(id)) throw new Error('Job ID tidak valid.')
+    path='/generations/'+id
+  } else if(action==='upload') {
+    if(!file||!file.size) throw new Error('Pilih foto terlebih dahulu.')
+    path='/inputs';method='POST';payload=new FormData();payload.append('file',file)
+  } else if(action==='generate') {
+    if(typeof requestKey!=='string'||!requestKey||requestKey.length>120) throw new Error('Idempotency-Key tidak valid.')
+    if(!body?.template_id||!body?.input_id) throw new Error('Template dan input wajib diisi.')
+    path='/generations';method='POST';headers['Content-Type']='application/json';headers['Idempotency-Key']=requestKey;payload=JSON.stringify(body)
+  } else throw new Error('Endpoint tidak didukung.')
+  const response=await fetch(`${BASE}/public/v1${path}`,{method,body:payload,headers,credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal})
+  if(!response.ok) {
+    let code;try{const value=await response.json();code=value?.detail?.error_code}catch{}
+    const messages={CREDIT_BALANCE_EXHAUSTED:'AI Credit tidak cukup.',STORAGE_QUOTA_EXCEEDED:'Storage akun penuh.',AI_PROVIDER_NOT_CONNECTED:'Jalur generate belum terhubung.',IDEMPOTENCY_CONFLICT:'Idempotency-Key sudah dipakai untuk isi request berbeda.',API_KEY_SCOPE_FORBIDDEN:'Key belum memiliki izin yang dibutuhkan.',API_KEY_INVALID:'Key salah, kedaluwarsa, atau dicabut.'}
+    const error=new Error(messages[code]||`Request gagal (${response.status}). Periksa izin, foto, saldo dan parameter. Untuk mengulang generate setelah gangguan jaringan, gunakan request yang sama.`)
+    error.definitiveRejection=[400,401,403,404,413,422].includes(response.status)
+    throw error
+  }
+  return {status:response.status,data:await response.json(),retryAfter:Number(response.headers.get('Retry-After'))||3}
+}

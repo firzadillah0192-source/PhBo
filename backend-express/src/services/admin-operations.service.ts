@@ -1,3 +1,4 @@
+import type { SubscriptionWalletModel } from '../models/subscription-wallet.model.js';
 import { z } from 'zod';
 import type { NxAccount, NxSubscription, NxGenerationJob, NxAuditLog, Prisma } from '@prisma/client';
 import type { AdminDataModel } from '../models/admin-data.model.js';
@@ -19,7 +20,7 @@ export function pagination(query: Record<string, unknown>, defaultSize = 25, max
   return { page, page_size, skip: (page-1)*page_size };
 }
 export class AdminOperationsService {
-  constructor(readonly model: AdminDataModel, readonly assets: CatalogAssetsService, readonly safeSettings: object) {}
+  constructor(readonly model: AdminDataModel, readonly assets: CatalogAssetsService, readonly safeSettings: object, readonly subscriptionsV2?: SubscriptionWalletModel) {}
   async account(id: string) { const row = await this.model.read(db => db.nxAccount.findUnique({ where: { id } })); if (!row) throw new AppError(404,'USER_NOT_FOUND','User not found.'); return row; }
   async subscriptionItem(row: NxSubscription | null) {
     if (!row) return null;
@@ -33,9 +34,10 @@ export class AdminOperationsService {
         plan: subscription ? await db.nxPlan.findUnique({ where: { id: subscription.plan_id } }) : null,
         count: await db.nxGenerationJob.count({ where: { account_id: account.id } }), last: await db.nxGenerationJob.findFirst({ where: { account_id: account.id }, orderBy: { created_at: 'desc' } }) };
     });
+    const v2 = this.subscriptionsV2 ? await this.subscriptionsV2.snapshot({account_id:account.id,guest_id:null}) : null;
     const dates = [account.last_activity_at, data.last?.created_at].filter((value): value is Date => !!value);
     return { id: account.id, name: account.display_name, email: account.email, avatar_url: account.avatar_url, auth_provider: data.identity?.provider || 'password', status: account.status,
-      subscription_plan: data.plan?.code ?? null, ai_remaining: balance(account).remaining, ai_total: account.ai_quota_total, ai_used: account.ai_quota_used, total_generations: data.count, last_activity_at: dates.length ? new Date(Math.max(...dates.map(value=>value.getTime()))) : null, created_at: account.created_at };
+      subscription_wallet: v2, subscription_plan: v2?.plan.code ?? data.plan?.code ?? null, ai_remaining: v2?.ai.remaining ?? balance(account).remaining, ai_total: v2?.ai.remaining ?? account.ai_quota_total, ai_used: account.ai_quota_used, total_generations: data.count, last_activity_at: dates.length ? new Date(Math.max(...dates.map(value=>value.getTime()))) : null, created_at: account.created_at };
   }
   async overview() {
     const today = new Date(); today.setUTCHours(0,0,0,0); const since = new Date(Date.now()-30*86400000);
@@ -43,7 +45,8 @@ export class AdminOperationsService {
       advanced_generations_today: await db.nxGenerationJob.count({ where: { mode:'ADVANCED', created_at: { gte:today } } }), successful_generations: await db.nxGenerationJob.count({ where:{state:'COMPLETED'} }), failed_generations: await db.nxGenerationJob.count({where:{state:'FAILED'}}), queued_jobs: await db.nxGenerationJob.count({where:{state:'QUEUED'}}), processing_jobs: await db.nxGenerationJob.count({where:{state:'PROCESSING'}}),
       ai_credits_consumed: Math.abs((await db.nxCreditLedger.aggregate({where:{type:'generation_spend'},_sum:{amount:true}}))._sum.amount || 0), active_subscriptions: await db.nxSubscription.count({where:{status:'active'}}), experiences: await db.nxExperience.findMany() }));
     const {experiences,...data}=counts; let missing=0; for(const row of experiences) if(!await this.assets.file(row.thumbnail_path)) missing++;
-    return {...data,total_experiences:experiences.length,published_experiences:experiences.filter(row=>row.status==='published').length,draft_experiences:experiences.filter(row=>row.status==='draft').length,disabled_experiences:experiences.filter(row=>row.status==='disabled').length,missing_experience_previews:missing};
+    const totals=this.subscriptionsV2?await this.subscriptionsV2.totals():null;
+    return {...data,...(totals?{ai_credits_consumed:totals.ai_spent,classic_credits_consumed:totals.classic_spent}:{}),total_experiences:experiences.length,published_experiences:experiences.filter(row=>row.status==='published').length,draft_experiences:experiences.filter(row=>row.status==='draft').length,disabled_experiences:experiences.filter(row=>row.status==='disabled').length,missing_experience_previews:missing};
   }
   async users(query: Record<string, unknown>) {
     const {page,page_size,skip}=pagination(query); const search=z.string().optional().parse(query.search)?.trim(); const status=z.enum(['active','suspended']).optional().parse(query.status);
@@ -56,7 +59,9 @@ export class AdminOperationsService {
   async user(id:string) { const account=await this.account(id); const data=await this.model.read(async db=>({identities:await db.nxAuthIdentity.findMany({where:{account_id:id}}),subscription:await db.nxSubscription.findFirst({where:{user_id:id,status:'active'},orderBy:{created_at:'desc'}})})); return {user:await this.userItem(account),identities:data.identities.map(({provider,provider_subject,email,created_at,last_login_at})=>({provider,provider_subject,email,created_at,last_login_at})),subscription:await this.subscriptionItem(data.subscription)}; }
   async credits(id:string|null,query:Record<string,unknown>) { const account=id?await this.account(id):null; const {page,page_size,skip}=pagination(query,50,200); const type=z.string().optional().parse(query.entry_type);
     const where={...(id?{user_id:id}:{}),...(type?{type}:{})}; const data=await this.model.read(async db=>({total:await db.nxCreditLedger.count({where}),entries:await db.nxCreditLedger.findMany({where,orderBy:{created_at:'desc'},skip,take:page_size})}));
-    return {...(account?{balance:balance(account)}:{}),entries:data.entries.map(({metadata_json,...row})=>row),page,page_size,total:data.total}; }
+    const subscription=this.subscriptionsV2&&id?await this.subscriptionsV2.snapshot({account_id:id,guest_id:null}):null;
+    const v2entries=this.subscriptionsV2?await this.subscriptionsV2.history(id,page_size,skip):[];
+    return {subscription,v2_entries:v2entries,...(account?{balance:balance(account)}:{}),entries:data.entries.map(({metadata_json,...row})=>row),page,page_size,total:data.total}; }
   async sessions(id:string) {await this.account(id);return (await this.model.read(db=>db.nxAuthSession.findMany({where:{account_id:id,is_admin:false},orderBy:{created_at:'desc'}}))).map(row=>({id:row.id.slice(-12),created_at:row.created_at,last_seen_at:row.last_seen_at,expires_at:row.expires_at,active:row.expires_at>new Date()}));}
   async audit(query:Record<string,unknown>,id?:string) {const limit=z.coerce.number().int().min(1).max(500).default(100).parse(query.limit);const action=z.string().optional().parse(query.action);return (await this.model.read(db=>db.nxAuditLog.findMany({where:{...(id?{target_id:id}:{}),...(action?{action}:{})},orderBy:{created_at:'desc'},take:limit}))).map(auditItem);}
   async status(id:string,body:unknown,actor:AdminPrincipal,revoke=false) {const input=confirmation.extend({status:z.enum(['active','suspended'])}).parse(body);return this.model.transaction(async tx=>{
@@ -64,7 +69,12 @@ export class AdminOperationsService {
     if(!revoke)await tx.nxAccount.update({where:{id},data:{status:input.status,updated_at:new Date()}});
     const revoked=revoke||input.status==='suspended'?(await tx.nxAuthSession.deleteMany({where:{account_id:id,is_admin:false}})).count:0;
     await this.model.audit(tx,actor,revoke?'user_sessions_revoked':input.status==='suspended'?'user_suspended':'user_unsuspended','user',id,input.reason,{revoked_sessions:revoked});return {status:input.status,revoked_sessions:revoked}; });}
-  async adjust(id:string,body:unknown,actor:AdminPrincipal) {const input=confirmation.extend({amount:z.number().int().min(-100000).max(100000).refine(n=>n!==0),idempotency_key:z.string().max(255).optional()}).parse(body);const key=input.idempotency_key||`admin_adjustment:${actor.actor_id}:${id}:${legacyId()}`;
+  async adjust(id:string,body:unknown,actor:AdminPrincipal) {const input=confirmation.extend({amount:z.number().int().min(-100000).max(100000).refine(n=>n!==0),idempotency_key:z.string().max(255).optional(),currency:z.enum(['AI','CLASSIC']).default('AI')}).parse(body);const key=input.idempotency_key||`admin_adjustment:${actor.actor_id}:${id}:${legacyId()}`;
+    if(this.subscriptionsV2) return this.model.transaction(async tx=>{
+      const result=await this.subscriptionsV2!.adjustIn(tx,id,input.currency,input.amount,key,input.reason);
+      if(result.changed)await this.model.audit(tx,actor,'subscription_v2_credit_adjusted','user',id,input.reason,{currency:input.currency,amount:input.amount});
+      return {...result,subscription:await this.subscriptionsV2!.snapshotIn(tx,{account_id:id,guest_id:null})};
+    });
     return this.model.transaction(async tx=>{
       await tx.$queryRaw`SELECT id FROM accounts WHERE id=${id} FOR UPDATE`;const account=await tx.nxAccount.findUnique({where:{id}});if(!account)throw new AppError(404,'USER_NOT_FOUND','User not found.');
       const existing=await tx.nxCreditLedger.findUnique({where:{idempotency_key:key}});
@@ -75,16 +85,18 @@ export class AdminOperationsService {
       await this.model.audit(tx,actor,input.amount>0?'credit_granted':'credit_deducted','user',id,input.reason,{amount:input.amount,ledger_id:ledger.id});return {changed:true,ledger_id:ledger.id,balance:balance(updated)};
     }); }
   plans(){return this.model.read(db=>db.nxPlan.findMany({orderBy:{created_at:'asc'}}));}
-  async savePlan(id:string|null,body:unknown,actor:AdminPrincipal){const input=id?planInput.omit({id:true,code:true}).partial().parse(body):planInput.parse(body);return this.model.transaction(async tx=>{const row=id?await tx.nxPlan.update({where:{id},data:{...input,updated_at:new Date()}}):await tx.nxPlan.create({data:planInput.parse(body)});await this.model.audit(tx,actor,id?'plan_changed':'plan_created','plan',row.id,'',input);return row;});}
+  async savePlan(id:string|null,body:unknown,actor:AdminPrincipal){if(id?.startsWith('nx-v2-'))throw new AppError(409,'PLAN_POLICY_MANAGED','Paket v2 mengikuti katalog subscription yang disepakati.');const input=id?planInput.omit({id:true,code:true}).partial().parse(body):planInput.parse(body);return this.model.transaction(async tx=>{const row=id?await tx.nxPlan.update({where:{id},data:{...input,updated_at:new Date()}}):await tx.nxPlan.create({data:planInput.parse(body)});await this.model.audit(tx,actor,id?'plan_changed':'plan_created','plan',row.id,'',input);return row;});}
   async subscriptions(){return Promise.all((await this.model.read(db=>db.nxSubscription.findMany({orderBy:{updated_at:'desc'},take:200}))).map(async row=>({...await this.subscriptionItem(row),user_email:(await this.account(row.user_id)).email})));}
   async subscription(id:string,body:unknown,actor:AdminPrincipal){const input=confirmation.extend({action:z.enum(['assign','activate','cancel','expire']),plan_id:z.string().optional()}).parse(body);const row=await this.model.transaction(async tx=>{
+    if(this.subscriptionsV2) await this.subscriptionsV2.ensureIn(tx,{account_id:id,guest_id:null});
     await tx.$queryRaw`SELECT id FROM accounts WHERE id=${id} FOR UPDATE`;if(!await tx.nxAccount.findUnique({where:{id}}))throw new AppError(404,'USER_NOT_FOUND','User not found.');
     let current=await tx.nxSubscription.findFirst({where:{user_id:id,status:'active'},orderBy:{created_at:'desc'}});
     if(input.action==='assign'||input.action==='activate'){
-      if(!input.plan_id)throw new AppError(422,'PLAN_REQUIRED','plan_id is required for assignment.'); const plan=await tx.nxPlan.findUnique({where:{id:input.plan_id}});if(!plan)throw new AppError(404,'PLAN_NOT_FOUND','Plan not found.');
-      if(current?.plan_id!==plan.id){if(current)await tx.nxSubscription.update({where:{id:current.id},data:{status:'expired',updated_at:new Date()}});const now=new Date();current=await tx.nxSubscription.create({data:{id:legacyId(),user_id:id,plan_id:plan.id,current_period_start:now,current_period_end:new Date(now.getTime()+30*86400000)}});}
+      if(!input.plan_id)throw new AppError(422,'PLAN_REQUIRED','plan_id is required for assignment.'); const plan=await tx.nxPlan.findUnique({where:{id:input.plan_id}});if(!plan)throw new AppError(404,'PLAN_NOT_FOUND','Plan not found.');if(this.subscriptionsV2&&!plan.code.startsWith('v2_'))throw new AppError(422,'PLAN_POLICY_MANAGED','Pilih paket subscription v2.');
+      if(current?.plan_id!==plan.id || (current?.current_period_end && current.current_period_end<=new Date())){if(current)await tx.nxSubscription.update({where:{id:current.id},data:{status:'expired',updated_at:new Date()}});const now=new Date();current=await tx.nxSubscription.create({data:{id:legacyId(),user_id:id,plan_id:plan.id,current_period_start:now,current_period_end:new Date(now.getTime()+30*86400000)}});}
       const key=`subscription_grant:${current!.id}:${current!.current_period_start.toISOString().slice(0,10)}`;
-      if(plan.monthly_ai_credits>0&&!await tx.nxCreditLedger.findUnique({where:{idempotency_key:key}})){
+      if(this.subscriptionsV2 && plan.code.startsWith('v2_')) await this.subscriptionsV2.ensureIn(tx,{account_id:id,guest_id:null});
+      else if(plan.monthly_ai_credits>0&&!await tx.nxCreditLedger.findUnique({where:{idempotency_key:key}})){
         await tx.nxAccount.update({where:{id},data:{ai_quota_total:{increment:plan.monthly_ai_credits}}});await tx.nxCreditLedger.create({data:{id:legacyId(),user_id:id,amount:plan.monthly_ai_credits,type:'subscription_grant',reason:`Manual subscription allocation for ${plan.code}`,idempotency_key:key,metadata_json:JSON.stringify({plan_id:plan.id,period_key:current!.current_period_start.toISOString().slice(0,10)})}});
       }
     }else{if(!current)throw new AppError(404,'SUBSCRIPTION_NOT_FOUND','No active subscription found.');current=await tx.nxSubscription.update({where:{id:current.id},data:{status:input.action==='cancel'?'cancelled':'expired',cancel_at_period_end:input.action==='cancel',updated_at:new Date()}});}

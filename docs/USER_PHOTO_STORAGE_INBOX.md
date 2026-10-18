@@ -144,3 +144,17 @@ QR continuity. Identify tests needing disposable DB/storage, never production.
 This task created only this planning inbox document and a dormant Codex task.
 No application, database, MinIO IAM/policy, photo object, subscription or live
 deployment changes are authorized by this handoff. No commit was requested.
+
+## Follow-up status — 2026-10-18
+
+Owner reviewed the concrete proposal and approved phase1 implementation. Folder
+web/share source and SQL026 are prepared/tested, not deployed. See
+PHOTO_FOLDERS.md. Direct S3/IAM remains phase2; no provisioning has occurred.
+
+Folder-web phase1 was subsequently deployed with owner approval; SQL026 and
+live acceptance PASS. See PHOTO_FOLDERS.md. API-key Storage API/S3 remain pending.
+
+2026-10-18: API-key Storage continuation implemented and candidate prepared (not deployed).
+See [STORAGE_API_HANDOFF.md](STORAGE_API_HANDOFF.md) for release, scope, tests and approval prerequisites. API key UI, Storage docs/Explorer and read endpoints are ready. Public generation remains independently disabled; direct S3 IAM remains a separate stage.
+
+2026-10-18: Owner-approved activation completed. SQL025/private pepper/API+web release storage-api-20261018T100917Z live. Real synthetic account/key/Classic→MinIO/download/rotation/revoke acceptance and deployed browser1440/390 PASS; test data/key/session cleanup PASS. See STORAGE_API_HANDOFF.md and release live-acceptance.json. No commit. Public generation and native S3/IAM remain separate.

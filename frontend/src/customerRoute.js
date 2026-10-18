@@ -1,4 +1,4 @@
-export const ACCOUNT_TABS = ['overview', 'plan', 'billing', 'creations', 'personalization', 'security', 'privacy']
+export const ACCOUNT_TABS = ['overview', 'plan', 'billing', 'creations', 'personalization', 'security', 'privacy', 'developer']
 
 export function accountTabRoute(tab = 'overview') {
   const safeTab = ACCOUNT_TABS.includes(tab) ? tab : 'overview'
@@ -23,6 +23,9 @@ export function kioskResultRoute(resultId) {
 
 export function parseCustomerRoute(pathname = '/', search = '') {
   const path = pathname.replace(/\/$/, '') || '/'
+  if(path === '/developers') return {name:'developers',id:null,mode:null,tab:null,kiosk:false}
+  const folderShare=path.match(/^\/s\/([A-Za-z0-9_-]{43})$/)
+  if(folderShare)return {name:'folder-share',id:folderShare[1],mode:null,tab:null,kiosk:false}
   const photoClaim = path.match(/^\/claim\/([A-Za-z0-9_-]{24})$/)
   if (photoClaim) return { name: 'photo-claim',id: photoClaim[1],mode: null,tab: null,kiosk: true }
   if (path === '/r' || path.startsWith('/r/')) {

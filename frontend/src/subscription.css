@@ -1,0 +1,19 @@
+.customer-app .subscription-section { padding: 22px; margin: 20px 0; }
+.subscription-plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-top: 20px; }
+.customer-app .subscription-plan-card { min-width: 0; gap: 6px; padding: 20px; }
+.customer-app .subscription-plan-card > strong { font-size: 18px; }
+.customer-app .subscription-section .subscription-plan-card p { margin: 8px 0; line-height: 1.6; }
+.subscription-plan-card small { display: block; margin: 8px 0; line-height: 1.6; }
+.subscription-plan-card button { margin-top: auto; width: 100%; }
+.subscription-topup label { display: grid; gap: 8px; max-width: 320px; margin: 18px 0; font-size: 14px; }
+.subscription-topup input { min-width: 0; width: 100%; padding: 10px; border: 1px solid currentColor; border-radius: 6px; }
+.customer-app .subscription-topup > p { margin: 12px 0; }
+.generation-api-form > label { display: grid; gap: 8px; margin: 18px 0; font-size: 14px; }
+.generation-api-form input:not([type='checkbox']) { width: 100%; min-width: 0; padding: 10px; border: 1px solid #b1a48e; border-radius: 6px; font: inherit; }
+.generation-api-form > .generation-api-toggle { display: flex; align-items: center; gap: 10px; }
+.generation-api-toggle input { flex: 0 0 auto; }
+.generation-api-form button { min-height: 44px; }
+@media (max-width: 600px) {
+  .subscription-plan-grid { grid-template-columns: minmax(0, 1fr); }
+  .customer-app .subscription-section { padding: 16px; }
+}

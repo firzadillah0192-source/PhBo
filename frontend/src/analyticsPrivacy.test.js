@@ -19,3 +19,5 @@ test('SDK top-level person properties cannot bypass privacy filtering',()=>{
  const event=sanitizeAnalyticsEvent({event:'$set',$set_once:{$initial_current_url:'/r/private-token?email=private'},$set:{email:'private'},properties:{distinct_id:'phbo-account:owner'}});
  assert.doesNotMatch(JSON.stringify(event),/private/);assert.deepEqual(event.$set_once,{app:'phbo'});assert.equal(event.properties.distinct_id,'phbo-account:owner');
 });
+
+test('folder share paths never reveal tokens in analytics',()=>{assert.equal(analyticsRoute('/s/private-token'),'/s/:token');assert.equal(analyticsRoute('/api/public/photo-folders/private-token/photos/result/image'),'/api/public/photo-folders/:token/photos/result/image')})

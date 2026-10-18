@@ -1,12 +1,20 @@
 import type { PrismaClient } from '@prisma/client';
 import { legacyId, tokenHash } from '../services/customer-credentials.service.js';
 import type { GoogleClaims } from '../services/google-identity.service.js';
+import { SubscriptionWalletModel } from './subscription-wallet.model.js';
 import { CreditWalletModel } from './credit-wallet.model.js';
 import { AppError } from '../lib/errors.js';
 
 export class CustomerAccountModel {
-  constructor(private readonly db: PrismaClient) {}
-  async account(id: string) { const account = await this.db.nxAccount.findUnique({ where: { id } }); if (!account) return null; await this.wallet(id); return this.db.nxAccount.findUnique({ where: { id } }); }
+  constructor(private readonly db: PrismaClient, readonly subscriptionV2 = false) {}
+  async account(id: string) { const account = await this.db.nxAccount.findUnique({ where: { id } }); if (!account) return null; if (!this.subscriptionV2) await this.wallet(id); return this.db.nxAccount.findUnique({ where: { id } }); }
+  async resultExpiry(id: string, fallback: Date) {
+    if (this.subscriptionV2) {
+      const [row] = await this.db.$queryRaw<{ expires_at: Date }[]>`SELECT expires_at FROM subscription_v2_results WHERE result_id=${id}`;
+      if (row) return row.expires_at;
+    }
+    return fallback;
+  }
   wallet(id: string) { return new CreditWalletModel(this.db).snapshot(id); }
   async byEmail(email: string) { return this.db.nxAccount.findUnique({ where: { email } }); }
   async guest(id: string) { return this.db.nxGuestSession.findUnique({ where: { id } }); }
@@ -17,8 +25,9 @@ export class CustomerAccountModel {
   async signup(email: string, password_hash: string, guest_id: string | null) {
     return this.db.$transaction(async tx => {
       const account = await tx.nxAccount.create({ data: { id: legacyId(), email, password_hash, ai_quota_total: 0 } });
-      await new CreditWalletModel(this.db).ensureIn(tx, account.id);
+      if (!this.subscriptionV2) await new CreditWalletModel(this.db).ensureIn(tx, account.id);
       if (guest_id) {
+        if (this.subscriptionV2) await new SubscriptionWalletModel(this.db).claimGuestIn(tx, account.id, guest_id);
         await tx.nxUpload.updateMany({ where: { guest_id }, data: { account_id: account.id, guest_id: null } });
         await tx.nxGenerationJob.updateMany({ where: { guest_id }, data: { account_id: account.id, guest_id: null } });
       }
@@ -47,15 +56,17 @@ export class CustomerAccountModel {
       if (identity && !account) throw new AppError(409, 'AUTH_IDENTITY_ORPHANED', 'Google identity is not linked to an account.');
       if (!account) {
         account = await tx.nxAccount.create({ data: { id: legacyId(), email: claims.email, password_hash, ai_quota_total: 0, display_name: claims.name, avatar_url: claims.avatar_url } });
-        await new CreditWalletModel(this.db).ensureIn(tx, account.id);
+        if (!this.subscriptionV2) await new CreditWalletModel(this.db).ensureIn(tx, account.id);
       }
       if (account.status === 'suspended') throw new AppError(403, 'ACCOUNT_SUSPENDED', 'This account is suspended.');
       if (!identity) identity = await tx.nxAuthIdentity.create({ data: { id: legacyId(), account_id: account.id, provider: 'google', provider_subject: claims.subject, email: claims.email } });
       await tx.nxAuthIdentity.update({ where: { id: identity.id }, data: { email: claims.email, last_login_at: new Date() } });
+      if (this.subscriptionV2) await new SubscriptionWalletModel(this.db).ensureIn(tx, { account_id: account.id, guest_id: null });
       account = await tx.nxAccount.update({ where: { id: account.id }, data: {
         ...(claims.name ? { display_name: claims.name } : {}), ...(claims.avatar_url ? { avatar_url: claims.avatar_url } : {}), updated_at: new Date(),
       } });
       if (guest_id) {
+        if (this.subscriptionV2) await new SubscriptionWalletModel(this.db).claimGuestIn(tx, account.id, guest_id);
         await tx.nxUpload.updateMany({ where: { guest_id }, data: { account_id: account.id, guest_id: null } });
         await tx.nxGenerationJob.updateMany({ where: { guest_id }, data: { account_id: account.id, guest_id: null } });
       }

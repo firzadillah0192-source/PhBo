@@ -2,10 +2,18 @@ import type { PrismaClient, NxResult } from '@prisma/client';
 import { legacyId, tokenHash } from '../services/customer-credentials.service.js';
 import { AppError } from '../lib/errors.js';
 import { CreditAccountingModel } from './credit-accounting.model.js';
-import { WEB_RESULT_RETENTION_MS } from '../services/result-retention.js';
+import type { SubscriptionWalletModel } from './subscription-wallet.model.js';
+import { WEB_RESULT_RETENTION_MS, webResultExpiresAt } from '../services/result-retention.js';
 
 export class CustomerResultModel {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: PrismaClient, private readonly subscriptions?: SubscriptionWalletModel) {}
+  async expiresAt(result: Pick<NxResult, 'id' | 'created_at'>) {
+    if (this.subscriptions) {
+      const [policy] = await this.db.$queryRaw<{ expires_at: Date }[]>`SELECT expires_at FROM subscription_v2_results WHERE result_id=${result.id}`;
+      if (policy) return policy.expires_at;
+    }
+    return webResultExpiresAt(result.created_at);
+  }
   async assertPaid(jobId: string) {
     const [charge] = await this.db.$queryRaw<{ status: string }[]>`SELECT status FROM generation_credit_charges WHERE job_id=${jobId}`;
     if (charge && charge.status !== 'PAID') throw new AppError(402, charge.status === 'PENDING_USAGE' ? 'CREDIT_USAGE_UNAVAILABLE' : 'GENERATION_PAYMENT_PENDING', charge.status === 'PENDING_USAGE' ? 'Rincian pemakaian belum tersedia; kredit belum dipotong.' : 'Isi kredit untuk membuka hasil ini.');
@@ -15,7 +23,7 @@ export class CustomerResultModel {
     const job = result ? await this.db.nxGenerationJob.findUnique({ where: { id: result.job_id } }) : null;
     if (!result || !job) return null;
     const [scope] = await this.db.$queryRaw<{ kiosk_session_id: string | null }[]>`SELECT kiosk_session_id FROM generation_jobs WHERE id=${job.id}`;
-    return { result, job, kiosk: Boolean(scope?.kiosk_session_id) };
+    return { result, job, kiosk: Boolean(scope?.kiosk_session_id), expires_at: await this.expiresAt(result), policy_version: this.subscriptions ? 2 : 1 };
   }
   async claim(token: string) {
     const claim = await this.db.nxResultClaim.findUnique({ where: { token_hash: tokenHash(token) } });
@@ -53,6 +61,8 @@ export class CustomerResultModel {
     await this.db.nxGenerationEvent.create({ data: { id: legacyId(), job_id: jobId, event_type: 'claim_expired', detail: 'Expired public result claim was requested', metadata_json: JSON.stringify({ claim_id: claimId }) } });
   }
   async expiredResults(now = new Date()) {
+    if (this.subscriptions) return this.db.$queryRaw<NxResult[]>`SELECT r.* FROM results r JOIN generation_jobs j ON j.id=r.job_id LEFT JOIN subscription_v2_results p ON p.result_id=r.id
+      WHERE r.deleted_at IS NULL AND j.kiosk_session_id IS NULL AND COALESCE(p.expires_at,r.created_at+interval '14 days')<=${now} ORDER BY r.created_at LIMIT 100`;
     return this.db.$queryRaw<NxResult[]>`SELECT r.* FROM results r JOIN generation_jobs j ON j.id=r.job_id
       WHERE r.deleted_at IS NULL AND j.kiosk_session_id IS NULL AND r.created_at <= ${new Date(now.getTime() - WEB_RESULT_RETENTION_MS)}
       ORDER BY r.created_at LIMIT 100`;
@@ -60,7 +70,7 @@ export class CustomerResultModel {
   async markDeleted(result: NxResult, actorType: 'owner' | 'admin' | 'retention' = 'owner') {
     await this.db.$transaction(async tx => {
       // Only unsettled reservations are released. Previously paid credits stay spent.
-      await new CreditAccountingModel(this.db).settleIn(tx, result.job_id, false);
+      await new CreditAccountingModel(this.db, this.subscriptions).settleIn(tx, result.job_id, false);
       await tx.nxResult.update({ where: { id: result.id }, data: { deleted_at: new Date() } });
       await tx.nxResultClaim.updateMany({ where: { result_id: result.id }, data: { is_revoked: true } });
       await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: result.job_id, event_type: actorType === 'retention' ? 'result_photo_expired' : 'result_photo_deleted', detail: 'Generated photo deleted', metadata_json: JSON.stringify({ result_id: result.id, actor_type: actorType }) } });

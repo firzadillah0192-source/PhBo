@@ -3,7 +3,7 @@ import type {Express,Request,Response,ErrorRequestHandler} from 'express';
 import {AppError} from '../lib/errors.js';
 let client:PostHog|null|undefined;
 const terminal=new Set<string>();
-export function analyticsRoute(path:string){return path.split('?')[0].replace(/\/(r|claim)\/[^/]+/g,'/$1/:token').replace(/\/(results|generations|uploads|sessions)\/[^/]+/g,'/$1/:id');}
+export function analyticsRoute(path:string){return path.split('?')[0].replace(/\/public\/photo-folders\/[^/]+/g,'/public/photo-folders/:token').replace(/\/s\/[^/]+/g,'/s/:token').replace(/\/(r|claim)\/[^/]+/g,'/$1/:token').replace(/\/(results|generations|uploads|sessions)\/[^/]+/g,'/$1/:id');}
 export function safeAnalyticsEvent(event:any){
  const properties:Record<string,unknown>={app:'phbo'};
  const allowed=['app','surface','route','method','status','error_code','job_id','state','mode','is_test','$session_id','$lib','$lib_version','$geoip_disable','$process_person_profile'];

@@ -1,6 +1,6 @@
 const keys=new Set(['distinct_id','app','surface','mode','shot_count','pose_index','retakes_remaining','status','error_code','template_id','experience_id','layout_id','job_id','result_id','upload_count','method','route','auth_method','source','is_test','$session_id','$window_id','$device_id','$lib','$lib_version','$browser','$browser_version','$os','$os_version','$screen_height','$screen_width','$viewport_height','$viewport_width','$is_identified','$process_person_profile','$anon_distinct_id','$exception_list','$set','$set_once','$current_url','$pathname'])
 export function analyticsRoute(path=''){
- return path.split('?')[0].split('#')[0].replace(/\/(r|claim)\/[^/]+/g,'/$1/:token').replace(/\/(results|generations|uploads|sessions)\/[^/]+/g,'/$1/:id')
+ return path.split('?')[0].split('#')[0].replace(/\/public\/photo-folders\/[^/]+/g,'/public/photo-folders/:token').replace(/\/s\/[^/]+/g,'/s/:token').replace(/\/(r|claim)\/[^/]+/g,'/$1/:token').replace(/\/(results|generations|uploads|sessions)\/[^/]+/g,'/$1/:id')
 }
 export function sanitizeAnalyticsEvent(event){
  if(!event)return null

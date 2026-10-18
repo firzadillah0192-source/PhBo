@@ -30,9 +30,9 @@ export class CustomerResultService {
       throw new AppError(404, 'RESULT_NOT_FOUND', `result '${id}' not found`);
     }
     if (!deleting) {
-      if (!found.kiosk && found.result.created_at && webResultExpiresAt(found.result.created_at) <= new Date()) {
+      if (!found.kiosk && found.result.created_at && (await this.model.expiresAt(found.result)) <= new Date()) {
         if (claim) throw unavailable();
-        throw new AppError(404, 'RESULT_EXPIRED', 'Foto sudah kedaluwarsa setelah 14 hari.');
+        throw new AppError(404, 'RESULT_EXPIRED', 'Masa simpan foto sudah berakhir.');
       }
       await this.model.assertPaid(found.job.id);
     }
@@ -42,9 +42,9 @@ export class CustomerResultService {
     const { result, job } = found;
     return { result_id: result.id, job_id: result.job_id, template_id: result.template_id, content_type: result.content_type,
       size_bytes: result.size_bytes, width: result.width, height: result.height, sha256: result.sha256,
-      provider: result.provider, model: result.model, result_url: `/api/results/${result.id}`, download_url: `/api/results/${result.id}/download`,
+      ...(found.policy_version === 2 ? {} : { provider: result.provider, model: result.model }), result_url: `/api/results/${result.id}`, download_url: `/api/results/${result.id}/download`,
       print_download_url: job.mode === 'CLASSIC' && result.width * 3 === result.height ? `/api/results/${result.id}/download?rendition=print` : null,
-      created_at: result.created_at, expires_at: found.kiosk ? null : webResultExpiresAt(result.created_at) };
+      created_at: result.created_at, expires_at: found.kiosk ? null : found.expires_at ?? webResultExpiresAt(result.created_at) };
   }
   async bytes(result: NxResult, publicClaim = false) {
     try {
@@ -65,7 +65,7 @@ export class CustomerResultService {
   async delivery(id: string,identity: CustomerIdentity,notAfter?: Date,proxyPrefix='/api/results') {
     const found = await this.owned(id,identity);
     const { result } = found;
-    const expiry = found.kiosk ? notAfter : new Date(Math.min(notAfter?.getTime() ?? Infinity, webResultExpiresAt(result.created_at).getTime()));
+    const expiry = found.kiosk ? notAfter : new Date(Math.min(notAfter?.getTime() ?? Infinity, (await this.model.expiresAt(result)).getTime()));
     const signed = result.storage_path.startsWith('minio://') ? await this.objects?.signedUrl(result.storage_path,expiry) : null;
     return { url: signed?.url ?? `${proxyPrefix}/${result.id}/image`,expires_at: signed?.expires_at ?? null,delivery: signed ? 'minio' : 'api' };
   }
@@ -91,8 +91,8 @@ export class CustomerResultService {
     const embeddedToken = snapshot?.mode === 'CLASSIC' ? snapshot.personalization?.claim_token : null;
     // Reuse the printed QR's persisted claim, including reloads and retry buttons.
     if (embeddedToken) input = { ...input, refresh: false, reuseToken: embeddedToken };
-    const expiresAt = new Date(Math.min(Math.floor(Date.now() / 1000) * 1000 + this.config.claimHours * 3600000, found.kiosk ? Infinity : webResultExpiresAt(result.created_at).getTime()));
-    const { claim, token } = await this.model.createClaim(result, { ...input, sessionId: identity.sessionId, rawToken: embeddedToken || randomBytes(32).toString('base64url'), expiresAt: embeddedToken ? webResultExpiresAt(result.created_at) : expiresAt });
+    const expiresAt = new Date(Math.min(Math.floor(Date.now() / 1000) * 1000 + this.config.claimHours * 3600000, found.kiosk ? Infinity : (await this.model.expiresAt(result)).getTime()));
+    const { claim, token } = await this.model.createClaim(result, { ...input, sessionId: identity.sessionId, rawToken: embeddedToken || randomBytes(32).toString('base64url'), expiresAt: embeddedToken ? (await this.model.expiresAt(result)) : expiresAt });
     const url = `${origin}/r/${encodeURIComponent(token)}`;
     return { claim_url: url, qr_payload: url, expires_at: claim.expires_at };
   }
@@ -100,7 +100,7 @@ export class CustomerResultService {
     if (token.length < 32 || token.length > 256) throw unavailable();
     const found = await this.model.claim(token);
     if (!found || found.result.deleted_at || found.claim.is_revoked) throw unavailable();
-    if (!found.kiosk && found.result.created_at && webResultExpiresAt(found.result.created_at) <= new Date()) throw unavailable();
+    if (!found.kiosk && found.result.created_at && (await this.model.expiresAt(found.result)) <= new Date()) throw unavailable();
     if (found.claim.expires_at <= new Date()) { await this.model.expired(found.claim.id, found.result.job_id); throw unavailable(); }
     await this.model.assertPaid(found.job.id);
     return found;

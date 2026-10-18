@@ -1,3 +1,4 @@
+import type { GenerationApiRoutesService } from './generation-api-routes.service.js';
 import type { NxGenerationJob } from '@prisma/client';
 import { AppError } from '../lib/errors.js';
 import { CatalogAssetError, requiresEventName, type CatalogAssetsService } from './catalog-assets.service.js';
@@ -16,7 +17,7 @@ export type GenerationQueue = { enqueue(id: string): Promise<void> };
 export class CustomerGenerationService {
   constructor(private readonly model: CustomerGenerationModel, private readonly uploads: CustomerUploadService,
     private readonly assets: CatalogAssetsService, private readonly queue: GenerationQueue,
-    private readonly basicModelExperienceId = 'mini-me') {}
+    private readonly basicModelExperienceId = 'mini-me', private readonly apiRoutes?: GenerationApiRoutesService) {}
   response(job: NxGenerationJob) {
     return { job_id: job.id, state: job.state, upload_id: job.upload_id, template_id: job.template_id || null,
       experience_id: job.experience_id, mode: job.mode, layout_id: job.layout_id, frame_style_id: job.frame_style_id,
@@ -29,6 +30,10 @@ export class CustomerGenerationService {
       const existing = await this.model.findRequest(request);
       if (existing) return this.response(existing);
     }
+    if (input.lane && !this.apiRoutes) throw new AppError(503, 'GENERATION_LANE_UNAVAILABLE', 'Pilihan jalur belum diaktifkan.');
+    if (kiosk && input.lane) throw new AppError(422, 'GENERATION_LANE_UNAVAILABLE', 'Pilihan jalur tidak berlaku untuk sesi kiosk.');
+    if (!kiosk && this.apiRoutes && input.mode !== 'CLASSIC') await this.apiRoutes.provider(input.lane ?? 'standard');
+    if(input.folder_id!==undefined && (!this.model.folders || kiosk || !identity.account)) throw new AppError(422,'PHOTO_FOLDER_UNAVAILABLE','Folder hanya tersedia untuk akun web yang masuk.');
     const source = await this.uploads.owned(input.upload_id, identity);
     let frame: string | null = null;
     let snapshot: GenerationSnapshot;
@@ -77,7 +82,7 @@ export class CustomerGenerationService {
       frame_style_id: frame, ornament_ids_json: frame ? JSON.stringify(input.ornament_ids) : null,
       engine_config_json: JSON.stringify(snapshot),state: 'QUEUED' };
     if (kiosk && !request) throw new AppError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Generation request key required');
-    const created = request ? await this.model.createOnce(data, request, kiosk) : { job: await this.model.create(data), reused: false };
+    const created = request ? await this.model.createOnce(data, request, kiosk, input.lane ?? 'standard', input.folder_id) : { job: await this.model.create(data, input.lane ?? 'standard', input.folder_id), reused: false };
     const job = created.job;
     if (created.reused) return this.response(job);
     try { await this.queue.enqueue(job.id); }
@@ -91,7 +96,7 @@ export class CustomerGenerationService {
     const billing = await this.model.billing(job.id, job.state === 'COMPLETED');
     const paid = !billing || billing.status === 'PAID';
     const result = paid ? await this.model.result(job.id) : null;
-    return { ...this.response(job), credit_charge: billing ? { status: billing.status, credits: billing.credits, calculation: billing.calculation_json ? JSON.parse(billing.calculation_json) : null } : null, provider: job.provider, model: job.model, error_code: job.error_code, error_message: job.error_message,
+    return { ...this.response(job), credit_charge: billing ? { status: billing.status, credits: billing.credits, calculation: billing.calculation_json ? JSON.parse(billing.calculation_json) : null } : null, ...(this.model.subscriptions ? {} : { provider: job.provider, model: job.model }), error_code: job.error_code, error_message: job.error_message,
       result_id: result?.id ?? null, result_url: result ? `/api/results/${result.id}` : null,
       download_url: result ? `/api/results/${result.id}/download` : null, updated_at: job.updated_at,
       started_at: job.started_at, finished_at: job.finished_at };
