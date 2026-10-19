@@ -71,17 +71,17 @@ test('landing, chooser, sign-in and mobile component structure render through th
     }
     globalThis.window = { location: { pathname: '/', search: '' }, innerWidth: 390, sessionStorage: storage }
     const root = renderToStaticMarkup(React.createElement(App))
-    assert.match(root, /Moments, made/)
+    assert.match(root, /One photo/)
     assert.match(root, /href="\/create"[^>]*>Try NXBooth Free/)
-    for (const section of ['How it works', 'Three ways to create', 'Featured Experiences', 'Made to leave', 'Ready for your']) assert.ok(root.includes(section), section)
-    const journey = ['Pick Photo Booth, Scene Remix, or Creative Studio.', 'Upload a photo or use your phone camera.', 'Choose a layout or experience and make your portrait.', 'Preview and save your finished portrait.']
+    for (const section of ['How it works', 'Three ways to create', 'Featured Experiences', 'Made to leave', 'Ready to write']) assert.ok(root.includes(section), section)
+    const journey = ['three doors into your story.', 'One face is enough to begin.', 'watch your portrait come to life.', 'keep it as a memory.']
     const journeyPositions = journey.map((step) => root.indexOf(step))
     assert.ok(journeyPositions.every((position) => position >= 0))
     assert.deepEqual(journeyPositions, [...journeyPositions].sort((a, b) => a - b))
     assert.doesNotMatch(root, /scan the QR|print-ready|<strong>Print<\/strong>|<strong>QR<\/strong>/i)
     assert.match(root, />Sign In</)
     assert.doesNotMatch(root, /customer-credit|AI credits|Photobooth AI|9Router|face swap|prompt composer/)
-    assert.ok(root.indexOf('Moments, made') < root.indexOf('Photo Booth'))
+    assert.ok(root.indexOf('One photo') < root.indexOf('Photo Booth'))
 
     for (const width of [390, 768, 1024]) {
       globalThis.window = { location: { pathname: '/create', search: '' }, innerWidth: width, sessionStorage: storage }
@@ -111,10 +111,27 @@ test('landing, chooser, sign-in and mobile component structure render through th
     assert.match(empty, /Reload previews/)
     assert.doesNotMatch(empty, /Anime|Mini Me|8-Bit Gamer/)
 
+    const signedInProps = { usage: { authenticated: true, ai_remaining: 120 }, account: { display_name: 'Budi Santoso', email: 'budi@example.com' } }
+    const signedInEn = renderToStaticMarkup(React.createElement(LandingPage, signedInProps))
+    assert.match(signedInEn, /Welcome back, Budi Santoso/)
+    assert.match(signedInEn, /Create a New Portrait/)
+    assert.match(signedInEn, /href="\/account\?tab=creations"/)
+    assert.match(signedInEn, /You have 120 credits/)
+    assert.doesNotMatch(signedInEn, /Try NXBooth Free|Explore Experiences/)
+    const signedOutEn = renderToStaticMarkup(React.createElement(LandingPage, { usage: { authenticated: false, ai_remaining: 2 } }))
+    assert.match(signedOutEn, /Try NXBooth Free/)
+    assert.doesNotMatch(signedOutEn, /Welcome back|Create a New Portrait/)
+    const signedInNav = renderToStaticMarkup(React.createElement(CustomerNav, { usage: { ai_remaining: 120, authenticated: true }, account: { email: 'budi@example.com' }, marketing: true }))
+    assert.match(signedInNav, /Start Creating/)
+    assert.doesNotMatch(signedInNav, /Try for Free/)
     i18n.setLanguage('id')
     const indonesian = renderToStaticMarkup(React.createElement(LandingPage, {}))
     for (const copy of ['Cara kerja', 'Tiga cara berkreasi', 'Pengalaman Pilihan', 'Coba NXBooth Gratis']) assert.ok(indonesian.includes(copy), copy)
     assert.doesNotMatch(indonesian, /How it works|Three ways to create|Try NXBooth Free/)
+    const signedInId = renderToStaticMarkup(React.createElement(LandingPage, signedInProps))
+    assert.match(signedInId, /Selamat datang kembali, Budi Santoso/)
+    assert.match(signedInId, /Buat Potret Baru/)
+    assert.doesNotMatch(signedInId, /Coba NXBooth Gratis/)
     const indonesianNav = renderToStaticMarkup(React.createElement(CustomerNav, navProps))
     assert.match(indonesianNav, />Masuk</)
     assert.match(indonesianNav, /2 kredit/)

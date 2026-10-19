@@ -7,23 +7,31 @@ import { useT } from '../../i18n.js'
 import './landing.css'
 
 const STEPS = [
-  [['Pilih', 'Choose'], ['Pilih Photo Booth, Scene Remix, atau Creative Studio.', 'Pick Photo Booth, Scene Remix, or Creative Studio.']],
-  [['Tambahkan foto', 'Add your photo'], ['Unggah foto atau pakai kamera ponsel Anda.', 'Upload a photo or use your phone camera.']],
-  [['Buat', 'Create'], ['Pilih tata letak atau pengalaman, lalu buat potret Anda.', 'Choose a layout or experience and make your portrait.']],
-  [['Unduh', 'Download'], ['Lihat pratinjau dan simpan potret jadi Anda.', 'Preview and save your finished portrait.']],
+  [['Pilih dunia', 'Choose a world'], ['Photo Booth, Scene Remix, atau Creative Studio: tiga pintu menuju cerita Anda.', 'Photo Booth, Scene Remix, or Creative Studio: three doors into your story.']],
+  [['Hadirkan diri', 'Show up'], ['Unggah foto atau buka kamera. Satu wajah sudah cukup untuk memulai.', 'Upload a photo or open your camera. One face is enough to begin.']],
+  [['Biarkan ia berubah', 'Let it transform'], ['Pilih bingkai atau pengalaman, lalu saksikan potret Anda menjelma.', 'Choose a frame or an experience, then watch your portrait come to life.']],
+  [['Bawa pulang', 'Take it home'], ['Lihat pratinjaunya, unduh, dan simpan sebagai kenangan.', 'Preview it, download it, and keep it as a memory.']],
 ]
 const CAPTIONS = { 'Creative world': ['Dunia kreatif', 'Creative world'], 'Curated transformation': ['Transformasi pilihan', 'Curated transformation'] }
 
-function Actions() {
+function Actions({ signedIn }) {
   const t = useT()
-  return <div className="landing-actions">
-    <a className="landing-primary" href="/create">{t('Coba NXBooth Gratis', 'Try NXBooth Free')} <span aria-hidden="true">↗</span></a>
-    <a className="landing-secondary" href="#experiences">{t('Jelajahi Pengalaman', 'Explore Experiences')} <span aria-hidden="true">↓</span></a>
-  </div>
+  return signedIn
+    ? <div className="landing-actions">
+      <a className="landing-primary" href="/create">{t('Buat Potret Baru', 'Create a New Portrait')} <span aria-hidden="true">↗</span></a>
+      <a className="landing-secondary" href="/account?tab=creations">{t('Lihat Kreasi Saya', 'See My Creations')} <span aria-hidden="true">→</span></a>
+    </div>
+    : <div className="landing-actions">
+      <a className="landing-primary" href="/create">{t('Coba NXBooth Gratis', 'Try NXBooth Free')} <span aria-hidden="true">↗</span></a>
+      <a className="landing-secondary" href="#experiences">{t('Jelajahi Pengalaman', 'Explore Experiences')} <span aria-hidden="true">↓</span></a>
+    </div>
 }
 
-export default function LandingPage({ templates = [], experiences = [], layouts = [], loading = false, error = false, onRetry }) {
+export default function LandingPage({ templates = [], experiences = [], layouts = [], loading = false, error = false, onRetry, account = null, usage = null }) {
   const t = useT()
+  const signedIn = Boolean(usage?.authenticated)
+  const name = account?.display_name || account?.email?.split('@')[0] || ''
+  const credit = usage?.subscription?.ai?.remaining ?? usage?.ai_remaining
   const featured = featuredPreviews(experiences, templates)
   const hero = featured[0]
   const second = featured.find((item) => item.mode === 'BASIC' && item.id !== hero?.id) || featured[1]
@@ -31,11 +39,21 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
     <main id="studio-main" tabIndex="-1">
       <section className="landing-hero landing-container" aria-labelledby="landing-title">
         <div className="landing-hero-copy">
-          <p className="landing-eyebrow"><span className="retro-spark" aria-hidden="true">✳</span> {t('Momen yang layak disimpan', 'A moment worth keeping')}</p>
-          <h1 id="landing-title">{t('Momen, dibuat', 'Moments, made')}<br /><em>{t('luar biasa.', 'extraordinary.')}</em></h1>
-          <p className="landing-intro">{t('Abadikan momen, pilih dunia, dan bawa pulang sesuatu yang sepenuhnya milik Anda.', 'Capture a moment, choose a world, and take home something entirely your own.')}</p>
-          <Actions />
-          <p className="landing-hero-note"><span aria-hidden="true">✓</span> {t('Kamera Anda. Imajinasi Anda. Kenang-kenangan Anda.', 'Your camera. Your imagination. Your keepsake.')}</p>
+          {signedIn
+            ? <>
+              <p className="landing-eyebrow"><span className="retro-spark" aria-hidden="true">✳</span> {name ? t(`Selamat datang kembali, ${name}`, `Welcome back, ${name}`) : t('Selamat datang kembali', 'Welcome back')}</p>
+              <h1 id="landing-title">{t('Cerita berikutnya', 'Your next story')}<br /><em>{t('dimulai dari sini.', 'begins here.')}</em></h1>
+              <p className="landing-intro">{t('Pilih dunia, hadirkan satu foto, dan biarkan kisah Anda berlanjut.', 'Choose a world, bring one photo, and let your story go on.')}{typeof credit === 'number' ? ` ${t(`Saldo Anda ${credit.toLocaleString('id-ID')} kredit.`, `You have ${credit.toLocaleString('en-US')} credits.`)}` : ''}</p>
+              <Actions signedIn />
+              <p className="landing-hero-note"><span aria-hidden="true">✓</span> {t('Setiap kreasi tersimpan rapi di akun Anda.', 'Every creation is kept safely in your account.')}</p>
+            </>
+            : <>
+              <p className="landing-eyebrow"><span className="retro-spark" aria-hidden="true">✳</span> {t('Momen yang layak dikenang', 'A moment worth remembering')}</p>
+              <h1 id="landing-title">{t('Satu foto,', 'One photo,')}<br /><em>{t('seribu cerita.', 'a thousand stories.')}</em></h1>
+              <p className="landing-intro">{t('Hadirkan satu potret, lalu pilih dunia tempat ia hidup: bingkai klasik, petualangan sinematik, atau gaya yang belum pernah Anda bayangkan.', 'Bring one portrait, then choose the world it lives in: a classic frame, a cinematic adventure, or a style you have never imagined.')}</p>
+              <Actions />
+              <p className="landing-hero-note"><span aria-hidden="true">✓</span> {t('Kamera Anda. Imajinasi Anda. Kenang-kenangan Anda.', 'Your camera. Your imagination. Your keepsake.')}</p>
+            </>}
         </div>
         <div className="landing-hero-art">
           <div className="landing-scenery" aria-hidden="true"><span>✳</span></div>
@@ -51,7 +69,7 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
       </section>
 
       <section id="how-it-works" className="landing-how landing-container landing-section" aria-labelledby="how-title">
-        <div className="landing-section-heading"><p className="landing-eyebrow">{t('Cara kerja', 'How it works')}</p><h2 id="how-title">{t('Sedikit imajinasi.', 'A little imagination.')} <br />{t('Empat langkah mudah.', 'Four simple steps.')}</h2></div>
+        <div className="landing-section-heading"><p className="landing-eyebrow">{t('Cara kerja', 'How it works')}</p><h2 id="how-title">{t('Sedikit imajinasi,', 'A little imagination,')} <br />{t('empat langkah menuju cerita.', 'four steps to a story.')}</h2></div>
         <ol className="landing-steps">{STEPS.map(([title, copy], index) => <li key={title[1]}>
           <span aria-hidden="true">0{index + 1}</span><h3>{t(...title)}</h3><p>{t(...copy)}</p>
         </li>)}</ol>
@@ -85,7 +103,8 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
       </section>
 
       <section className="landing-final landing-container landing-section" aria-labelledby="final-title">
-        <p className="landing-eyebrow">{t('Melangkah ke hal baru', 'Step into something new')}</p><h2 id="final-title">{t('Siap untuk', 'Ready for your')}<br /><em>{t('tampilan berikutnya?', 'next look?')}</em></h2><Actions />
+        <p className="landing-eyebrow">{signedIn ? t('Kisah Anda belum selesai', 'Your story is not finished') : t('Pintu sudah terbuka', 'The door is open')}</p>
+        <h2 id="final-title">{signedIn ? t('Cerita apa yang ingin Anda', 'What story will you') : t('Siap menulis', 'Ready to write')}<br /><em>{signedIn ? t('tulis hari ini?', 'tell today?') : t('cerita berikutnya?', 'your next chapter?')}</em></h2><Actions signedIn={signedIn} />
       </section>
     </main>
     <footer className="landing-footer landing-container">
