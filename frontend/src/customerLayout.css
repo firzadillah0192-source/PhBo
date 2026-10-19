@@ -508,3 +508,26 @@ main.api-docs.retro-app {
   .retro-app .photo-stage:not(.classic-capture) { grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); }
   .retro-app .photo-stage:not(.classic-capture) .photo-layout .camera-stage { aspect-ratio: 1 / 1; max-height: none; }
 }
+
+/* Advanced "frame style" step (desktop): the heading and the Gaya bingkai / Ornamen tabs move into the right column,
+   above the selection dock, so the style cards start right under the back button. Stacks again at <=900px. */
+@media (min-width: 901px) {
+  .retro-app .gallery-page.advanced-options { display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto auto auto auto 1fr; column-gap: 28px; align-items: start; }
+  .retro-app .gallery-page.advanced-options>.capture-navigation { grid-column: 1 / -1; grid-row: 1; }
+  .retro-app .gallery-page.advanced-options>.gallery-heading { grid-column: 2; grid-row: 2; margin: 0 0 16px; }
+  .retro-app .gallery-page.advanced-options>.gallery-heading h1 { font-size: clamp(26px, 2.2vw, 34px); }
+  .retro-app .gallery-page.advanced-options>.gallery-heading>p:last-child { font-size: var(--fs-sm); }
+  .retro-app .gallery-page.advanced-options .advanced-layout, .retro-app .gallery-page.advanced-options .advanced-choices { display: contents; }
+  .retro-app .gallery-page.advanced-options .advanced-option-tabs { grid-column: 2; grid-row: 3; margin: 0 0 16px; }
+  .retro-app .gallery-page.advanced-options :is(.advanced-style-grid, .advanced-ornaments) { grid-column: 1; grid-row: 2 / span 4; }
+  .retro-app .gallery-page.advanced-options .selection-dock { grid-column: 2; grid-row: 4 / 6; align-self: start; }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .retro-app .gallery-page.advanced-options { grid-template-columns: minmax(0, 1fr) 280px; }
+}
+
+/* /create: smaller mode previews so the title, description and the choose button are visible without scrolling. */
+.customer-app.retro-app .creation-chooser .landing-mode-image { aspect-ratio: 16 / 10; }
+@media (max-width: 700px) {
+  .customer-app.retro-app .creation-chooser .landing-mode-image { aspect-ratio: 4 / 3; }
+}
