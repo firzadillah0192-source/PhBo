@@ -5,7 +5,7 @@ const INDEX = { gallery: 0, 'art-direction': 0, photo: 1, review: 2, processing:
 
 // Left rail of the create flow: where the customer is, what they picked, and what it costs.
 // On narrow screens the CSS collapses it to a compact progress strip and hides the summary.
-export default function StudioRail({ stage, modeName, selectionName, frameStyleName, ornamentCount = 0, hasPhoto = false, credit }) {
+export default function StudioRail({ stage, modeName, selectionName, frameStyleName, ornamentCount = 0, hasPhoto = false, credit, folderSlot = null }) {
   const t = useT()
   const steps = [t('Studio', 'Studio'), t('Foto', 'Photo'), t('Buat', 'Create'), t('Hasil', 'Result')]
   const active = INDEX[stage] ?? 0
@@ -26,6 +26,7 @@ export default function StudioRail({ stage, modeName, selectionName, frameStyleN
       {rows.length > 0 && <dl className="studio-rail-summary">
         {rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl>}
+      {folderSlot && <div className="studio-rail-folder">{folderSlot}</div>}
       {credit && <div className="studio-rail-credit"><small>{credit.label}</small><strong>{credit.value}</strong>{credit.note && <span>{credit.note}</span>}</div>}
     </aside>
   )

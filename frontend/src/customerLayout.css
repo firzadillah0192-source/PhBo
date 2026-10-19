@@ -468,3 +468,15 @@ main.api-docs.retro-app {
   --nx-card: var(--white); --nx-card-shadow: 3px 3px 0 var(--ink);
   background: var(--paper); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: var(--fs-md); line-height: 1.6;
 }
+
+/* Result folder: a small setting card in the rail instead of a floating block above the stage. */
+.retro-app .studio-rail-folder { padding: 16px 18px; }
+.retro-app .studio-rail-folder .folder-destination { gap: 8px; padding: 0; border: 0; max-width: none; margin: 0; }
+.retro-app .studio-rail-folder .folder-destination label { gap: 6px; color: var(--muted); font: 700 var(--fs-xs) var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+.retro-app .studio-rail-folder .folder-destination select { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 10px; border: var(--retro-border); border-radius: 8px; background: var(--white); color: var(--ink); font: 400 var(--fs-sm) var(--font-body); text-transform: none; letter-spacing: 0; }
+.retro-app .studio-rail-folder .folder-destination small, .retro-app .studio-rail-folder .folder-destination span, .retro-app .studio-rail-folder .folder-destination p { margin: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.4; }
+.retro-app .studio-rail-folder .folder-destination p button { min-height: 36px; padding: 4px 10px; border: var(--retro-border); border-radius: 6px; background: var(--white); color: var(--ink); font: 700 var(--fs-xs) var(--font-body); cursor: pointer; }
+@media (max-width: 900px) {
+  .retro-app .studio-rail-folder { padding: 12px 14px; }
+  .retro-app .studio-rail-folder .folder-destination small { display: none; }
+}
