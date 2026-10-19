@@ -480,3 +480,14 @@ main.api-docs.retro-app {
   .retro-app .studio-rail-folder { padding: 12px 14px; }
   .retro-app .studio-rail-folder .folder-destination small { display: none; }
 }
+
+/* /create (mode chooser): a tighter heading, and previews that show the whole template instead of a cropped slice.
+   The preview box is 4:3 with an auto-height percentage on the <img>, so tall templates rendered at natural size and got clipped. */
+.customer-app.retro-app:not(.is-marketing)>.creation-chooser { padding-top: 16px; }
+.customer-app.retro-app .creation-chooser .studio-breadcrumb { margin-bottom: 4px; }
+.customer-app.retro-app .creation-chooser>header { margin: 8px 0 20px; text-align: left; }
+.customer-app.retro-app .creation-chooser>header .landing-eyebrow { margin: 0 0 2px; }
+.customer-app.retro-app .creation-chooser>header h1 { margin: 0; font-size: clamp(28px, 3.4vw, 42px); line-height: 1.1; }
+.customer-app.retro-app .creation-chooser>header>p:last-child { margin: 6px 0 0; }
+.customer-app.retro-app .creation-chooser .landing-mode-image { position: relative; height: auto; min-height: 0; aspect-ratio: 1 / 1; }
+.customer-app.retro-app .creation-chooser .landing-mode-image img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 10px; box-sizing: border-box; object-fit: contain; }
