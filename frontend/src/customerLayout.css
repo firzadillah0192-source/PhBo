@@ -491,3 +491,20 @@ main.api-docs.retro-app {
 .customer-app.retro-app .creation-chooser>header>p:last-child { margin: 6px 0 0; }
 .customer-app.retro-app .creation-chooser .landing-mode-image { position: relative; height: auto; min-height: 0; aspect-ratio: 1 / 1; }
 .customer-app.retro-app .creation-chooser .landing-mode-image img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 10px; box-sizing: border-box; object-fit: contain; }
+
+/* Photo stage (desktop): the heading moves into the right column above the action panel so the camera preview starts
+   right under the back button instead of below a three-line heading. Stacks again at <=900px. */
+@media (min-width: 901px) {
+  .retro-app .photo-stage:not(.classic-capture) { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); column-gap: 28px; align-items: start; }
+  .retro-app .photo-stage:not(.classic-capture)>.capture-navigation { grid-column: 1 / -1; grid-row: 1; }
+  .retro-app .photo-stage:not(.classic-capture)>.stage-heading { grid-column: 2; grid-row: 2; margin: 0 0 16px; }
+  .retro-app .photo-stage:not(.classic-capture)>.stage-heading h1 { font-size: clamp(26px, 2.2vw, 34px); }
+  .retro-app .photo-stage:not(.classic-capture)>.stage-heading>p:last-child { font-size: var(--fs-sm); }
+  .retro-app .photo-stage:not(.classic-capture) .photo-layout { display: contents; }
+  .retro-app .photo-stage:not(.classic-capture) .photo-layout .camera-stage { grid-column: 1; grid-row: 2 / span 2; }
+  .retro-app .photo-stage:not(.classic-capture) .photo-panel { grid-column: 2; grid-row: 3; }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .retro-app .photo-stage:not(.classic-capture) { grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); }
+  .retro-app .photo-stage:not(.classic-capture) .photo-layout .camera-stage { aspect-ratio: 1 / 1; max-height: none; }
+}
