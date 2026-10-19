@@ -22,7 +22,7 @@ function AccountAvatar({ account }) {
     : <span className="customer-avatar customer-avatar-initials" aria-hidden="true">{initials(account)}</span>
 }
 
-export default function CustomerNav({ usage, account, mode, onHome, onMode, onUsageChanged, onAccountNavigate, openRequest, marketing = false }) {
+export default function CustomerNav({ usage, account, mode, onHome, onMode, onUsageChanged, onAccountNavigate, openRequest, onStartFree, marketing = false }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [register, setRegister] = useState(true)
@@ -132,7 +132,7 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
         <button aria-pressed={mode === 'ADVANCED'} className={mode === 'ADVANCED' ? 'is-active' : ''} onClick={() => onMode('ADVANCED')}>Creative Studio</button>
       </nav>}
       <div className="customer-account" ref={accountRoot}>
-        {marketing && <a className="landing-nav-cta" href="/create">{usage?.authenticated ? t('Mulai Berkreasi', 'Start Creating') : t('Coba Gratis', 'Try for Free')} <span aria-hidden="true">↗</span></a>}
+        {marketing && <a className="landing-nav-cta" href="/create" onClick={(event) => { if (!usage?.authenticated && onStartFree) { event.preventDefault(); onStartFree() } }}>{usage?.authenticated ? t('Mulai Berkreasi', 'Start Creating') : t('Coba Gratis', 'Try for Free')} <span aria-hidden="true">↗</span></a>}
         <LanguageToggle />
         {!marketing && usage && <span className="customer-credit">{usage.subscription ? `AI ${usage.ai_remaining} · Classic ${usage.subscription.classic.remaining}` : `${usage.ai_remaining} ${t('kredit', usage.ai_remaining === 1 ? 'credit' : 'credits')}`}</span>}
         <button ref={accountTrigger} type="button" className="customer-account-trigger" aria-controls={panelId} aria-expanded={open} onClick={() => { if (!usage?.authenticated) setRegister(false); setOpen((value) => !value) }}>

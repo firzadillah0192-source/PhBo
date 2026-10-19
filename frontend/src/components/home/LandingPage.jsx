@@ -14,7 +14,7 @@ const STEPS = [
 ]
 const CAPTIONS = { 'Creative world': ['Dunia kreatif', 'Creative world'], 'Curated transformation': ['Transformasi pilihan', 'Curated transformation'] }
 
-function Actions({ signedIn }) {
+function Actions({ signedIn, onStart }) {
   const t = useT()
   return signedIn
     ? <div className="landing-actions">
@@ -22,12 +22,12 @@ function Actions({ signedIn }) {
       <a className="landing-secondary" href="/account?tab=creations">{t('Lihat Kreasi Saya', 'See My Creations')} <span aria-hidden="true">→</span></a>
     </div>
     : <div className="landing-actions">
-      <a className="landing-primary" href="/create">{t('Coba NXBooth Gratis', 'Try NXBooth Free')} <span aria-hidden="true">↗</span></a>
+      <a className="landing-primary" href="/create" onClick={(event) => { if (onStart) { event.preventDefault(); onStart() } }}>{t('Coba NXBooth Gratis', 'Try NXBooth Free')} <span aria-hidden="true">↗</span></a>
       <a className="landing-secondary" href="#experiences">{t('Jelajahi Pengalaman', 'Explore Experiences')} <span aria-hidden="true">↓</span></a>
     </div>
 }
 
-export default function LandingPage({ templates = [], experiences = [], layouts = [], loading = false, error = false, onRetry, account = null, usage = null }) {
+export default function LandingPage({ templates = [], experiences = [], layouts = [], loading = false, error = false, onRetry, account = null, usage = null, onStart }) {
   const t = useT()
   const signedIn = Boolean(usage?.authenticated)
   const name = account?.display_name || account?.email?.split('@')[0] || ''
@@ -51,7 +51,7 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
               <p className="landing-eyebrow"><span className="retro-spark" aria-hidden="true">✳</span> {t('Momen yang layak dikenang', 'A moment worth remembering')}</p>
               <h1 id="landing-title">{t('Satu foto,', 'One photo,')}<br /><em>{t('seribu cerita.', 'a thousand stories.')}</em></h1>
               <p className="landing-intro">{t('Hadirkan satu potret, lalu pilih dunia tempat ia hidup: bingkai klasik, petualangan sinematik, atau gaya yang belum pernah Anda bayangkan.', 'Bring one portrait, then choose the world it lives in: a classic frame, a cinematic adventure, or a style you have never imagined.')}</p>
-              <Actions />
+              <Actions onStart={onStart} />
               <p className="landing-hero-note"><span aria-hidden="true">✓</span> {t('Kamera Anda. Imajinasi Anda. Kenang-kenangan Anda.', 'Your camera. Your imagination. Your keepsake.')}</p>
             </>}
         </div>
@@ -104,7 +104,7 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
 
       <section className="landing-final landing-container landing-section" aria-labelledby="final-title">
         <p className="landing-eyebrow">{signedIn ? t('Kisah Anda belum selesai', 'Your story is not finished') : t('Pintu sudah terbuka', 'The door is open')}</p>
-        <h2 id="final-title">{signedIn ? t('Cerita apa yang ingin Anda', 'What story will you') : t('Siap menulis', 'Ready to write')}<br /><em>{signedIn ? t('tulis hari ini?', 'tell today?') : t('cerita berikutnya?', 'your next chapter?')}</em></h2><Actions signedIn={signedIn} />
+        <h2 id="final-title">{signedIn ? t('Cerita apa yang ingin Anda', 'What story will you') : t('Siap menulis', 'Ready to write')}<br /><em>{signedIn ? t('tulis hari ini?', 'tell today?') : t('cerita berikutnya?', 'your next chapter?')}</em></h2><Actions signedIn={signedIn} onStart={onStart} />
       </section>
     </main>
     <footer className="landing-footer landing-container">
