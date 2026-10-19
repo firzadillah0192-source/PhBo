@@ -558,3 +558,7 @@ main.api-docs.retro-app {
 .retro-app .landing-contact-card small { color: var(--muted); font-size: var(--fs-sm); }
 .retro-app .landing-contact-card address { font-style: normal; font-size: var(--fs-md); line-height: 1.6; }
 .retro-app .landing-footer p a { color: inherit; }
+.retro-app .landing-pricing-alert { display: flex; align-items: flex-start; gap: 12px; max-width: 760px; margin: 16px 0 0; padding: 12px 16px; border: var(--retro-border); border-radius: 10px; background: #fff0b8; box-shadow: 3px 3px 0 var(--ink); }
+.retro-app .landing-pricing-alert svg { flex: none; margin-top: 1px; }
+.retro-app .landing-pricing-alert p { margin: 0; color: var(--ink); font-size: var(--fs-sm); line-height: 1.5; }
+.retro-app .landing-pricing-alert a { color: var(--ink); font-weight: 800; text-underline-offset: 3px; overflow-wrap: anywhere; }
