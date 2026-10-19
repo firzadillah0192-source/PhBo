@@ -1,6 +1,9 @@
 import React from 'react'
 import ModeCards, { CatalogImage } from './ModeCards.jsx'
 import LandingReel from './LandingReel.jsx'
+import PricingSection from './PricingSection.jsx'
+import ContactSection from './ContactSection.jsx'
+import { BUSINESS, phoneDisplay, phoneHref } from '../../businessInfo.js'
 import { featuredPreviews, modePreviews } from './landingCatalog.js'
 import { modeRoute } from '../../customerRoute.js'
 import { useT } from '../../i18n.js'
@@ -27,7 +30,7 @@ function Actions({ signedIn, onStart }) {
     </div>
 }
 
-export default function LandingPage({ templates = [], experiences = [], layouts = [], loading = false, error = false, onRetry, account = null, usage = null, onStart }) {
+export default function LandingPage({ templates = [], experiences = [], layouts = [], loading = false, error = false, onRetry, account = null, usage = null, onStart, onBuy }) {
   const t = useT()
   const signedIn = Boolean(usage?.authenticated)
   const name = account?.display_name || account?.email?.split('@')[0] || ''
@@ -92,6 +95,8 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
         </ul> : <div className="landing-catalog-state"><p>{error ? t('Koleksi pratinjau butuh waktu untuk dimuat.', 'The preview collection is taking a moment to load.') : t('Dunia baru sedang disiapkan. Jelajahi studio untuk melihat yang tersedia.', 'New worlds are being prepared. Explore the studio to see what’s available.')}</p>{error && <button type="button" onClick={onRetry}>{t('Muat ulang pratinjau', 'Reload previews')} <span aria-hidden="true">↗</span></button>}</div>}
       </section>
 
+      <PricingSection catalog={usage?.subscription?.catalog} onBuy={onBuy} />
+
       <section className="landing-output landing-section" aria-labelledby="output-title">
         <div className="landing-container landing-output-inner">
           <div><p className="landing-eyebrow">{t('Lebih dari sekadar potret', 'More than a portrait')}</p><h2 id="output-title">{t('Dibuat untuk keluar', 'Made to leave')}<br /><em>{t('dari layar.', 'the screen.')}</em></h2><p>{t('Lihat pratinjau kreasi Anda, lalu unduh untuk disimpan di perangkat.', 'Preview your finished creation, then download it to keep on your device.')}</p></div>
@@ -106,10 +111,11 @@ export default function LandingPage({ templates = [], experiences = [], layouts 
         <p className="landing-eyebrow">{signedIn ? t('Kisah Anda belum selesai', 'Your story is not finished') : t('Pintu sudah terbuka', 'The door is open')}</p>
         <h2 id="final-title">{signedIn ? t('Cerita apa yang ingin Anda', 'What story will you') : t('Siap menulis', 'Ready to write')}<br /><em>{signedIn ? t('tulis hari ini?', 'tell today?') : t('cerita berikutnya?', 'your next chapter?')}</em></h2><Actions signedIn={signedIn} onStart={onStart} />
       </section>
+      <ContactSection />
     </main>
     <footer className="landing-footer landing-container">
-      <div><a className="landing-footer-brand" href="/">NXBooth</a><p>{t('Ditenagai GenNexByte', 'Powered by GenNexByte')}</p></div>
-      <nav aria-label={t('Footer NXBooth', 'NXBooth footer')}><a href="#experiences">{t('Pengalaman', 'Experiences')}</a><a href="#how-it-works">{t('Cara Kerja', 'How It Works')}</a><a href="/create">{t('Mulai berkreasi', 'Start creating')} <span aria-hidden="true">↗</span></a></nav>
+      <div><a className="landing-footer-brand" href="/">NXBooth</a><p>{t('Ditenagai GenNexByte', 'Powered by GenNexByte')}</p><p><a href={`mailto:${BUSINESS.email}`}>{BUSINESS.email}</a> · <a href={phoneHref()}>{phoneDisplay()}</a></p></div>
+      <nav aria-label={t('Footer NXBooth', 'NXBooth footer')}><a href="#experiences">{t('Pengalaman', 'Experiences')}</a><a href="#how-it-works">{t('Cara Kerja', 'How It Works')}</a><a href="#harga">{t('Harga', 'Pricing')}</a><a href="#kontak">{t('Kontak', 'Contact')}</a><a href="/create">{t('Mulai berkreasi', 'Start creating')} <span aria-hidden="true">↗</span></a></nav>
       <small>{t('Jadikan momen ini milik Anda.', 'Make a moment your own.')}</small>
     </footer>
   </div>

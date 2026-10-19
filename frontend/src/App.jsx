@@ -398,11 +398,13 @@ function CustomerApp() {
   const openCreditOptions = useCallback(() => { setCreditPopup(true) }, [])
 
   // "Coba Gratis" on the landing page asks visitors to sign in first, then continues to the studio.
-  const startAfterLoginRef = useRef(false)
-  const requireLogin = useCallback(() => { startAfterLoginRef.current = true; setAccountRequest((value) => value + 1) }, [])
+  const startAfterLoginRef = useRef(null)
+  const requireLogin = useCallback((target = 'create') => { startAfterLoginRef.current = target; setAccountRequest((value) => value + 1) }, [])
+  const goTo = useCallback((target) => { if (target === 'plan') openAccount('plan'); else navigate('/create') }, [openAccount])
+  const buyFromLanding = useCallback((target) => { if (usage?.authenticated) goTo(target); else requireLogin(target) }, [usage?.authenticated, goTo, requireLogin])
   useEffect(() => {
-    if (usage?.authenticated && startAfterLoginRef.current) { startAfterLoginRef.current = false; navigate('/create') }
-  }, [usage?.authenticated])
+    if (usage?.authenticated && startAfterLoginRef.current) { const target = startAfterLoginRef.current; startAfterLoginRef.current = null; goTo(target) }
+  }, [usage?.authenticated, goTo])
 
   const handleFile = useCallback(async (file) => {
     if (!file) return
@@ -591,9 +593,9 @@ function CustomerApp() {
     <div className={`customer-app ${!kioskMode ? 'retro-app' : ''} ${stage === 'home' ? 'is-home' : ''} ${marketingLanding ? 'is-marketing' : ''}`} data-mood={mood}>
       {!kioskMode && <a className="studio-skip" href="#studio-main">{t('Lewati ke konten', 'Skip to content')}</a>}
       {kioskMode && <CelestialWorld mood={mood} mode={mode} hoverMode={hoverMode} templates={templates} experiences={experiences} />}
-      <CustomerNav marketing={marketingLanding} onStartFree={requireLogin} usage={usage} account={account} mode={mode} onHome={kioskMode ? home : () => navigate('/')} onMode={chooseMode} onUsageChanged={refreshUsage} onAccountNavigate={openAccount} openRequest={accountRequest} />
+      <CustomerNav marketing={marketingLanding} onStartFree={() => requireLogin('create')} usage={usage} account={account} mode={mode} onHome={kioskMode ? home : () => navigate('/')} onMode={chooseMode} onUsageChanged={refreshUsage} onAccountNavigate={openAccount} openRequest={accountRequest} />
       {marketingLanding ? (
-        <LandingPage templates={templates} experiences={experiences} layouts={layouts} loading={catalogLoading} error={catalogError} onRetry={loadLandingCatalog} account={account} usage={usage} onStart={requireLogin} />
+        <LandingPage templates={templates} experiences={experiences} layouts={layouts} loading={catalogLoading} error={catalogError} onRetry={loadLandingCatalog} account={account} usage={usage} onStart={() => requireLogin('create')} onBuy={buyFromLanding} />
       ) : stage === 'chooser' ? (
         <CreationChooser templates={templates} experiences={experiences} layouts={layouts} onSelect={chooseMode} savedFlow={readCustomerFlow()} />
       ) : stage === 'home' ? (

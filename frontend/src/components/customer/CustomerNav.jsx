@@ -125,6 +125,7 @@ export default function CustomerNav({ usage, account, mode, onHome, onMode, onUs
       {marketing ? <nav className="landing-nav-links" aria-label={t('Jelajahi NXBooth', 'Explore NXBooth')}>
         <a href="#experiences">{t('Pengalaman', 'Experiences')}</a>
         <a href="#how-it-works">{t('Cara Kerja', 'How It Works')}</a>
+        <a href="#harga">{t('Harga', 'Pricing')}</a>
         <a href="#modes">{t('Mode', 'Modes')}</a>
       </nav> : <nav className="customer-mode-nav" aria-label={t('Studio', 'Studios')}>
         <button aria-pressed={mode === 'CLASSIC'} className={mode === 'CLASSIC' ? 'is-active' : ''} onClick={() => onMode('CLASSIC')}>Photo Booth</button>
