@@ -1,4 +1,5 @@
 import SubscriptionPlans, { SubscriptionWalletSummary } from './SubscriptionPlans.jsx'
+import SandboxNotice from './SandboxNotice.jsx'
 import React, { useRef, useState } from 'react'
 import { TOP_UP_OPTIONS, topUpPrice, formatRupiah } from '../../creditCatalog.js'
 import { createTopUpCheckout } from '../../api.js'
@@ -62,7 +63,7 @@ function LegacyCreditTopUp({ data, compact = false }) {
     <section className="account-panel bekal-checkout" aria-label={t('Ringkasan isi kredit', 'Top-up summary')}>
       {isCustom && <label className="bekal-custom-label">{t('Jumlah kredit', 'Credit amount')}<input type="number" aria-label={t('Jumlah kredit', 'Credit amount')} min="1" step="1" inputMode="numeric" value={custom} onChange={event => { setCustom(event.target.value); setNotice('') }} aria-describedby="bekal-custom-help" /><small id="bekal-custom-help">{t('Masukkan jumlah kredit dalam bilangan bulat positif.', 'Enter the credit amount as a positive whole number.')}</small></label>}
       <div className="bekal-total" aria-live="polite"><span>{selectedName}{price !== null ? ` · ${Number(credits).toLocaleString(locale)} ${t('kredit', 'credits')}` : ''}</span><strong>{price !== null ? formatRupiah(price) : t('Masukkan jumlah yang valid', 'Enter a valid amount')}</strong></div>
-      <p className="bekal-payment-note"><span aria-hidden="true">✦</span> {t('Sandbox: pembayaran simulasi. Kredit uji dicatat setelah konfirmasi dan tidak menambah saldo produksi.', 'Sandbox: simulated payment. Test credits are recorded after confirmation and do not add production balance.')}</p>
+      <SandboxNotice />
       <button ref={payButton} className="customer-solid-button" type="button" disabled={price === null || paying} onClick={pay}>{paying ? t('Menyiapkan pembayaran…', 'Preparing payment…') : t('Bayar', 'Pay')} <span aria-hidden="true">→</span></button>
       {notice && <p role="status" className="account-inline-notice">{notice}</p>}
     </section>

@@ -14,6 +14,7 @@ import { MODE_NAMES } from '../../creditCatalog.js'
 import StudioModal from './StudioModal.jsx'
 import PaymentHistory from './PaymentHistory.jsx'
 import { LanguageSelect } from './LanguageSwitch.jsx'
+import SandboxNotice from './SandboxNotice.jsx'
 import { useLocale, useT } from '../../i18n.js'
 
 const TABS = [
@@ -156,7 +157,7 @@ function BillingTab({ data, onTabChange }) {
   const t = useT()
   return <>
     <header className="account-page-heading"><p className="customer-kicker">{t('Tagihan', 'Billing')}</p><h1>{t('Riwayat pembayaran.', 'Payment history.')}</h1><p>{t('Lihat pesanan isi kredit dan status pembayarannya di akun ini.', 'See your credit orders and their payment status on this account.')}</p></header>
-    <section className="account-panel account-info-panel"><div><p className="account-eyebrow">{data.billing.enabled ? t('Pembayaran Sandbox', 'Sandbox payments') : t('Pembayaran belum tersedia', 'Payments not available yet')}</p><h2>{data.billing.message}</h2><button className="account-back-link" type="button" onClick={() => onTabChange('plan')}>{t('Tambah kredit', 'Add credits')} <b aria-hidden="true">→</b></button></div></section>
+    <section className="account-panel account-info-panel"><div><p className="account-eyebrow">{data.billing.enabled ? t('Pembayaran Sandbox', 'Sandbox payments') : t('Pembayaran belum tersedia', 'Payments not available yet')}</p>{data.billing.enabled ? <SandboxNotice /> : <h2>{data.billing.message}</h2>}<button className="account-back-link" type="button" onClick={() => onTabChange('plan')}>{t('Tambah kredit', 'Add credits')} <b aria-hidden="true">→</b></button></div></section>
     {data.billing.enabled && <PaymentHistory />}
   </>
 }

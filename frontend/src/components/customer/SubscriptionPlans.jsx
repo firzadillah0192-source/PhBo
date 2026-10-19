@@ -3,6 +3,7 @@ import { createSubscriptionCheckout, createTopUpCheckout } from '../../api.js'
 import { checkoutDestination } from '../../topUpCheckout.js'
 import { formatRupiah } from '../../creditCatalog.js'
 import { useLocale, useT } from '../../i18n.js'
+import SandboxNotice from './SandboxNotice.jsx'
 import '../../subscription.css'
 
 const TOP_UP_PRESETS = [1000, 2500, 5000, 10000]
@@ -56,8 +57,8 @@ export default function SubscriptionPlans({ data, compact = false, onTabChange }
       </dl>
       <button type="button" className="customer-solid-button" disabled={!validCredits || !!busy} onClick={() => checkout(`ai:${credits}`, key => createTopUpCheckout(Number(credits), key))}>{busy ? t('Menyiapkan…', 'Preparing…') : t('Checkout AI Credit', 'Checkout AI Credit')}</button>
       {error && <p className="payment-error" role="alert">{error}</p>}
+      <SandboxNotice />
       <ul className="topup-notes">
-        <li role="note">{t('Sandbox: hanya simulasi pembayaran. Tidak mengaktifkan paket atau menambah kredit produksi. Belum ada penagihan otomatis.', 'Sandbox: payment simulation only. It does not activate a plan or add production credits. No automatic billing yet.')}</li>
         <li>{t('Top-up Classic serta add-on Storage + Retensi menyusul setelah ukuran dan harganya ditetapkan.', 'Classic top-ups and Storage + Retention add-ons follow once sizes and prices are set.')}</li>
       </ul>
     </div>

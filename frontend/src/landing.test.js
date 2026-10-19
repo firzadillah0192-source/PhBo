@@ -137,7 +137,7 @@ test('landing, chooser, sign-in and mobile component structure render through th
     assert.match(priced, /Rp\s10\.000/)
     assert.match(priced, /Duitku/)
     assert.match(priced, /Sandbox/)
-    assert.match(priced, /landing-pricing-alert/)
+    assert.match(priced, /sandbox-notice/)
     assert.match(priced, /please contact <a href="mailto:support@gennexbyte\.com">support@gennexbyte\.com<\/a>/)
     assert.doesNotMatch(priced, /simulations and do not add production credit/)
     const unpriced = renderToStaticMarkup(React.createElement(LandingPage, {}))
