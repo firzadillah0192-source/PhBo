@@ -62,7 +62,7 @@ function App(){
   setCount(0);await capture();
  }
  async function startSession(){
-  const ok=await act('start',mode,choice||undefined,personalized?eventName:undefined);
+  const ok=await act('start',mode,choice||undefined,personalized||(mode!=='CLASSIC'&&eventName.trim())?eventName:undefined);
   if(ok){setChoice('');setEventName('');}
  }
  function backHome(){setChoice('');setEventName('');setView('mode');}
@@ -119,6 +119,7 @@ function App(){
    {catalogEmpty?<p className="lead">{state?.catalogLoaded||state?.configured?'Belum ada desain untuk mode ini.':'Katalog desain belum tersedia, jadi sesi dimulai tanpa desain (hanya ambil dan tinjau foto).'}</p>
    :<div className="gallery" role="radiogroup" aria-label="Pilihan desain">{choices.map(c=><button key={c.id} role="radio" aria-checked={choice===c.id} className={`tile${choice===c.id?' selected':''}`} onClick={()=>setChoice(c.id)}><Thumb api={api} mode={mode} id={c.id} name={c.name}/><b>{c.name}</b><span>{mode==='CLASSIC'?`${c.shots} foto`:c.theme}</span></button>)}</div>}
    {personalized&&<label className="field">Nama event<input value={eventName} maxLength={80} onChange={e=>setEventName(e.target.value)} placeholder="Misalnya: Pernikahan Sarah & Arif" required/><small>Tanggal otomatis mengikuti waktu foto dalam WIB.</small></label>}
+   {mode!=='CLASSIC'&&<label className="field">Nama event (opsional)<input value={eventName} maxLength={80} onChange={e=>setEventName(e.target.value)} placeholder="Misalnya: Pernikahan Sarah & Arif"/><small>Muncul di foto bersama tanggal otomatis (WIB). QR untuk unduh selalu ada.</small></label>}
    <div className="actions"><button className="primary" disabled={!state||state.busy||!catalogEmpty&&!choice||needsName} onClick={startSession}>Mulai sesi</button><button onClick={backHome}>Kembali</button></div></section>}
   {!eventMode&&s&&<section className="screen">
   <p className="eyebrow">{names[s.mode]} · {s.captures.length}/{s.shots} FOTO</p>

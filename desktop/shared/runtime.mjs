@@ -57,8 +57,10 @@ export class Runtime {
     if(!['CLASSIC','BASIC','ADVANCED'].includes(mode)||(this.apiKey||this.catalog[mode]?.length)&&!choice)throw new Error('SELECTION_REQUIRED');
     const name=eventName?.trim().normalize('NFC');
     if(choice?.requiresEventName&&(!name||name.length>80||/[\p{Cc}\p{Cf}]/u.test(name)))throw new Error('EVENT_NAME_REQUIRED');
+    // Basic and Advanced take an optional event name for the printed footer (date and QR are always added).
+    if(name&&(name.length>80||/[\p{Cc}\p{Cf}]/u.test(name)))throw new Error('EVENT_NAME_REQUIRED');
     this.session={id:newId(),mode,selectionId:choice?.id||null,shots:choice?.shots||(mode==='CLASSIC'?3:1),phase:'CAPTURING',captures:[],keys:{reserve:newId(),upload:newId(),generate:newId()}};
-    if(choice?.requiresEventName)this.session.eventName=name;
+    if(choice?.requiresEventName||(mode!=='CLASSIC'&&name))this.session.eventName=name;
     await this.save();return this.state();
   });}
   async capture(){return this.exclusive(async()=>{
@@ -92,7 +94,7 @@ export class Runtime {
       if(!s.photoIds){const captures=[];for(const c of s.captures){const bytes=await readFile(join(this.assets,c.file));if(inspectImage(bytes).sha256!==c.sha256)throw new Error('CAPTURE_CHANGED');captures.push({id:c.id,bytes});}
         const upload=await media.upload(s.remote.uploadPath,captures,secret.token,s.keys.upload);s.photoIds=upload.photos.map(p=>p.id);await this.save();}
       if(!secret.cookie){await control.claim(s.remote.code,secret.token);if(!secret.cookie)throw new Error('CLAIM_COOKIE_MISSING');}
-      if(!s.job){const selection=s.mode==='CLASSIC'?{frameId:s.selectionId,...s.eventName?{eventName:s.eventName,capturedAt:s.captures[0].capturedAt}:{}}:s.mode==='BASIC'?{templateId:s.selectionId}:{experienceId:s.selectionId};
+      if(!s.job){const selection=s.mode==='CLASSIC'?{frameId:s.selectionId,...s.eventName?{eventName:s.eventName,capturedAt:s.captures[0].capturedAt}:{}}:{...s.mode==='BASIC'?{templateId:s.selectionId}:{experienceId:s.selectionId},...s.eventName?{eventName:s.eventName,capturedAt:s.captures[0].capturedAt}:{}};
         s.job=await control.generate({sessionCode:s.remote.code,mode:s.mode,photoIds:s.photoIds,...selection},s.keys.generate);await this.save();}
       s.phase='PROCESSING';s.jobStatus=s.job.status;await this.save();
       // Poll only real backend states; leave slow work resumable after five minutes.

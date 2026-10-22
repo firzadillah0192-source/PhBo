@@ -58,7 +58,7 @@ export class CustomerGenerationService {
       let frozen;
       try { frozen = await this.assets.freezeBasicTemplate(template); }
       catch (error) { if (error instanceof CatalogAssetError) throw new AppError(422, 'BASIC_TEMPLATE_INVALID', 'Basic template is invalid.'); throw error; }
-      const personalization = kiosk ? undefined : aiPersonalization(input, source.upload.created_at);
+      const personalization = aiPersonalization(input, source.upload.created_at);
       snapshot = { version: 2,mode: 'BASIC',prompt: composeFastBasicPrompt(template.name,template.description,personalization,template.id),model: preset.model,template: frozen,...(personalization ? { personalization } : {}) };
     } else if (input.mode === 'CLASSIC') {
       const layout = await this.model.layout(input.layout_id!);
@@ -85,7 +85,7 @@ export class CustomerGenerationService {
       frame = input.frame_style_id ?? 'natural';
       const style = await this.model.frame(frame);
       validateAdvancedSelection(experience, style, await this.model.ornaments(input.ornament_ids), input.ornament_ids);
-      const personalization = kiosk ? undefined : aiPersonalization(input, source.upload.created_at);
+      const personalization = aiPersonalization(input, source.upload.created_at);
       snapshot = { version: 1,mode: 'ADVANCED',prompt: composeAdvancedPrompt(experience.internal_prompt,style!.prompt_fragment,personalization),model: experience.model,...(personalization ? { personalization } : {}) };
     }
     const data = { id: legacyId(), upload_id: source.upload.id, account_id: identity.account?.id ?? null,
