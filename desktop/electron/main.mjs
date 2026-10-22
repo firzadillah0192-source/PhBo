@@ -8,7 +8,8 @@ import { Journal } from '../shared/journal.mjs';
 import { Bridge } from '../shared/bridge.mjs';
 import { Secrets } from '../shared/secrets.mjs';
 import { Runtime } from '../shared/runtime.mjs';
-import { origins, UpdateClient, DeviceClient, DiagnosticsClient } from '../shared/clients.mjs';
+import { origins, UpdateClient, DeviceClient, DiagnosticsClient, observeNetwork } from '../shared/clients.mjs';
+import { ActivityLog } from '../shared/activity-log.mjs';
 import { buildReport } from '../shared/diagnostics.mjs';
 import { EventStore, eventSchema, DEFAULT_TIMING } from '../shared/event.mjs';
 import { release as osRelease } from 'node:os';
@@ -33,6 +34,12 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   if(test&&process.env.PHBO_TEST_DATA)app.setPath('userData',process.env.PHBO_TEST_DATA);
   const root=app.getPath('userData'),assets=join(root,'assets');await mkdir(assets,{recursive:true});
   rm(join(assets,'updates'),{recursive:true,force:true}).catch(()=>{}); // installers downloaded by an earlier update are no longer needed once the app has restarted
+  let runtime,config;
+  const activity=new ActivityLog({dir:root,send:async(text,note)=>{
+    if(!runtime?.apiKey)throw new Error('BACKEND_NOT_CONFIGURED');
+    return new DiagnosticsClient(config,runtime.apiKey).send(buildReport({version:app.getVersion(),platform:process.platform,osVersion:osRelease(),deviceName:process.env.COMPUTERNAME||process.env.HOSTNAME,startupLog:text,note}));
+  }});
+  await activity.init();observeNetwork(event=>activity.record(event));activity.record({action:'app.start',status:'ok'});activity.start();
   const journal=await Journal.open(join(root,'journal.sqlite'));
   const eventStore=new EventStore(join(root,'event.json'));await eventStore.load();
   const timing=test&&process.env.PHBO_TEST_EVENT_TIMING?{...DEFAULT_TIMING,...JSON.parse(process.env.PHBO_TEST_EVENT_TIMING)}:DEFAULT_TIMING;
@@ -42,7 +49,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   const simulated=process.env.PHBO_DEVICE_MODE==='simulated';
   const cameraBackend=process.platform==='win32'?'canon-sdk':'browser-webcam';
   const bridge=new Bridge(app.isPackaged?join(process.resourcesPath,'bridge/KioskBridge.exe'):(process.env.PHBO_DOTNET||'dotnet'),
-    [...(app.isPackaged?[]:[dll]),'--root',assets,...(simulated?['--simulated']:[])]);
+    [...(app.isPackaged?[]:[dll]),'--root',assets,...(simulated?['--simulated']:[])],{onDiagnostic:event=>activity.record(event)});
   const printer=new PrinterService({bridge,journal,assets});
   let printerServer=null,printerServerError='';
   if(process.platform==='win32'||test&&process.env.PHBO_WEB_BRIDGE_TEST==='1')try{
@@ -50,9 +57,9 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   }catch{printerServerError='PRINTER_APP_PORT_UNAVAILABLE';}
   let operator=false;let lastProbe=null;let unlockFailures=0;let lockedUntil=0;
   // Pinned HTTPS endpoints; renderer cannot change destinations. Only unpackaged tests may point elsewhere.
-  const config=test&&process.env.PHBO_TEST_ORIGINS?origins(JSON.parse(process.env.PHBO_TEST_ORIGINS),true):origins();
+  config=test&&process.env.PHBO_TEST_ORIGINS?origins(JSON.parse(process.env.PHBO_TEST_ORIGINS),true):origins();
   let saved=null;try{saved=await secrets.get(KEY_ID)||null;}catch{}
-  const runtime=new Runtime({journal,bridge,assets,origins:config,apiKey:process.env.PHBO_KIOSK_API_KEY||'',secrets,printer,publicCatalog:!test,onChange:()=>{win?.webContents.send('desktop:changed');}});
+  runtime=new Runtime({journal,bridge,assets,origins:config,apiKey:process.env.PHBO_KIOSK_API_KEY||'',secrets,printer,publicCatalog:!test,onChange:()=>{const session=runtime?.session;activity.record({action:'app.session.'+(session?.phase||'idle'),status:session?.error?'error':'ok',code:session?.error,count:session?.captures?.length});win?.webContents.send('desktop:changed');}});
   let staff=saved?.token?{name:saved.name||'',email:saved.email||''}:null;
   if(!runtime.apiKey&&saved?.token){runtime.apiKey={token:saved.token};runtime.keySource='device';}
   else if(!runtime.apiKey&&saved?.key){runtime.apiKey=saved.key;runtime.keySource='saved';}
@@ -82,7 +89,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
         setTimeout(()=>app.quit(),500);
       }});
   };
-  const view=async()=>({...await runtime.state(),cameraBackend,version:app.getVersion(),keyFromEnvironment:runtime.keySource==='env'&&!!runtime.apiKey,
+  const view=async()=>({...await runtime.state(),cameraBackend,activity:activity.status(),version:app.getVersion(),keyFromEnvironment:runtime.keySource==='env'&&!!runtime.apiKey,
     loginRequired:!runtime.apiKey&&gate&&!loginSkipped,login:login.state,staff:runtime.keySource==='device'?staff:null,
     event:eventStore.get()?{...eventStore.get(),timing}:null,pinSet:pinSet(),pinPrompt:!!runtime.apiKey&&!envPin&&!pinRecord&&gate});
   const dist=resolve(here,'../dist');
@@ -108,6 +115,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
     }finally{release();}
   }
   const callSchema=z.discriminatedUnion('method',[
+    z.object({method:z.literal('activityEvent'),action:z.enum(['camera.preview','camera.reconnect','camera.video.decode','renderer.error','renderer.unhandled_rejection','ui.click','ui.change']),status:z.enum(['begin','ok','error','empty']),code:z.string().regex(/^[A-Z][A-Z0-9_]{0,79}$/).optional(),count:z.number().int().min(0).max(1000000).optional()}).strict(),
     z.object({method:z.literal('state')}).strict(),z.object({method:z.literal('start'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),selectionId:z.string().max(128).optional(),eventName:z.string().trim().min(1).max(80).regex(/^[^\p{Cc}\p{Cf}]+$/u).optional()}).strict(),
     z.object({method:z.literal('refresh')}).strict(),
     ...['loginStart','loginCancel','loginSkip','loginShow','logout','openStaff','pinSkip'].map(method=>z.object({method:z.literal(method)}).strict()),
@@ -121,9 +129,12 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
     z.object({method:z.literal('unlock'),pin:z.string().min(4).max(128)}).strict()
   ]);
   ipcMain.handle('desktop:call',async(event,input)=>{
+    const started=Date.now();let method='invalid',failed='';
     try{
       if(event.sender!==win.webContents||event.senderFrame!==win.webContents.mainFrame||event.senderFrame.url!=='nxbooth://app/index.html')throw new Error('IPC_FORBIDDEN');
-      const p=callSchema.parse(input);
+      const p=callSchema.parse(input);method=p.method;
+      if(p.method==='activityEvent'){const {method:_method,...record}=p;activity.record(record);return {ok:true};}
+      activity.record({action:'ipc.'+method,status:'begin'});
       if(p.method==='unlock'){
         if(!pinSet())throw new Error('OPERATOR_PIN_NOT_CONFIGURED');
         if(Date.now()<lockedUntil)throw new Error('OPERATOR_LOCKED');
@@ -231,11 +242,19 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
       if(p.method==='finish'&&!['RESULT_READY','FAILED'].includes(runtime.session?.phase)&&!operator)throw new Error('OPERATOR_REQUIRED'); // a result or a server-side failure can be closed without the staff PIN
       const data=p.method==='state'?await view():p.method==='start'?await runtime.start(p.mode,p.selectionId,p.eventName):await runtime[p.method]();
       return {ok:true,data};
-    }catch(e){return {ok:false,error:{code:/^[A-Z0-9_]+$/.test(e.message)?e.message:'DESKTOP_ERROR'}};}
+    }catch(e){failed=/^[A-Z][A-Z0-9_]{0,79}$/.test(e.message)?e.message:'DESKTOP_ERROR';return {ok:false,error:{code:failed}};}
+    finally{if(method!=='activityEvent')activity.record({action:'ipc.'+method,status:failed?'error':'ok',code:failed||undefined,ms:Date.now()-started});}
   });
   win.webContents.session.setPermissionCheckHandler((wc,permission,origin)=>wc===win.webContents&&permission==='media'&&origin==='nxbooth://app');
   win.webContents.session.setPermissionRequestHandler((wc,permission,callback,details)=>callback(wc===win.webContents&&permission==='media'&&details.requestingUrl?.startsWith('nxbooth://app/')&&!(details.mediaTypes||[]).includes('audio')));
-  app.on('before-quit',()=>{printerServer?.close();bridge.close();journal.close();});
+  win.webContents.on('render-process-gone',()=>activity.record({action:'renderer.process',status:'error',code:'RENDER_PROCESS_GONE'}));
+  win.webContents.on('unresponsive',()=>activity.record({action:'renderer.process',status:'error',code:'RENDERER_UNRESPONSIVE'}));
+  let exiting=false;
+  app.on('before-quit',event=>{
+    if(exiting)return;event.preventDefault();exiting=true;
+    activity.record({action:'app.quit',status:'ok'});
+    Promise.race([activity.stop(),new Promise(resolve=>setTimeout(resolve,1000))]).finally(()=>{printerServer?.close();bridge.close();journal.close();app.quit();});
+  });
   await runtime.initialize();
   if(test&&process.env.PHBO_TEST_FIXTURE)await runtime.setFixture(process.env.PHBO_TEST_FIXTURE);
   await win.loadURL('nxbooth://app/index.html');

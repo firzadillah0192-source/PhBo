@@ -1,6 +1,6 @@
 # NXBooth Desktop: installer and in-app update
 
-Status at the 17 October 2026 handoff: **1.0.1 published**; desktop **1.1.0 in development**, not published. Update/login routes and gateways were deployed by the previous releases. Windows hardware and the new install handover still need validation on the kiosk PC.
+Status at the 17 October 2026 handoff: desktop **1.1.0 published and verified** ([GitHub release](https://github.com/firzadillah0192-source/PhBo/releases/tag/desktop-v1.1.0)). Update/login routes and gateways were deployed by the previous releases. Windows hardware and the new install handover still need validation on the kiosk PC.
 
 ## How it works
 
@@ -61,26 +61,32 @@ The gateways answer 404 for unlisted routes. These routes are configured in `api
 
 Staff configure event name, date, active flag and a mix of Classic/Basic/Advanced selections in Menu staf. `desktop/shared/event.mjs` validates and persists `event.json` locally in Electron userData; no server schema changes. Guest flow: Start -> choose a template only when multiple are configured -> automatic shots with countdown/retake -> real backend processing -> automatic print attempt and result-claim QR -> manual or idle restart. Default timing is 5/4/120 seconds (countdown/retake/result reset). The event date is display-only; Classic receives the event name and actual capture timestamp. See [operator instructions](../desktop/PANDUAN_OPERATOR.md#mode-event-online-v110).
 
-The event handoff was validated with the browser webcam. A separate session started adding Canon SDK capture while these tests were running; the combined Canon source needs a fresh build and test pass after coordination. Automated tests use a fake camera and local fixture services and must never be reported as real AI or physical print success.
+Windows event capture uses the Canon USB SDK introduced in 1.0.2. Non-Windows development uses the browser webcam. Combined event/Canon UI tests passed using mocked SDK IPC; physical camera behavior still needs Windows validation. Automated tests use a fake camera and local fixture services and must never be reported as real AI or physical print success.
 
-### Codex validation handoff, 17 October 2026
+### Release 1.1.0 validation, 17 October 2026
 
-Status: **PARTIAL** for the combined working tree. No commit, push, tag, publish or container deployment by this session.
+Code and release validation: **PASS**. Windows Actions build succeeded; server offers 1.1.0 to 1.0.2, reports 1.1.0 up to date, and the complete media download matches the installer size and SHA-256. Web/API health checks pass. Release source is based on Canon commit `271040e` (1.0.2), with the event and updater changes layered on top. Owner approved commit, release and publication. The main workspace's unrelated changes were excluded by using an isolated worktree.
 
-- Implemented update streaming progress (percent/bytes/stages) through main/preload/React, duplicate-install protection and installer spawn error handling. Added unit coverage for partial/interrupted downloads, integrity failures, concurrent installs and launch retry. Windows install/restart remains untested.
-- Fixed the event test fixture's forbidden media path. Fixed overlapping state reads overwriting a finished/reset session; only the latest requested state is now rendered. Event reset errors are shown, and capture loops stop on unmount.
-- `dotnet build native/KioskBridge -c Release`: PASS (0 warnings/errors) before the separate Canon source changes.
-- `npm run build`: PASS before the separate Canon UI changes.
-- `npm test`: 32/32 PASS before the separate Canon changes; latest run 32/33 PASS, 1 FAIL (`camera.capture` expected `CAMERA_NOT_CONNECTED`, received `CAMERA_WINDOWS_ONLY` from the adapter being changed in parallel). New updater, EventStore and claim tests passed. Rebuild the adapter and rerun after Canon work is stable; do not weaken the test to hide this failure.
-- `xvfb-run -a npm run test:ui`: PASS before the separate Canon UI changes.
-- `xvfb-run -a npm run test:event-ui`: PASS including staff form, automatic photos/retake, process, printer absence, QR, manual reset, accelerated automatic reset, multiple templates and event off. Real timing defaults verified separately as 5/4/120 seconds.
-- `xvfb-run -a npm run test:setup-ui`: PASS including real IPC delivery of download percent/MB, verification and installing stages. No Windows executable was launched by this UI test.
-- `test:webcam-ui`: initial parallel UI run interrupted due to Electron's single-instance lock; rerun UI suites sequentially after the other desktop session finishes. The later parallel setup run was also interrupted, then passed when run sequentially.
+- `dotnet build native/KioskBridge -c Release`: PASS, 0 warnings/errors.
+- `npm run build`: PASS.
+- `npm test`: PASS, 33/33. Includes EventStore validation/restart, result-claim restrictions, streaming download progress, partial-file cleanup after interruption, hash/size failures, concurrent install rejection and retry after launch failure.
+- `xvfb-run -a npm run test:ui`: PASS.
+- `xvfb-run -a npm run test:webcam-ui`: PASS (Electron fake camera, actual JPEG IPC and real non-Windows adapter failure states).
+- `xvfb-run -a npm run test:setup-ui`: PASS, including main/preload/React progress display (percentage, MB, verification, installing).
+- `xvfb-run -a npm run test:event-ui`: PASS (staff form, automatic capture/retake/process, printer absence, QR, manual and accelerated automatic reset, template picker and event off).
+- `npm run test:canon-ui`: PASS (mocked SDK IPC; manual/event preview and capture, retake, disconnect/reconnect, no browser webcam fallback).
+- `git diff --check`: PASS.
 
-Commands used the local SDK (`DOTNET_ROOT` and `PHBO_DOTNET` = `/srv/photobooth/tmp/dotnet-sdk/sdk` and its `dotnet` binary). Coordination message `21dbb19145874fe1a92dd3d03da51105` asks Claude to confirm ownership of `CanonSession.cs`, `Program.cs`, `shared/bridge.mjs`, `src/camera.jsx` and overlapping UI edits. Those new Canon edits are not Codex's work and were preserved. Final combined validation is pending that coordination. Live releases remain the previous desktop 1.0.1 / express desktop-diagnostics / web activation-page releases.
+The earlier `CAMERA_WINDOWS_ONLY` test failure was resolved by rebuilding the changed adapter, without weakening assertions. UI suites run sequentially with a separate test configuration directory to avoid Electron single-instance contention. Commands use `DOTNET_ROOT=/srv/photobooth/tmp/dotnet-sdk/sdk` and `PHBO_DOTNET` pointing to its `dotnet` binary.
+
+Physical Canon/Epson behavior and Windows silent update/restart remain unverified on this Linux VPS. Progress becomes available once the kiosk runs 1.1.0; an app upgrading from 1.0.x still uses its old updater UI for that first download. No backend schema, gateway or container image changes are required for this desktop publication. Publication evidence and rollback manifest belong in `/srv/photobooth/releases/desktop-1.1.0-20261017T104500Z/manifest.json`.
 
 ## Camera test and support log (v1.0.1)
 
 `POST /api/v1/desktop/diagnostics` (control gateway, JSON only, <= 32 KB, same kiosk credentials as the update routes, 10 requests/minute). Strict schema (`backend-express/src/services/desktop-diagnostics.service.ts`): app/OS version, device name, device status, camera probe steps (name, ok, ms, short code, short detail, size) and a scrubbed `startup-error.log` tail. Unknown fields are rejected, so photos, tokens and cookies cannot be stored. Reports are appended to `<RUNTIME_DIR>/desktop-diagnostics/YYYY-MM-DD.jsonl` (2 MB/day cap, 30-day retention); no database change.
 
 The desktop side is `camera.probe` in `desktop/native/KioskBridge/CanonProbe.cs` (FC.SDK over WPD/PTP, Windows only; off Windows and in simulated mode it fails with `CAMERA_WINDOWS_ONLY`, never a fake result) plus the staff-menu buttons. Release script: `scripts/deploy_desktop_diagnostics.py prepare|deploy|rollback|status` (express + control gateway only).
+
+## Automatic activity logging (v1.1.1)
+
+Desktop 1.1.1 sends bounded activity batches automatically through the existing diagnostics endpoint, including session preview and native SDK failures. The schema is unchanged: `note` marks `activity/v1`, and `startup_log` carries NDJSON scalar activity records. See [DESKTOP_LIVE_LOGGING.md](DESKTOP_LIVE_LOGGING.md) for event fields, retry, privacy, local storage and limits.

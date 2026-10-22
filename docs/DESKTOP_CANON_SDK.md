@@ -11,3 +11,5 @@ The non-Windows development path keeps browser webcam capture. Simulation remain
 Validation: .NET build, desktop unit tests, real Electron simulation/webcam regressions and a browser test of SDK-only preview/capture/retake/disconnect with mocked IPC. These do not establish physical Windows camera acceptance. After installing 1.0.2 on the kiosk, verify USB preview, shutter/JPEG, multiple Classic poses, retake, disconnect/reconnect and then send a fresh support report.
 
 Release scope: 1.0.2 is built from `origin/main` f999214 plus this camera fix. The shared workspace's unreleased 1.1.0 event/updater changes are excluded from this installer; the event source in the shared workspace also uses the new camera hook and stops on capture failure.
+
+Desktop 1.1.0 retains this Canon integration and adds event mode and updater progress. Combined manual/event SDK UI regression tests pass with mocked IPC. Physical Windows acceptance remains pending.

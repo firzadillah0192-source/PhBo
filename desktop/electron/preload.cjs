@@ -1,6 +1,7 @@
 const {contextBridge,ipcRenderer}=require('electron');
 const call=input=>ipcRenderer.invoke('desktop:call',input);
 contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
+  activityEvent:event=>call({...event,method:'activityEvent'}),
   state:()=>call({method:'state'}),start:(mode,selectionId,eventName)=>call({method:'start',mode,selectionId,eventName}),
   cameraOpen:()=>call({method:'cameraOpen'}),cameraFrame:()=>call({method:'cameraFrame'}),cameraClose:()=>call({method:'cameraClose'}),
   capture:()=>call({method:'capture'}),retake:()=>call({method:'retake'}),process:()=>call({method:'process'}),
@@ -16,3 +17,12 @@ contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
   onUpdateProgress:callback=>{const handler=(_event,progress)=>callback(progress);ipcRenderer.on('desktop:update-progress',handler);return()=>ipcRenderer.removeListener('desktop:update-progress',handler);},
   onChange:callback=>{const handler=()=>callback();ipcRenderer.on('desktop:changed',handler);return()=>ipcRenderer.removeListener('desktop:changed',handler);}
 }));
+
+// Renderer-wide events carry only fixed names; form contents, button text and exception messages never cross this channel.
+const trace=(action,code)=>{void call({method:'activityEvent',action,status:'error',code}).catch(()=>{});};
+window.addEventListener('error',()=>trace('renderer.error','RENDERER_ERROR'));
+window.addEventListener('unhandledrejection',()=>trace('renderer.unhandled_rejection','UNHANDLED_REJECTION'));
+for(const type of ['click','change'])window.addEventListener(type,event=>{
+ const target=event.target?.closest?.('button,input,select');if(!target)return;
+ void call({method:'activityEvent',action:'ui.'+type,status:'ok',code:target.tagName}).catch(()=>{});
+},true);

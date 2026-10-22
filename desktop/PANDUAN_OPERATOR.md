@@ -23,7 +23,7 @@ Format `BESAR.SEDANG.KECIL`, misalnya `1.1.19`:
 | **SEDANG** (kedua) | Pembaruan fitur, model, desain, dll | `1.1.19` -> `1.2.0` |
 | **KECIL** (ketiga) | Perbaikan kecil / patching | `1.1.19` -> `1.1.20` |
 
-Saat satu bagian naik, bagian di kanannya kembali ke 0. Versi pengembangan sekarang: **1.1.0** (mode event dan progres update); installer yang sudah dipublish saat handoff: **1.0.1**. Server menerima tiga angka (masing-masing sampai 4 digit) dan membandingkannya sebagai angka, jadi `1.10.0` lebih baru dari `1.9.0`. Saat mengubah versi di `desktop\package.json`, sinkronkan juga `package-lock.json`.
+Saat satu bagian naik, bagian di kanannya kembali ke 0. Versi rilis ini: **1.1.0** (mode event dan progres update). Server menerima tiga angka (masing-masing sampai 4 digit) dan membandingkannya sebagai angka, jadi `1.10.0` lebih baru dari `1.9.0`. Saat mengubah versi di `desktop\package.json`, sinkronkan juga `package-lock.json`.
 
 ## B. Membuat installer (setiap rilis)
 
@@ -54,14 +54,14 @@ Masuk bertahan sekitar 14 hari dan diperpanjang otomatis selama kiosk dipakai. T
 
 ## Mode event online (v1.1.0)
 
-1. Masuk akun, sambungkan webcam dan printer, lalu buka **Menu staf** (PIN bila dipasang).
+1. Masuk akun, sambungkan kamera Canon USB dan printer, lalu buka **Menu staf** (PIN bila dipasang).
 2. Di **Mode event**, isi **Nama event** dan **Tanggal event**. Centang template yang boleh dipakai: Classic, Basic, Advanced, atau campurannya. Centang **Aktifkan mode event di kiosk ini**, lalu **Simpan mode event** dan **Tutup menu**. Pengaturan tersimpan di PC ini. Tutup sesi yang masih aktif sebelum mengaktifkan event.
 3. Tamu menekan **Mulai**. Bila hanya satu template, langsung ke kamera; bila beberapa, tamu memilih template dulu. Kamera mengambil foto otomatis setelah hitung mundur **5 detik** per foto. Ada **4 detik** untuk **Ulangi foto ini** sebelum lanjut ke foto berikutnya.
 4. Setelah semua foto selesai, aplikasi memproses otomatis, mengirim hasil ke printer, dan menampilkan QR unduhan. Bila printer tidak terdeteksi, layar menampilkan **Printer di luar jangkauan**; QR tetap tersedia. **Coba cetak lagi** dipakai setelah perangkat diperiksa.
 5. **Mulai ulang** kembali ke layar awal tanpa PIN. Layar hasil juga kembali otomatis setelah **120 detik**. Jika koneksi terputus, gunakan **Coba lagi** atau **Mulai ulang** pada layar gagal. Di mode manual, tombol **Mulai ulang** juga tersedia setelah hasil selesai.
 6. Untuk kembali ke mode manual, buka Menu staf, hilangkan centang **Aktifkan mode event di kiosk ini**, lalu simpan.
 
-Mode event membutuhkan internet untuk proses dan QR. Basic/Advanced memakai kredit AI sesuai aturan server; Classic tidak memakai AI. Tanggal event ditampilkan di layar; tanggal yang dicetak pada frame Classic tetap mengikuti waktu pengambilan foto. Alur event sudah diuji dengan webcam browser. Integrasi Canon USB sedang dikerjakan di sesi terpisah dan masih memerlukan validasi gabungan serta tes perangkat Windows sebelum dinyatakan berfungsi.
+Mode event membutuhkan internet untuk proses dan QR. Basic/Advanced memakai kredit AI sesuai aturan server; Classic tidak memakai AI. Tanggal event ditampilkan di layar; tanggal yang dicetak pada frame Classic tetap mengikuti waktu pengambilan foto. Windows memakai Canon USB SDK untuk preview dan foto, tanpa fallback webcam. Alur ini sudah diuji dengan IPC simulasi; kamera dan cetak fisik masih perlu diuji pada PC kiosk Windows. Jalur webcam tetap tersedia untuk development non-Windows.
 
 ### Apa yang terjadi pada versi lama dan datanya
 
@@ -95,3 +95,7 @@ Bila kamera tidak ditemukan atau live view kosong, kirim log lalu beri tahu peng
 | "File update rusak (hash tidak cocok)" | Unduhan terganggu. Coba lagi; bila berulang, publish ulang installer. |
 | Tidak ada tombol Cek update aktif | Belum masuk akun. Masuk lewat Menu staf. |
 | Menu staf terkunci dan PIN lupa | Pemilik: Menu staf tidak bisa dibuka tanpa PIN. Hapus data aplikasi pengguna itu (login perlu diulang) atau pasang ulang. |
+
+### Log otomatis (1.1.1)
+
+Setelah masuk akun, aplikasi mengirim log aksi dan error kamera otomatis. Untuk masalah preview, buka sesi foto sampai error muncul dan biarkan aplikasi terbuka dengan internet selama sekitar satu menit. Tidak perlu menjalankan Tes kamera Canon atau menekan Kirim log. Foto dan preview tidak dikirim sebagai log. Saat offline, antrean log disimpan lokal dengan batas ukuran.
