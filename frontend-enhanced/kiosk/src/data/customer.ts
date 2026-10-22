@@ -3,9 +3,9 @@
 export type Mode = 'classic' | 'basic' | 'advanced'
 
 export const modes: Record<Mode, { name: string; blurb: string; price: string; free?: boolean }> = {
-  classic: { name: 'Classic', blurb: 'Photo strip · 1–4 shots', price: 'Free', free: true },
-  basic: { name: 'Basic', blurb: 'AI themed portrait', price: '1 credit' },
-  advanced: { name: 'Advanced', blurb: 'AI art styles', price: '1 credit' },
+  classic: { name: 'Classic', blurb: 'Photo strip · 1–4 shots', price: '1 credit' },
+  basic: { name: 'Basic', blurb: 'AI themed portrait', price: 'Minimum 10 credits' },
+  advanced: { name: 'Advanced', blurb: 'AI art styles', price: 'Minimum 10 credits' },
 }
 
 export const howItWorks = [

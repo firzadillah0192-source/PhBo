@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { allowedFrames, modelFits, scenarioBody, scenarioPayload, scenarioRefCount, capabilities, costLabel, idr, pricingPayload, runBody, splitList, usd, isTerminal } from './labModel.js'
+import { whyNotFit, cleanParams, diffLabel, nextInQueue, paramsFor, tokenLabel, allowedFrames, modelFits, scenarioBody, scenarioPayload, scenarioRefCount, capabilities, costLabel, idr, pricingPayload, runBody, splitList, usd, isTerminal } from './labModel.js'
 
 test('unknown pricing is never displayed as a number', () => {
   assert.equal(costLabel({ known: false, usd: null }), 'Pricing Unknown')
@@ -31,3 +31,25 @@ test('scenario helpers: model fit, payload and server-owned fields', () => {
   assert.deepEqual(allowedFrames(catalog, 'e').map((x) => x.id), ['a']); assert.deepEqual(allowedFrames(catalog, 'f').map((x) => x.id), ['a', 'b'])
 })
 
+
+test('schema-driven params: only set values are sent, typed per spec', () => {
+  const model = { params: [{ name: 'size', type: 'text' }, { name: 'seed', type: 'int' }, { name: 'enable_web_search', type: 'bool' }, { name: 'resolution', type: 'enum' }] }
+  assert.deepEqual(cleanParams(model, { size: '1024*1024', seed: '-1', enable_web_search: true, resolution: '', unknown: 'x' }), { size: '1024*1024', seed: -1, enable_web_search: true })
+  assert.deepEqual(cleanParams(model, { enable_web_search: false }), {})
+  assert.deepEqual(cleanParams(model, { enable_web_search: 'false' }), { enable_web_search: false }, 'a default-on option can be turned off explicitly')
+  assert.deepEqual(cleanParams(model, { enable_web_search: 'true' }), { enable_web_search: true })
+  assert.deepEqual(paramsFor({ supports: { size: true, quality: ['high'], seed: true, output_format: [] }, sizes: [] }).map((p) => p.name), ['size', 'quality', 'seed'])
+})
+test('tokens are N/A unless reported; cost difference is signed; queue points at the next unverified model', () => {
+  assert.equal(tokenLabel(null), 'N/A'); assert.equal(tokenLabel({ availability: 'not_reported' }), 'N/A')
+  assert.equal(tokenLabel({ availability: 'reported', input: 10, output: 20, total: 30 }), '10 in / 20 out / 30 total')
+  assert.deepEqual([diffLabel(0.004), diffLabel(-0.004), diffLabel(0), diffLabel(null)], ['+$0.0040', '−$0.0040', '±$0.0000', '—'])
+  const models = [{ id: 'b', sequence: 2, verification: { status: 'unverified' } }, { id: 'a', sequence: 1, verification: { status: 'verified' } }, { id: 'e', sequence: null }]
+  assert.equal(nextInQueue(models).id, 'b'); assert.equal(nextInQueue([{ sequence: 1, verification: { status: 'blocked' } }]), null)
+})
+
+test('models that cannot run Basic/Advanced say why', () => {
+  const t2i = { tasks: ['text-to-image'], max_reference_images: 0 }, one = { tasks: ['image-to-image'], max_reference_images: 1 }, many = { tasks: ['image-to-image'], max_reference_images: 10 }
+  assert.match(whyNotFit(t2i, 'basic'), /text-to-image only/); assert.match(whyNotFit(one, 'basic'), /Basic needs 2/)
+  assert.equal(whyNotFit(one, 'advanced'), ''); assert.equal(whyNotFit(many, 'basic'), ''); assert.equal(whyNotFit(t2i, 'freeform'), '')
+})

@@ -26,10 +26,19 @@ export class NativeGenerationRunner {
     const owner = { account: job.account_id ? { id: job.account_id } : null, guest: job.guest_id ? { id: job.guest_id } : null };
     const source = await this.uploads.read((await this.uploads.owned(job.upload_id, owner)).path);
     const snapshot = parseGenerationSnapshot(job.engine_config_json,job.mode);
+    const footer = async <T extends { bytes: Buffer }>(generated: T): Promise<T> => {
+      const details = snapshot && snapshot.mode !== 'CLASSIC' ? snapshot.personalization : undefined;
+      if (!details) return generated;
+      // A footer failure fails the job (and refunds); a result without its QR is never delivered.
+      return { ...generated, bytes: await this.images.resultFooter(generated.bytes, { kind: job.mode === 'BASIC' ? 'basic' : 'advanced',
+        ...(details.event_name ? { event_name: details.event_name } : {}), captured_at: details.captured_at,
+        download_url: `https://nxbooth.gennexbyte.com/r/${details.claim_token}`,
+        ...(snapshot && snapshot.mode !== 'CLASSIC' && /(PLATE TEXT|FOOTER EVENT LINE)\n/.test(snapshot.prompt) ? { qr_only: true } : {}) }) };
+    };
     if (job.mode === 'BASIC') {
       if (!this.assets) throw new AppError(503, 'BASIC_ENGINE_NOT_CONNECTED', 'Basic template editing is not connected.');
       if (snapshot?.mode === 'BASIC' && snapshot.version === 2) {
-        return this.generateBasic(job, source, snapshot.prompt, snapshot.model, snapshot.template, provider);
+        return footer(await this.generateBasic(job, source, snapshot.prompt, snapshot.model, snapshot.template, provider));
       }
       const row = await this.model.template(job.template_id);
       if (!row?.enabled) throw new AppError(404, 'TEMPLATE_NOT_FOUND', 'Basic template unavailable.');
@@ -38,7 +47,7 @@ export class NativeGenerationRunner {
       // Legacy queued jobs retain their model, but cannot use the old scene-regeneration prompt.
       return this.generateBasic(job, source, composeBasicPrompt(row.name, row.description), modelPreset.model, await this.assets.freezeBasicTemplate(row), provider);
     }
-    if (snapshot && snapshot.mode === 'ADVANCED') return this.generateWithProvider(job,source,snapshot.prompt,snapshot.model,provider);
+    if (snapshot && snapshot.mode === 'ADVANCED') return footer(await this.generateWithProvider(job,source,snapshot.prompt,snapshot.model,provider));
     if (job.mode !== 'ADVANCED') throw new AppError(422, 'VALIDATION_FAILED', 'Invalid generation mode.');
     const experience = job.experience_id ? await this.model.experience(job.experience_id) : null;
     if (!experience) throw new AppError(404, 'EXPERIENCE_NOT_FOUND', 'Experience unavailable.');

@@ -6,6 +6,7 @@ so a deploy would have recreated these containers without mounts, command or net
 `validate` proves the resolved compose config equals what is running. No secret values
 are written: secrets are `${VAR}` placeholders resolved from /opt/photobooth/.env at deploy time
 (AI_ENGINE_API_KEY comes from EXPRESS_IMAGE_ENGINE_KEY, read from the live helper by the deploy script).
+Webhook encryption configuration uses a private env_file outside the repository; no keyring literal is written to the snapshot.
 
 Usage: snapshot_express_compose.py generate|validate
 """
@@ -18,6 +19,13 @@ FILE = OUT / 'compose.express-base.json'
 SERVICES = ['photobooth-express', 'photobooth-express-worker', 'photobooth-image-helper']
 SECRET = re.compile(r'KEY|SECRET|PASSWORD|TOKEN|DATABASE_URL|REDIS_URL', re.I)
 DB_URL = 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@photobooth-postgres:5432/${POSTGRES_DB}'
+WEBHOOK_ENV = Path('/srv/photobooth/tmp/webhook-secrets/runtime.env')
+
+def webhook_env():
+    assert not WEBHOOK_ENV.is_symlink() and WEBHOOK_ENV.stat().st_mode & 0o077 == 0, 'Webhook runtime environment must be private'
+    values = dict(line.split('=', 1) for line in WEBHOOK_ENV.read_text().splitlines() if line)
+    assert set(values) == {'WEBHOOK_SECRET_ENCRYPTION_KEY', 'WEBHOOK_SECRET_ENCRYPTION_VERSION'}, 'Unexpected webhook runtime environment keys'
+    return values
 
 
 def dotenv():
@@ -70,6 +78,10 @@ def service_def(name, env_file):
         elif k == 'DATABASE_URL':
             assert v == DB_URL.replace('${POSTGRES_USER}', env_file['POSTGRES_USER']).replace('${POSTGRES_PASSWORD}', env_file['POSTGRES_PASSWORD']).replace('${POSTGRES_DB}', env_file['POSTGRES_DB'])
             environment[k] = DB_URL
+        elif k in ('WEBHOOK_SECRET_ENCRYPTION_KEY', 'WEBHOOK_SECRET_ENCRYPTION_VERSION'):
+            # Private env_file lets all existing deploy tools resolve this secret safely.
+            assert webhook_env().get(k) == v, 'Private webhook runtime environment differs'
+            s['env_file'] = [str(WEBHOOK_ENV)]
         elif k == 'AI_ENGINE_API_KEY':
             environment[k] = '${EXPRESS_IMAGE_ENGINE_KEY:?set from the live image helper}'
         else:

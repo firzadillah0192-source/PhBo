@@ -4,7 +4,7 @@ import type { GenerationInput } from './customer-generation-input.js';
 import type { CustomerIdentity } from './customer-account.service.js';
 import { AppError } from '../lib/errors.js';
 
-export type GenerationRequest = { scope: string; key: string; hash: string };
+export type GenerationRequest = { scope: string; key: string; hash: string; integrationKeyId?: string };
 const keySchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
 
 export function generationRequest(key: unknown, input: GenerationInput, identity: CustomerIdentity): GenerationRequest | undefined {

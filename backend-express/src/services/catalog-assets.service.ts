@@ -105,10 +105,10 @@ export class CatalogAssetsService {
   }
 
   async templateMetadata(row: NxTemplate) {
-    // The Python registry reads <TEMPLATES_DIR>/<id>/template.json, independently
-    // of admin metadata_path. Match it rather than infer face geometry from PNGs.
+    // Versioned catalog assets carry their matching geometry in metadata_path.
+    // Legacy rows retain the registry path as their fallback.
     if (!/^[a-zA-Z0-9_-]{1,128}$/.test(row.id)) return { width: 1024, height: 1024, face_region: null };
-    const path = await this.file(join(this.templatesDir, row.id, 'template.json'));
+    const path = await this.file(row.metadata_path || join(this.templatesDir, row.id, 'template.json'));
     if (!path) return { width: 1024, height: 1024, face_region: null };
     try {
       const metadata = JSON.parse(await readFile(path, 'utf8'));
@@ -117,7 +117,7 @@ export class CatalogAssetsService {
   }
 
   async templateDefinition(row: NxTemplate) {
-    const path = /^[a-zA-Z0-9_-]{1,128}$/.test(row.id) ? await this.file(join(this.templatesDir, row.id, 'template.json')) : null;
+    const path = /^[a-zA-Z0-9_-]{1,128}$/.test(row.id) ? await this.file(row.metadata_path || join(this.templatesDir, row.id, 'template.json')) : null;
     if (!path) throw new CatalogAssetError();
     try {
       const data = JSON.parse(await readFile(path, 'utf8'));

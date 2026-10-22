@@ -9,10 +9,17 @@ import { generationInput, validateAdvancedSelection } from './customer-generatio
 import { legacyId } from './customer-credentials.service.js';
 import { generationRequest } from './generation-request.js';
 import type { KioskGenerationContext } from '../models/native-kiosk.model.js';
-import { composeAdvancedPrompt,composeBasicPrompt } from './advanced-prompt.service.js';
+import { composeAdvancedPrompt } from './advanced-prompt.service.js';
+import { composeFastBasicPrompt } from './fast-basic-prompt.service.js';
 import type { GenerationSnapshot } from './generation-snapshot.js';
 import { randomBytes } from 'node:crypto';
 
+// Footer for AI results: always carries a claim token for the printed QR; the event name is optional.
+function aiPersonalization(input: { event_name?: string; captured_at?: string }, uploadedAt: Date) {
+  const capturedAt = input.captured_at ? new Date(input.captured_at) : uploadedAt;
+  if (capturedAt.getTime() > uploadedAt.getTime() + 60000 || capturedAt.getTime() < uploadedAt.getTime() - 3600000) throw new AppError(422, 'CAPTURE_TIME_INVALID', 'Waktu pengambilan foto tidak valid. Ambil foto kembali.');
+  return { ...(input.event_name ? { event_name: input.event_name.normalize('NFC') } : {}), captured_at: capturedAt.toISOString(), claim_token: randomBytes(32).toString('base64url') };
+}
 export type GenerationQueue = { enqueue(id: string): Promise<void> };
 export class CustomerGenerationService {
   constructor(private readonly model: CustomerGenerationModel, private readonly uploads: CustomerUploadService,
@@ -23,9 +30,13 @@ export class CustomerGenerationService {
       experience_id: job.experience_id, mode: job.mode, layout_id: job.layout_id, frame_style_id: job.frame_style_id,
       ornament_ids: JSON.parse(job.ornament_ids_json ?? '[]'), created_at: job.created_at };
   }
-  async create(body: unknown, identity: CustomerIdentity, requestKey?: unknown, kiosk?: KioskGenerationContext) {
+  async create(body: unknown, identity: CustomerIdentity, requestKey?: unknown, kiosk?: KioskGenerationContext, integration?: { keyId: string }) {
     const input = generationInput.parse(body);
     const request = generationRequest(requestKey, input, identity);
+    if(integration){
+      if(!request || !identity.account || kiosk || input.mode!=='BASIC' || !/^[a-f0-9]{16}$/.test(integration.keyId)) throw new AppError(403,'API_CONTEXT_INVALID','Invalid integration context');
+      request.integrationKeyId=integration.keyId;
+    }
     if (request) {
       const existing = await this.model.findRequest(request);
       if (existing) return this.response(existing);
@@ -47,7 +58,8 @@ export class CustomerGenerationService {
       let frozen;
       try { frozen = await this.assets.freezeBasicTemplate(template); }
       catch (error) { if (error instanceof CatalogAssetError) throw new AppError(422, 'BASIC_TEMPLATE_INVALID', 'Basic template is invalid.'); throw error; }
-      snapshot = { version: 2,mode: 'BASIC',prompt: composeBasicPrompt(template.name,template.description),model: preset.model,template: frozen };
+      const personalization = kiosk ? undefined : aiPersonalization(input, source.upload.created_at);
+      snapshot = { version: 2,mode: 'BASIC',prompt: composeFastBasicPrompt(template.name,template.description,personalization,template.id),model: preset.model,template: frozen,...(personalization ? { personalization } : {}) };
     } else if (input.mode === 'CLASSIC') {
       const layout = await this.model.layout(input.layout_id!);
       if (!layout?.active) throw new AppError(404, 'CLASSIC_LAYOUT_NOT_FOUND', 'Classic layout unavailable');
@@ -73,7 +85,8 @@ export class CustomerGenerationService {
       frame = input.frame_style_id ?? 'natural';
       const style = await this.model.frame(frame);
       validateAdvancedSelection(experience, style, await this.model.ornaments(input.ornament_ids), input.ornament_ids);
-      snapshot = { version: 1,mode: 'ADVANCED',prompt: composeAdvancedPrompt(experience.internal_prompt,style!.prompt_fragment),model: experience.model };
+      const personalization = kiosk ? undefined : aiPersonalization(input, source.upload.created_at);
+      snapshot = { version: 1,mode: 'ADVANCED',prompt: composeAdvancedPrompt(experience.internal_prompt,style!.prompt_fragment,personalization),model: experience.model,...(personalization ? { personalization } : {}) };
     }
     const data = { id: legacyId(), upload_id: source.upload.id, account_id: identity.account?.id ?? null,
       guest_id: identity.guest?.id ?? null, mode: input.mode, template_id: input.template_id ?? '',

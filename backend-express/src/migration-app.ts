@@ -1,3 +1,5 @@
+import type { GenerationWebhookService } from './services/generation-webhook.service.js';
+import { generationWebhookRoutes } from './routes/generation-webhook.routes.js';
 import type { PhotoFolderService } from './services/photo-folder.service.js';
 import { photoFolderRoutes } from './routes/photo-folder.routes.js';
 import {installAnalytics} from './services/analytics.service.js';
@@ -33,11 +35,12 @@ import { DesktopUpdateService } from './services/desktop-update.service.js';
 import { desktopDeviceApiRoutes, desktopDeviceApproveRoutes } from './routes/desktop-device.routes.js';
 import type { KioskDeviceService } from './services/kiosk-device.service.js';
 import { paymentRoutes } from './routes/payment.routes.js';
+import type { DeveloperDashboardService } from './services/developer-dashboard.service.js';
 import { storageOpenApi, generationOpenApi } from './routes/storage-openapi.js';
 import { publicApiBase, publicApiRoutes, type PublicApiDeps } from './routes/public-api.routes.js';
 import { publicApiKeyManagementRoutes } from './routes/public-api-keys.routes.js';
 
-export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; folders?:PhotoFolderService; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService; desktopUpdateDir?: string; desktopDiagnosticsDir?: string; devices?: KioskDeviceService; publicApi?: Pick<PublicApiDeps, 'keys' | 'keyModel' | 'window' | 'generationEnabled'> };
+export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; folders?:PhotoFolderService; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService; desktopUpdateDir?: string; desktopDiagnosticsDir?: string; devices?: KioskDeviceService; publicApi?: Pick<PublicApiDeps, 'keys' | 'keyModel' | 'window' | 'generationEnabled'> & {dashboard?:DeveloperDashboardService;webhooks?:GenerationWebhookService} };
 
 // Candidate /api contract, independent of the incompatible upstream /api/v1 API.
 // Unported routes remain unavailable; there is no forwarding to FastAPI.
@@ -86,11 +89,12 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
     if(uploads)app.use('/api/kiosk/web',customerUploadRoutes(uploads,account,config.uploadMaxBytes??12*1024*1024));
     if(generations)app.use('/api/kiosk/web',customerGenerationRoutes(generations,account));
   }
-  app.get('/api/public/v1/capabilities', (_req, res) => res.json({ enabled: Boolean(config.publicApi), storage: Boolean(config.publicApi && config.folders), generation: Boolean(config.publicApi?.generationEnabled), scopes: config.publicApi?.generationEnabled ? ['catalog:read','inputs:write','generations:create','generations:read','results:read','usage:read'] : ['results:read', 'usage:read'] }));
+  app.get('/api/public/v1/capabilities', (_req, res) => res.json({ enabled: Boolean(config.publicApi), dashboard: Boolean(config.publicApi?.dashboard), webhooks: Boolean(config.publicApi?.webhooks), storage: Boolean(config.publicApi && config.folders), generation: Boolean(config.publicApi?.generationEnabled), scopes: config.publicApi?.generationEnabled ? ['catalog:read','inputs:write','generations:create','generations:read','results:read','usage:read'] : ['results:read', 'usage:read'] }));
   app.get('/api/public/v1/openapi.json', (_req, res) => res.json(config.publicApi?.generationEnabled ? generationOpenApi : storageOpenApi));
   // Integration API (API-key auth). Mounted only when PUBLIC_API_KEY_PEPPER is configured; separate from the cookie /api routes and from /api/v1.
   if (config.publicApi && account && uploads && results && generations) {
-    app.use('/api/account/api-keys', ...(config.limiter ? [config.limiter.middleware('integration-key-management', 30)] : []), publicApiKeyManagementRoutes(config.publicApi.keys, account));
+    if(config.publicApi.webhooks)app.use('/api/account/api-keys', ...(config.limiter ? [config.limiter.middleware('integration-webhook-management',30)] : []), generationWebhookRoutes(config.publicApi.webhooks,account));
+    app.use('/api/account/api-keys', ...(config.limiter ? [config.limiter.middleware('integration-key-management', 30)] : []), publicApiKeyManagementRoutes(config.publicApi.keys, account, config.publicApi.dashboard));
     app.use(publicApiBase, publicApiRoutes({ ...config.publicApi, catalog, uploads, generations, results, maxUploadBytes: config.uploadMaxBytes ?? 12 * 1024 * 1024, folders:config.folders }));
   }
   if(config.folders && account) app.use('/api',photoFolderRoutes(config.folders,account,config.limiter));

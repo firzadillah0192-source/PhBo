@@ -131,3 +131,15 @@ Changes in this follow-up are limited to the Classic component, viewport CSS,
 browser acceptance script and this handoff. Production now runs 085618Z. Other
 admin/backend changes noticed before deploy were not included in the prepared
 image. Commit/push scope is limited to the task files listed above.
+
+## Readability correction, 14 October
+
+Owner reported that the strict no-scroll fit clipped text and squashed icons on
+small screens. `customerViewport.css` now keeps the strict one-screen fit only for
+viewports wider than 800px and taller than 600px. At `max-width: 800px` or
+`max-height: 600px` stages stack in one column, hidden descriptions/tags are shown,
+catalog text is no longer line-clamped, text is at least 13px, the chooser image
+box no longer overlaps its badge, and the page may scroll vertically.
+`customer-viewport-check.mjs` enforces zero scroll only for the strict size class,
+and on all sizes rejects horizontal overflow and visible text under 11px.
+Fixture check PASS at all nine sizes. NOT deployed; production still runs 085618Z.

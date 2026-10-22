@@ -34,6 +34,11 @@ export class NativeImageEngineService {
   async advancedResult(bytes: Buffer) { return (await this.request('prepare-advanced', this.form(bytes), 'png')).bytes; }
   async basicIdentity(bytes: Buffer) { return (await this.request('prepare-basic-identity', this.form(bytes), 'jpeg')).bytes; }
   async basicTemplate(bytes: Buffer) { return (await this.request('prepare-basic-template', this.form(bytes), 'png')).bytes; }
+  async resultFooter(bytes: Buffer, details: { kind: 'basic' | 'advanced'; event_name?: string; captured_at: string; download_url: string; qr_only?: boolean }) {
+    const form = this.form(bytes);
+    form.append('metadata', JSON.stringify(details));
+    return (await this.request('add-result-footer', form, 'png')).bytes;
+  }
   async basicResult(template: Buffer, edited: Buffer) {
     const form = this.form(edited);
     form.append('template', new Blob([new Uint8Array(template)]), 'template.png');

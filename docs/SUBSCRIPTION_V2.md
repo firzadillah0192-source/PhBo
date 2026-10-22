@@ -17,7 +17,7 @@ Live release: `/srv/photobooth/releases/subscription-v2-20261018T035402Z`.
 
 Storage units are decimal (1 MB = 1,000,000 bytes). Classic costs 10 Classic
 Credit per successful composition. Standard costs 50 AI Credit through 9Router;
-Fast costs 100 AI Credit through direct OpenAI and requires an active paid plan.
+Fast costs 100 AI Credit through 9Router using an `openai/` image model and requires an active paid plan. Standard uses a `cx/` model.
 Both v2 AI routes use Low quality. No "2x faster" guarantee is advertised.
 Max deliberately retains 625 Classic results of credit but a 20/day limit;
 only 600 results can be generated in a 30-day window, as approved by the owner.
@@ -70,12 +70,23 @@ in production during preparation or testing.
 
 ## Admin route management
 
-Superadmin menu: **Jalur API Generate**. Standard and Fast have independent
-enablement, model and replace/clear-key inputs. Standard keeps the existing
-server-configured 9Router endpoint and uses its existing key unless replaced.
-Fast uses the official OpenAI Images API, multipart edits for photo/template
-inputs, and Low quality. Fast starts unconfigured/disabled; the owner has NOT
-provided its API key. There is no automatic fallback between the two routes.
+Superadmin menu: **Jalur API Generate**. Both lanes use the server-configured
+9Router endpoint. Standard (50 credits) uses `cx/gpt-image-2.5`; Fast (100 credits)
+uses `openai/gpt-image-2.5-flare` by default (Sunburst is also selectable). Quality
+remains Low. OpenAI upstream credentials belong in the 9Router dashboard.
+
+Each lane has independent enablement and model selection. Fast inherits the
+Standard saved gateway key, or the server gateway key, unless a new Fast gateway
+key is explicitly saved. Legacy Fast direct-OpenAI keys are ignored, never sent
+to 9Router. Bare saved Fast model IDs are read with an `openai/` prefix without
+rewriting production records. New Fast gateway key overrides use a versioned
+prefix in the existing encrypted field; no schema change is required. Clearing
+an override restores inherited gateway credentials. Fast defaults disabled.
+There is no fallback between the two lanes.
+
+The gateway must forward both reference images to OpenAI's edit endpoint.
+See `docs/FAST_9ROUTER_HANDOFF.md` for the prepared gateway patch and validation.
+This source update is not deployed yet.
 
 Credentials are encrypted with AES-256-GCM, using a domain-separated HKDF key
 derived from the stable server session secret. Keys are never returned to the
@@ -124,7 +135,7 @@ experimental frontend-enhanced /v2 experiences are not rewritten by this task.
 - `GET /api/admin/generation-api-routes`: Superadmin only, safe config list.
 - `PUT /api/admin/generation-api-routes/:lane`: Superadmin only; strict body
   `{enabled,model,api_key?,clear_key?,confirm:true}`. Blank omitted key preserves
-  existing credentials. Clearing and replacing together is rejected.
+  existing credentials. Both lanes now accept 9Router gateway keys. Fast models must use `openai/` and Standard models `cx/`. Clearing and replacing together is rejected.
 - Admin credit adjustment accepts `currency: AI|CLASSIC` with v2; default AI.
   Account credit response adds `subscription` and `v2_entries`. Historical
   account/legacy aggregate counters are not converted into the new ledger.

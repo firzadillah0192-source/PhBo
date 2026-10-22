@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, NavLink, Navigate, Outlet, useNavigate, useOutletContext } from 'react-router-dom'
+import { Link, NavLink, Navigate, Outlet, useNavigate, useLocation, useOutletContext } from 'react-router-dom'
 import { Check, ChevronRight, Clock, Download, Loader2, LogOut, TriangleAlert, X } from 'lucide-react'
 import { Button, Chip, cn, InlineAlert, TextField, Thumb } from '../../components/ui'
 import { Avatar, BigButton, Page } from '../../components/customer'
@@ -8,6 +8,8 @@ import { useCustomer } from '../../lib/customer'
 import { customer as api, date, message, type Row } from '../../../../shared/api'
 import { GoogleSignIn } from '../../../../shared/GoogleSignIn'
 import { useResource } from '../../../../shared/useResource'
+// @ts-ignore Shared payment UI uses the same backend contract as the legacy client.
+import SandboxTopUp from '../../../../../frontend/src/components/customer/SandboxTopUp.jsx'
 export { SharedPhoto } from './LiveResult'
 
 function Auth({ signup = false }) {
@@ -20,7 +22,7 @@ function Auth({ signup = false }) {
     catch (e) { setError(message(e)) } finally { setBusy(false) }
   }
   return <Page narrow className="pt-8"><form className="space-y-5" onSubmit={submit}>
-    <div><h1 className="t-h2">{signup ? 'Create your account' : 'Welcome back'}</h1><p className="t-body-s mt-1 text-text-muted">{signup ? 'Get free AI credits and keep your creations.' : 'Sign in to keep your creations and credits.'}</p></div>
+    <div><h1 className="t-h2">{signup ? 'Create your account' : 'Welcome back'}</h1><p className="t-body-s mt-1 text-text-muted">{signup ? 'Get 50 free credits, reset to 50 every 14 days, and keep your creations.' : 'Sign in to keep your creations and credits.'}</p></div>
     <GoogleSignIn signIn={api.signInWithGoogle} onSuccess={done} />
     <p className="t-caption text-center text-text-muted">or</p>
     <TextField label="Email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
@@ -35,8 +37,11 @@ export function SignIn() { return <Auth /> }
 export function SignUp() { return <Auth signup /> }
 const accountTabs = [['creations', 'Creations'], ['credits', 'Credits & plan'], ['profile', 'Profile'], ['security', 'Security'], ['privacy', 'Privacy']] as const
 export function AccountLayout() {
-  const c = useCustomer(); const navigate = useNavigate(); const resource = useResource(() => api.getAccountCenter())
+  const c = useCustomer(); const navigate = useNavigate(); const location = useLocation(); const resource = useResource(() => api.getAccountCenter())
   const [error, setError] = useState('')
+  useEffect(() => { if (location.pathname.endsWith('/credits')) resource.refresh() }, [location.pathname, resource.refresh])
+  useEffect(() => { if (resource.data?.usage) c.setUsage(resource.data.usage) }, [resource.data?.usage, c.setUsage])
+  useEffect(() => { const refresh = () => { if (document.visibilityState === 'visible') resource.refresh() }; window.addEventListener('focus', refresh); document.addEventListener('visibilitychange', refresh); return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) } }, [resource.refresh])
   if (c.loading) return <Page>Loading account…</Page>
   if (!c.signedIn) return <Navigate to="/app/signin" replace />
   if (resource.loading) return <Page>Loading account…</Page>
@@ -74,15 +79,15 @@ export function Creations() {
   </section>
 }
 export function CreditsPlan() {
-  const { data, refresh } = useCenter(); const [amount, setAmount] = useState(10); const [checkout, setCheckout] = useState<any>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
+  const { data } = useCenter()
   const u = data.usage
   return <section className="space-y-5">
-    <div className="rounded-md border border-border bg-surface p-5"><h1 className="t-h4">AI credits</h1><p className="mt-2 flex items-baseline gap-2"><span className="t-display">{u.ai_remaining}</span><span className="t-body text-text-muted">left</span></p>
-      <dl className="mt-4 grid grid-cols-3 gap-3 text-center">{[['Used', u.ai_used], ['On hold (job in progress)', u.ai_reserved], ['Remaining', u.ai_remaining]].map(([label, value]) => <div key={label as string} className="rounded-sm bg-surface-2 p-3"><dt className="t-caption text-text-muted">{label}</dt><dd className="t-h3">{value}</dd></div>)}</dl>
-      {u.credit_wallet && <p className="t-caption mt-3 text-text-muted">Free: {u.credit_wallet.free_remaining} · Top-up: {u.credit_wallet.top_up_remaining} · Next reset: {date(u.credit_wallet.next_reset_at)}</p>}</div>
-    <div className="space-y-3"><h2 className="t-h4">Plans</h2>{data.plans.map((r: Row) => { const current = r.id === data.current_plan.id; return <div key={r.id} className={cn('flex items-center justify-between gap-3 rounded-md border bg-surface p-4', current ? 'border-2 border-primary' : 'border-border')}><div><p className="t-label-s">{r.name}</p><p className="t-caption text-text-muted">{r.description}</p></div>{current ? <Chip tone="primary" icon={Check}>Current</Chip> : <Chip>Coming soon</Chip>}</div> })}<InlineAlert tone="info">{data.billing.message}</InlineAlert></div>
-    <form className="space-y-3" onSubmit={async e => { e.preventDefault(); setBusy(true); setError(''); try { setCheckout(await api.createTopUpCheckout(amount)); refresh() } catch (error) { setError(message(error)) } finally { setBusy(false) } }}><TextField label="Top-up credits" type="number" min={1} max={1000} required value={amount} onChange={e => setAmount(Number(e.target.value))} /><BigButton type="submit" disabled={busy}>Request top-up</BigButton></form>
-    {checkout && <InlineAlert>Checkout status: {checkout.status || checkout.billing_status || 'Created'}. No credits are added until payment is confirmed.</InlineAlert>}{error && <InlineAlert tone="danger">{error}</InlineAlert>}
+    <div className="rounded-md border border-border bg-surface p-5"><h1 className="t-h4">Credits</h1><p className="mt-2 flex items-baseline gap-2"><span className="t-display">{u.ai_remaining}</span><span className="t-body text-text-muted">left</span></p>
+      <dl className="mt-4 grid grid-cols-3 gap-3 text-center">{[['Used this period', u.used_this_period ?? u.ai_used], ['On hold', u.ai_reserved], ['Available', u.ai_remaining]].map(([label, value]) => <div key={label as string} className="rounded-sm bg-surface-2 p-3"><dt className="t-caption text-text-muted">{label}</dt><dd className="t-h3">{value}</dd></div>)}</dl>
+      {u.credit_wallet && <p className="t-caption mt-3 text-text-muted">Free: {u.credit_wallet.free_remaining} · Top-up: {u.credit_wallet.top_up_remaining} · Resets to {u.credit_wallet.free_allocation} every {u.credit_wallet.reset_every_days} days · Next reset: {date(u.credit_wallet.next_reset_at)}</p>}</div>
+    <p className="t-body-s text-text-muted">Free credits are used first. Classic costs 1 credit per successful result. AI requires at least 10 credits to start; the final cost is calculated after success. Failed jobs do not spend credits.</p>
+    <div className="space-y-3"><h2 className="t-h4">Plans</h2>{(data.plans.some((r: Row) => r.id === data.current_plan.id) ? data.plans : [data.current_plan, ...data.plans]).map((r: Row) => { const current = r.id === data.current_plan.id; return <div key={r.id} className={cn('flex items-center justify-between gap-3 rounded-md border bg-surface p-4', current ? 'border-2 border-primary' : 'border-border')}><div><p className="t-label-s">{r.name}</p><p className="t-caption text-text-muted">{r.code === 'free' && u.credit_wallet ? `${u.credit_wallet.free_allocation} free credits, reset every ${u.credit_wallet.reset_every_days} days.` : r.description}</p></div>{current ? <Chip tone="primary" icon={Check}>Current</Chip> : <Chip>Coming soon</Chip>}</div> })}<InlineAlert tone="info">{data.billing.message}</InlineAlert></div>
+    <SandboxTopUp />
   </section>
 }
 export function Profile() {

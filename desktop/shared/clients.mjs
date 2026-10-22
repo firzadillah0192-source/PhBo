@@ -32,7 +32,7 @@ function jsonOnly(value) {
 export class ControlClient {
   constructor(config,apiKey='',cookie='',persistCookie=async()=>{}) {this.config=config;this.apiKey=apiKey;this.cookie=cookie;this.persistCookie=persistCookie;}
   async request(path,body, key) {
-    if(!/^\/api\/v1\/(kiosk\/sessions|photo-sessions\/[a-zA-Z0-9_-]+\/claim|generations(?:\/[a-zA-Z0-9_-]+)?|results\/[a-zA-Z0-9_-]+(?:\/url)?|frames|templates|experiences)$/.test(path)) throw new Error('CONTROL_ROUTE_FORBIDDEN');
+    if(!/^\/api\/v1\/(kiosk\/sessions|photo-sessions\/[a-zA-Z0-9_-]+\/claim|generations(?:\/[a-zA-Z0-9_-]+)?|results\/[a-zA-Z0-9_-]+(?:\/url|\/claim)?|frames|templates|experiences)$/.test(path)) throw new Error('CONTROL_ROUTE_FORBIDDEN');
     const headers={'Accept':'application/json','User-Agent':'NXBoothDesktop/1.0'};
     Object.assign(headers,authHeaders(this.apiKey));if(this.cookie)headers.Cookie=this.cookie;if(key)headers['Idempotency-Key']=key;
     if(body!==undefined){jsonOnly(body);headers['Content-Type']='application/json';}
@@ -47,6 +47,13 @@ export class ControlClient {
   generate(body,key){return this.request('/api/v1/generations',body,key);}
   status(id){return this.request(`/api/v1/generations/${segment(id)}`);}
   resultUrl(id){return this.request(`/api/v1/results/${segment(id)}/url`);}
+  /** QR link for the finished photo (same kiosk session cookie as the result URL). Only a link on our own web origin is accepted. */
+  async claimResult(id){
+    const claim=await this.request(`/api/v1/results/${segment(id)}/claim`,{refresh:false});
+    let url;try{url=new URL(claim.claim_url);}catch{throw new Error('CLAIM_INVALID');}
+    if(url.origin!==this.config.web||url.username||url.password||url.search||url.hash||!/^\/r\/[A-Za-z0-9_-]{32,256}$/.test(url.pathname)||claim.qr_payload!==claim.claim_url)throw new Error('CLAIM_INVALID');
+    return {url:claim.qr_payload,expires_at:typeof claim.expires_at==='string'?claim.expires_at:null};
+  }
   catalog(kind){if(!['frames','templates','experiences'].includes(kind))throw new Error('INVALID_CATALOG');return this.request('/api/v1/'+kind);}
 }
 const CATALOG_IMAGE=/^\/api\/(templates\/[a-zA-Z0-9_-]+\/preview|experiences\/[a-zA-Z0-9_-]+\/thumbnail|classic\/layouts\/[a-zA-Z0-9_-]+\/preview)$/;
@@ -87,18 +94,24 @@ export class UpdateClient {
     const r=await fetch(this.config.control+'/api/v1/desktop/update?current='+current,{headers:this.headers(),redirect:'error',signal:AbortSignal.timeout(30000)});
     return json(r);
   }
-  async download(info,file) {
+  async download(info,file,onProgress=()=>{}) {
     if(!this.apiKey)throw new Error('BACKEND_NOT_CONFIGURED');
     if(!Number.isInteger(info?.size)||info.size<=0||info.size>500*1024*1024||!/^[a-f0-9]{64}$/.test(info.sha256||''))throw new Error('UPDATE_MANIFEST_INVALID');
     const r=await fetch(this.config.media+'/api/v1/desktop/update/download',{headers:this.headers(),redirect:'error',signal:AbortSignal.timeout(600000)});
     if(!r.ok||!r.body)throw new Error('UPDATE_DOWNLOAD_FAILED');
     if(Number(r.headers.get('content-length'))!==info.size)throw new Error('UPDATE_SIZE_MISMATCH');
     const hash=createHash('sha256'),out=createWriteStream(file,{flags:'wx',mode:0o600});let size=0;
+    // Keep asynchronous file errors handled even while waiting for the next network chunk.
+    let writeError;out.on('error',error=>{writeError=error;});
     try {
+      onProgress(0,info.size);
       for await(const chunk of r.body) {
+        if(writeError)throw writeError;
         size+=chunk.length;if(size>info.size)throw new Error('UPDATE_SIZE_MISMATCH');
         hash.update(chunk);if(!out.write(chunk))await once(out,'drain');
+        onProgress(size,info.size);
       }
+      if(writeError)throw writeError;
       await new Promise((resolve,reject)=>out.end(e=>e?reject(e):resolve()));
     } catch(error) {out.destroy();await rm(file,{force:true});throw error;}
     if(size!==info.size||hash.digest('hex')!==info.sha256){await rm(file,{force:true});throw new Error('UPDATE_HASH_MISMATCH');}

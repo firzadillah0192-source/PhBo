@@ -39,7 +39,7 @@ test('racing creation reuses winner without queueing or failing it', async () =>
     experience: async () => ({ enabled: true, status: 'published', model: 'fixture-model' }),
     createOnce: async () => ({ job, reused: true }), queueFailed: async () => assert.fail('replay must not refund winner') };
   const service = new CustomerGenerationService(model as never,
-    { owned: async () => ({ upload: { id: 'photo' } }) } as never,
+    { owned: async () => ({ upload: { id: 'photo', created_at: new Date() } }) } as never,
     { file: async () => 'template', freezeBasicTemplate: async () => ({ asset: 'frozen', sha256: 'a'.repeat(64), width: 1024, height: 1536 }) } as never, { enqueue: async () => assert.fail('winner already enqueued') });
   assert.equal((await service.create({ mode: 'BASIC', upload_id: 'photo', template_id: 'template' }, owner, 'race')).job_id, 'winner');
 });
@@ -54,7 +54,7 @@ test('new keyed requests enqueue once and unkeyed clients keep existing behavior
       assert.equal(snapshot.version,2); assert.equal(snapshot.mode,'BASIC'); assert.equal(snapshot.template.width,1024);
       assert.equal(snapshot.template.height,1536); assert.equal(snapshot.template.sha256,'a'.repeat(64));
       keyed++; return { job, reused: false }; }, create: async () => { unkeyed++; return job; } };
-  const service = new CustomerGenerationService(model as never, { owned: async () => ({ upload: { id: 'photo' } }) } as never,
+  const service = new CustomerGenerationService(model as never, { owned: async () => ({ upload: { id: 'photo', created_at: new Date() } }) } as never,
     { file: async () => 'template', freezeBasicTemplate: async () => ({ asset: 'frozen', sha256: 'a'.repeat(64), width: 1024, height: 1536 }) } as never, { enqueue: async () => { queued++; } });
   const basic = { mode: 'BASIC', upload_id: 'photo', template_id: 'template' };
   await service.create(basic, owner, 'new-request');

@@ -21,9 +21,22 @@ characters, with control characters rejected. `captured_at` is an ISO timestamp
 with timezone, captured when the first accepted photo is taken. It must fall
 within one hour before, or one minute after, the first upload creation time.
 If omitted, the server uses the first upload time. The event name is required
-before generation; these fields are rejected for non-personalized layouts and
-AI modes. Native generation uses the corresponding camelCase fields
+before generation; these fields are rejected for non-personalized Classic layouts. Native generation uses the corresponding camelCase fields
 `eventName` and `capturedAt` alongside `frameId` and `photoIds`.
+
+Basic and Advanced (web only, not kiosk-event jobs) accept the same optional
+`event_name` and `captured_at` on `POST /api/generations`. The name is optional;
+when it is omitted the footer shows only the date. Every web Basic/Advanced job
+freezes a footer personalization (`event_name?`, `captured_at`, `claim_token`) in
+its snapshot, and the result always carries a QR for `/r/<claim_token>`. The server owns footer lettering and the QR: after generation the image helper
+(`POST /add-result-footer`, `python-worker/result_footer.py`) draws name, WIB
+date and QR deterministically with the bundled fonts, without changing the image
+size (Basic stays the template size, Advanced stays 2160 × 3240). If the footer
+cannot be rendered the job fails and the credit is refunded; a result without its
+QR is never delivered. The claim is created atomically with the result and reused
+by `POST /api/results/{id}/claim`, so the printed QR keeps working. Printed claims expire with the result’s frozen
+package retention; they are not shortened to `RESULT_CLAIM_TTL_HOURS` (24 hours
+by default), which still bounds non-embedded share claims.
 
 Python adds the event name with bundled Great Vibes, the WIB date with bundled
 Cormorant Garamond, and a secure QR for that specific result. Preview and output
@@ -250,3 +263,38 @@ endpoint or native S3/IAM provisioning is included in this phase.
 - Account API & Integrasi has an explicit generation permission checkbox (enabled only by capabilities). New keys can opt into catalog:read, inputs:write, generations:create, generations:read in addition to results:read and optional usage:read. Existing keys keep their old permissions, including after rotation; create a new key to add scopes.
 - `/developers` adds Generation Explorer: explicitly fetch templates/upload, show local preview, acknowledge50-credit cost, submit once, retry with frozen body and identical key after network failure, query real status manually with3s guidance, download only after COMPLETED+result_id. Secret/input/state live in memory only; no cookies/redirects/telemetry. Definite4xx rejection permits resetting the form; ambiguous network failure preserves request key and body.
 - Automated browser results use clearly marked mocks and do not prove provider output. Disposable DB+HTTP tests prove real job/wallet reserve50, idempotency, conflict409, failed-queue refund50 and ownership without production credits or paid AI calls.
+
+### Developer dashboard and per-key generation history — prepared, not live
+
+Cookie-authenticated account endpoints (Bearer keys cannot access them):
+
+- `GET /api/account/api-keys/dashboard?days=7|30|90&key_id=<optional16hex>` returns `{period,selected_key_id,totals,daily,keys,wallet,history_notice}`. Default30 days, full Jakarta calendar days including today. Current account balances/storage come from the existing subscription wallet; period/key filters affect usage/job aggregates, not the account balance. `keys` contains up to50 newest owned keys (including revoked/expired), metadata/counts only. Request counts are existing best-effort authenticated API counters; they include retries and validation failures that passed auth/scope/rate checks and are not billing totals.
+- `totals`/`daily`: requests, generation_requests, jobs, completed, failed, queued, processing, credits_spent/reserved/refunded. Job/credit statistics are grouped by job creation date in WIB and reflect current job/charge status. Credits come from actual subscription_v2_jobs: CONSUMED→spent, RESERVED→reserved, REFUNDED→refunded. A refunded charge is reported separately rather than treated as spend. Existing daily request counts can predate per-key job attribution.
+- `GET /api/account/api-keys/generations?days=30&key_id=...&state=QUEUED|PROCESSING|COMPLETED|FAILED&limit=20&cursor=...` returns `{generations,next_cursor}`. Limit1..50, newest first cursor(created_at,id). Each job returns job_id, owned key{id,name,prefix}, template_id, state, created_at/finished_at, safe error_code, credit_charge{credits,status}, result_available/result_id/expires_at/download_url. No provider/model/prompt/input image/storage key/secret/hash. CONSUMED maps to public PAID. Download links require current account cookie and are omitted for unpaid, deleted or expired results; ordinary Result ownership/retention is rechecked on download.
+- `key_id` must belong to signed-in account, including when revoked: unknown/foreign404. Invalid period/status/key/cursor422. Missing account cookie401, including requests bearing only an API key. Unknown selectors such as account_id are rejected. Responses private,no-store; existing key-management limiter30/min applies.
+- Per-key attribution uses existing generation_events, event_type `api_generation_created`, metadata `{key_id}` only. This marker is inserted once in the same transaction as the newly created API job, credit reservation and idempotency record; rollback leaves no partial job/marker/charge. Queue failure remains a recorded job with a refunded reservation. No new schema/table/provider/price rule. Service context is server-supplied, verified against account ownership; customers cannot set it through the generation JSON body.
+- Idempotent replay from another key on the same account reuses the original job, keeps original key attribution and creates no second marker/charge. Old keys retain old scopes. Web/Classic/kiosk jobs without the marker are excluded; historical API jobs are not guessed/backfilled from request prefixes. Per-key history starts when this release activates.
+- Capabilities adds `dashboard:boolean`; dashboard/history mount only when Public API and subscription wallet are present. Account API & Integrasi renders balances, period/key stats, daily/key tables, status filters, cursor back/next, result downloads, empty/loading/error/refresh states with Indonesian/English copy. Generation/Storage Explorer and key create/rotate/revoke remain available.
+
+### Generation webhooks (candidate, disabled by default)
+
+Requires manually approved additive `027_generation_webhooks.sql` and dedicated encrypted-secret configuration. Existing API-key generation scope/prices are unchanged. Capabilities adds `webhooks:boolean`. Webhook endpoints are cookie-owner management routes; Bearer keys cannot manage configuration/history.
+
+| Method | Path under `/api/account/api-keys/:key` | Contract |
+| --- | --- | --- |
+| GET | `/webhook` | `{webhook:null\|{id,key_id,url,enabled,events,version,created_at,updated_at}}`; no secret |
+| PUT | `/webhook` | Strict body `{url,enabled,events}`; events subset of `generation.completed`, `generation.failed`, at least one. Returns configuration and `signing_secret` **only on first creation** |
+| POST | `/webhook/rotate-secret` | Returns one-time `signing_secret`; cancels pending/in-flight delivery leases using old secret |
+| GET | `/webhook/deliveries?cursor=&state=` | Newest first20 plus `next_cursor`; states PENDING, IN_FLIGHT, DELIVERED, EXHAUSTED, CANCELLED. No payload, target URL or credentials in history |
+| GET | `/webhook/deliveries/:id/attempts` | Latest100 attempt number, HTTP status, safe error category, duration and Jakarta-rendered timestamp |
+| POST | `/webhook/deliveries/:id/retry` | 202 `{queued:true}`; owner only, active key/endpoint, same secret version and target URL, DELIVERED/EXHAUSTED, at least60s since last activity and fewer than100 total recorded attempts. Preserves event ID/payload, starts another cycle; no generation or credit charge |
+
+All responses private/no-store. Malformed selectors/body422; no owner cookie401; other-account key/config/history404; unavailable retry409. Existing owner-management rate limit30/minute; unknown JSON/query selectors rejected where filters are supported. URL must use public HTTPS, no credentials/query/fragment/custom port/IP literal/internal hostname. DNS is checked on every attempt; any private/reserved answer rejects delivery, selected public address is pinned at connect, TLS validates original host, redirects/proxies are not followed. No arbitrary receiver response body is read or stored.
+
+Envelope: `{id,type,created_at,api_version:"2026-10-18",data:{job_id,key_id,state,template_id,result_id,error_code,credit_charge:{credits,status}}}`. Result ID appears only for a completed paid result; fetch using existing authenticated Generation/Storage APIs, which enforce deletion/retention. No photo bytes, claim URL, prompt, provider, model or secret. Creation is in the same PostgreSQL terminal-state/credit-settlement transaction. Original job attribution controls destination; a cross-key idempotent retry does not add an event. No historical backfill. Web/Classic jobs without API attribution do not emit events.
+
+Headers: `X-NXBooth-Event-Id`, `X-NXBooth-Timestamp` (integer Unix seconds), `X-NXBooth-Signature: v1=<hex HMAC-SHA256(secret, timestamp+'.'+rawBody)>`. Verify exact raw bytes with constant-time comparison, reject timestamps outside300 seconds, and persist/deduplicate envelope event ID before returning2xx. Automatic retry reuses event ID and immutable payload, signs a fresh attempt timestamp. At-least-once delivery permits duplicates after ambiguous receiver/worker failure. HTTPS2xx acknowledges; non2xx/network/timeout fails. Dispatcher concurrency1, DNS deadline3s plus HTTP deadline7s, expiring60s PostgreSQL lease. Recorded attempt cycle limit5: initial, then1m/5m/30m/2h delays. Failed pre-ack worker crashes can redeliver and are not counted as recorded attempts.
+
+One endpoint per key. `version` identifies signing-secret generation; URL edits affect future events, already queued deliveries retain their original URL. Disabling endpoint, rotating signing secret or revoking key cancels outstanding deliveries; an already in-flight request may have reached receiver. Expired/disabled-account keys are rechecked before dispatch. Manual retry never redirects old payloads to a changed URL; CANCELLED deliveries cannot be retried. Terminal logs are removed in batches200 after30 days since last activity, with attempt rows cascading; pending/in-flight events are retained. Endpoint/key configuration records remain.
+
+Secrets use random256-bit signing material, AES-256-GCM encrypted with endpoint-ID AAD and a separate privately supplied versioned keyring (`WEBHOOK_SECRET_ENCRYPTION_KEY`, JSON version-to64hex), active version `WEBHOOK_SECRET_ENCRYPTION_VERSION`. Keep old encryption keys while any endpoint references them. No API-key hash/session-secret reuse. Missing keyring/schema with feature enabled prevents startup. Default feature off does not access new tables. Changing encryption keyring version does not change receiver signing secrets; rotating a receiver signing secret is an explicit owner operation.

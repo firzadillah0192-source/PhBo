@@ -43,3 +43,7 @@ docker compose exec -T photobooth-postgres \
 Do not infer migration history from table presence alone: startup
 `create_all()` may have created tables without recording migration versions.
 Confirm production history with the operator before applying anything.
+
+## 027 Generation webhooks — applied with owner approval
+
+`027_generation_webhooks.sql` adds endpoint configuration, a transactional delivery outbox, attempt history and indexes only. It changes no wallet/subscription policy or existing data. Tested twice on a disposable PostgreSQL database to verify idempotent DDL. Owner explicitly approved production activation. Applied2026-10-18 UTC after verified backup: pre-generation-webhooks-20261018T181825Z-20261018T181849Z.dump. See `GENERATION_WEBHOOK_HANDOFF.md` and release181825Z manifest for SQL hash, backup verification and acceptance.

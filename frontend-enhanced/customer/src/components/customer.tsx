@@ -32,7 +32,7 @@ export function Logo({ dark }: { dark?: boolean }) {
 /** Credits pill — Plenty / Low / Zero (Figma: CreditsPill). */
 export function CreditsPill({ credits }: { credits: number }) {
   const tone = credits === 0 ? 'bg-surface-2 text-text-muted' : credits === 1 ? 'bg-warning-soft text-warning' : 'bg-accent-soft text-text'
-  const label = credits === 0 ? '0 credits' : credits === 1 ? '1 credit left' : `${credits} AI credits`
+  const label = credits === 0 ? '0 credits' : credits === 1 ? '1 credit left' : `${credits} credits`
   return (
     <span className={cn('t-label-s inline-flex h-8 items-center gap-1.5 rounded-full px-3', tone)}>
       <Zap size={16} aria-hidden />

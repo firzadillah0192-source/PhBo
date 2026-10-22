@@ -13,7 +13,7 @@ async function readImage(ctx: AdapterContext, body: Record<string, any>) {
   if (typeof first?.url === 'string') return download(ctx, first.url);
   throw new LabError(502, 'LAB_OUTPUT_UNAVAILABLE', 'The provider returned no image.');
 }
-function multipart(fields: Record<string, string>, files: { name: string; filename: string; type: string; bytes: Buffer }[]) {
+export function multipart(fields: Record<string, string>, files: { name: string; filename: string; type: string; bytes: Buffer }[]) {
   const boundary = `----lab${Math.random().toString(16).slice(2)}${Date.now()}`, parts: Buffer[] = [];
   for (const [name, value] of Object.entries(fields)) parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
   for (const file of files) parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${file.name}"; filename="${file.filename}"\r\nContent-Type: ${file.type}\r\n\r\n`), file.bytes, Buffer.from('\r\n'));
@@ -31,6 +31,12 @@ function make(type: ProviderType, defaultBaseUrl: string, prefix: string, edits:
       if (response.status >= 200 && response.status < 300) return { ok: true, message: 'Credentials accepted (model list). No generation was run.' };
       return { ok: false, message: `Provider answered HTTP ${response.status}.` };
     },
+    async discover(ctx) {
+      const response = await send(ctx, { method: 'GET', url: join(ctx.baseUrl, `${prefix}/models`), auth: true, headers: authHeaders(ctx) });
+      failIfBad(ctx, response, `${type} model list`);
+      const data = parseJson(response).data;
+      return Array.isArray(data) ? data.map((item: any) => item?.id).filter((id: unknown): id is string => typeof id === 'string').slice(0, 2000) : [];
+    },
     async generate(ctx, req: AdapterRequest): Promise<AdapterResult> {
       const started = Date.now();
       const common: Record<string, unknown> = { model: req.model_id, prompt: req.negative_prompt ? `${req.prompt}\nAvoid: ${req.negative_prompt}` : req.prompt, n: 1 };
@@ -43,7 +49,9 @@ function make(type: ProviderType, defaultBaseUrl: string, prefix: string, edits:
         response = await send(ctx, { method: 'POST', url: join(ctx.baseUrl, `${prefix}/images/generations`), auth: true, timeoutMs: ctx.timeoutMs, headers: { ...authHeaders(ctx), 'Content-Type': 'application/json' }, body: JSON.stringify(common) });
       } else if (edits === 'json') {
         const images = req.images.map(item => `data:${item.contentType};base64,${item.bytes.toString('base64')}`);
-        response = await send(ctx, { method: 'POST', url: join(ctx.baseUrl, `${prefix}/images/generations`), auth: true, timeoutMs: ctx.timeoutMs, headers: { ...authHeaders(ctx), 'Content-Type': 'application/json' }, body: JSON.stringify({ ...common, response_format: 'b64_json', images }) });
+        // OpenAI GPT Image returns base64 by default and rejects the legacy response_format field.
+        const format = type === '9router' && /^openai\/(?:gpt-image-|chatgpt-image-)/i.test(req.model_id) ? {} : { response_format: 'b64_json' };
+        response = await send(ctx, { method: 'POST', url: join(ctx.baseUrl, `${prefix}/images/generations`), auth: true, timeoutMs: ctx.timeoutMs, headers: { ...authHeaders(ctx), 'Content-Type': 'application/json' }, body: JSON.stringify({ ...common, ...format, images }) });
       } else {
         const fields = Object.fromEntries(Object.entries(common).map(([k, v]) => [k, String(v)]));
         const form = multipart(fields, req.images.map((item, index) => ({ name: 'image[]', filename: `input-${index}.${item.contentType === 'image/png' ? 'png' : item.contentType === 'image/webp' ? 'webp' : 'jpg'}`, type: item.contentType, bytes: item.bytes })));
@@ -59,7 +67,19 @@ function make(type: ProviderType, defaultBaseUrl: string, prefix: string, edits:
 }
 export const openaiAdapter = make('openai', 'https://api.openai.com', '/v1', 'multipart');
 // Lab-only 9Router adapter; the base URL already contains the gateway's /v1 prefix in production configuration.
-export const nineRouterAdapter = make('9router', '', '', 'json');
+export const nineRouterAdapter: LabAdapter = {
+  ...make('9router', '', '', 'json'),
+  async discover(ctx) {
+    // The general model list is a different catalog and may omit image-only routes.
+    const response = await send(ctx, { method: 'GET', url: join(ctx.baseUrl, '/models/image'), auth: true, headers: authHeaders(ctx) });
+    failIfBad(ctx, response, '9router image model list');
+    const data = parseJson(response).data;
+    if (!Array.isArray(data) || data.some(item => typeof item?.id !== 'string' || !item.id.trim())) {
+      throw new LabError(502, 'LAB_PROVIDER_ERROR', '9Router returned an invalid image model list.');
+    }
+    return [...new Set<string>(data.map(item => item.id))].slice(0, 2000);
+  },
+};
 // Any OpenAI-style Images API on a public HTTPS host (Together, Fireworks, Azure-style gateways, ...). Base URL is required
 // and should include the version prefix if the vendor uses one (for example https://api.example.com/v1).
 export const openaiCompatibleAdapter = make('openai_compatible', '', '', 'multipart');

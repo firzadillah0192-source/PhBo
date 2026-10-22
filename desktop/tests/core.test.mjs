@@ -107,20 +107,22 @@ test('Operator PIN is stored as a salted hash and compared exactly',()=>{
 
 const SIGNER='A'.repeat(40);
 function updateFixture(overrides={}){
- const calls=[];const dir='/srv/photobooth/tmp/desktop-update-'+newId();
+ const calls=[],progress=[];const dir='/srv/photobooth/tmp/desktop-update-'+newId();
  const info={update_available:true,version:'1.1.0',size:3,sha256:'a'.repeat(64),notes:''};
  const u=new Updater({
-  client:{check:async v=>{calls.push('check:'+v);return overrides.info||info;},download:async(_i,file)=>{calls.push('download');await writeFile(file,'abc');}},
+  client:{check:async v=>{calls.push('check:'+v);return overrides.info||info;},download:async(_i,file,onProgress)=>{calls.push('download');onProgress(0,3);await writeFile(file,'abc');onProgress(3,3);}},
   bridge:{call:async(method,params)=>{calls.push(method);assert.ok(params.path.startsWith(dir));return overrides.signature||{status:'Valid',thumbprint:SIGNER.toLowerCase()};}},
-  dir,version:'1.0.0',signer:overrides.signer??SIGNER,sessionActive:overrides.sessionActive||(()=>false),launch:async file=>{calls.push('launch:'+file);}});
- return {u,calls,dir};
+  dir,version:'1.0.0',signer:overrides.signer??SIGNER,sessionActive:overrides.sessionActive||(()=>false),onProgress:p=>progress.push(p),launch:overrides.launch|| (async file=>{calls.push('launch:'+file);})});
+ return {u,calls,dir,progress};
 }
 test('Updater installs only after download and a Valid pinned signature',async()=>{
- const {u,calls,dir}=updateFixture();
+ const {u,calls,dir,progress}=updateFixture();
  try{
   assert.deepEqual(await u.check(),{available:true,version:'1.1.0',notes:'',size:3});
   const r=await u.install();assert.equal(r.launched,true);
   assert.deepEqual(calls.filter(c=>!c.startsWith('check')),['download','update.verify','launch:'+join(dir,'NXBooth-Setup-1.1.0.exe')]);
+  assert.deepEqual(progress.map(p=>p.stage),['checking','downloading','downloading','verifying','installing']);
+  assert.deepEqual(progress.filter(p=>p.stage==='downloading').map(p=>p.percent),[0,100]);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 test('Updater without a pinned signer still verifies size/hash (client) and installs without a signature check',async()=>{
@@ -129,6 +131,16 @@ test('Updater without a pinned signer still verifies size/hash (client) and inst
   assert.equal((await u.install()).launched,true);
   assert.ok(!calls.includes('update.verify'));assert.ok(calls.includes('download'));
  }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('Updater rejects overlapping installs and allows retry after installer launch failure',async()=>{
+ let release;const gate=new Promise(resolve=>{release=resolve;});let attempts=0;
+ const {u,dir}=updateFixture({launch:async()=>{attempts++;await gate;throw new Error('UPDATE_LAUNCH_FAILED');}});
+ try{
+  const first=assert.rejects(u.install(),/UPDATE_LAUNCH_FAILED/);
+  await assert.rejects(u.install(),/UPDATE_IN_PROGRESS/);
+  release();await first;assert.equal(attempts,1);
+  await assert.rejects(u.install(),/UPDATE_LAUNCH_FAILED/);assert.equal(attempts,2);
+ }finally{release();await rm(dir,{recursive:true,force:true});}
 });
 test('Updater refuses wrong signer, untrusted signature, active session and missing pin, and deletes the download',async()=>{
  for(const [name,overrides,error] of [
@@ -152,16 +164,25 @@ test('UpdateClient verifies size and hash and leaves no partial file',async()=>{
   assert.equal(req.headers['x-api-key'],'k'.repeat(32));
   if(req.url.startsWith('/api/v1/desktop/update?'))return res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({data:{update_available:true,version:'1.1.0',size:body.length,sha256:sha}}));
   const bytes=mode==='tampered'?Buffer.from('tampered installer!'.slice(0,body.length)):body;
-  res.writeHead(200,{'content-length':bytes.length}).end(bytes);
+  res.writeHead(200,{'content-length':bytes.length});res.write(bytes.subarray(0,4));setTimeout(()=>mode==='interrupted'?res.destroy():res.end(bytes.subarray(4)),30);
  });
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;
  const dir=await mkdtemp('/srv/photobooth/tmp/desktop-update-client-');
  try{
   const client=new UpdateClient(origins({control:base,media:base,storage:base,web:base},true),'k'.repeat(32));
   const info=await client.check('1.0.0');assert.equal(info.version,'1.1.0');
-  await client.download(info,join(dir,'ok.exe'));assert.equal((await stat(join(dir,'ok.exe'))).size,body.length);
+  const progress=[];
+  await client.download(info,join(dir,'ok.exe'),(bytes,total)=>progress.push({bytes,total}));assert.equal((await stat(join(dir,'ok.exe'))).size,body.length);
+  assert.deepEqual(progress[0],{bytes:0,total:body.length});
+  assert.deepEqual(progress.at(-1),{bytes:body.length,total:body.length});
+  assert.ok(progress.some(p=>p.bytes>0&&p.bytes<body.length),'reports partial download before completion');
+  assert.ok(progress.every((p,i)=>p.bytes<=body.length&&(!i||p.bytes>=progress[i-1].bytes)));
   mode='tampered';await assert.rejects(client.download(info,join(dir,'bad.exe')),/UPDATE_HASH_MISMATCH/);
   assert.ok(!existsSync(join(dir,'bad.exe')));
+  mode='interrupted';const partial=[];
+  await assert.rejects(client.download(info,join(dir,'partial.exe'),bytes=>partial.push(bytes)));
+  assert.ok(!existsSync(join(dir,'partial.exe')));assert.ok(partial.at(-1)<body.length);
+  mode='ok';
   await assert.rejects(client.download({...info,size:999},join(dir,'size.exe')),/UPDATE_SIZE_MISMATCH/);
   await assert.rejects(client.download({...info,sha256:'xyz'},join(dir,'m.exe')),/UPDATE_MANIFEST_INVALID/);
   await assert.rejects(new UpdateClient(origins({control:base,media:base,storage:base,web:base},true),'').check('1.0.0'),/BACKEND_NOT_CONFIGURED/);

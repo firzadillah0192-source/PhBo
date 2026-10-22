@@ -22,11 +22,14 @@ const png = (color = '#c44') => sharp({ create: { width: 128, height: 96, channe
 const json = (body: unknown, status = 200): HttpResponse => ({ status, headers: {}, body: Buffer.from(JSON.stringify(body)) });
 
 // Scripted WaveSpeed-shaped fake. Records every request; no network.
+const PRICES: Record<string, number> = { 'wavespeed-ai/qwen-image/edit': 0.03 };
 function waveSpeedFake(opts: { statuses?: string[]; failSubmit?: number; outputBytes?: Buffer } = {}) {
   const calls: HttpRequest[] = []; const statuses = [...(opts.statuses ?? ['processing', 'completed'])];
   const http: LabHttp = { async request(req) {
     calls.push(req);
     const url = new URL(req.url);
+    if (url.pathname === '/api/v3/model/price') { const model = JSON.parse(String(req.body)).model_id as string, price = PRICES[model] ?? 0.02; return json({ code: 200, data: { model_id: model, price, discounted_price: price, discount_rate: 100, currency: 'USD' } }); }
+    if (url.pathname.endsWith('/images/edits') || url.pathname.endsWith('/images/generations')) return json({ data: [{ b64_json: (await png('#2a6')).toString('base64') }] });
     if (url.pathname === '/api/v3/media/uploads') return json({ code: 200, data: { upload: { method: 'PUT', url: 'https://uploads.example.com/put/1', headers: { 'Content-Type': 'image/png' } }, download_url: `https://cdn.example.com/in/${calls.length}.png` } });
     if (req.method === 'PUT') return { status: 200, headers: {}, body: Buffer.alloc(0) };
     if (url.pathname.startsWith('/api/v3/wavespeed-ai/')) return opts.failSubmit ? json({ message: `bad key ${KEY}` }, opts.failSubmit) : json({ code: 200, data: { id: 'pred-1', status: 'created', outputs: [] } });
@@ -37,7 +40,7 @@ function waveSpeedFake(opts: { statuses?: string[]; failSubmit?: number; outputB
   } };
   return { http, calls };
 }
-async function setup(fake = waveSpeedFake(), now = () => new Date('2026-10-12T10:00:00Z')) {
+async function setup(fake: ReturnType<typeof waveSpeedFake> = waveSpeedFake(), now = () => new Date('2026-10-12T10:00:00Z')) {
   const store = new MemoryLabStore(), files = new MemoryLabFiles(), audits: { action: string; meta?: unknown }[] = [];
   const lab = new LabService({ store, files, vault: new LabVault('lab-test-encryption-key-123'), adapters: ADAPTERS, http: () => fake.http, now, sleep: async () => undefined,
     audit: async (_a, action, _t, _id, _r, meta) => { audits.push({ action, meta }); } });
@@ -47,6 +50,7 @@ async function setup(fake = waveSpeedFake(), now = () => new Date('2026-10-12T10
   const pricing: Pricing = { method: 'per_image', currency: 'USD', per_image_usd: 0.02, source: 'WaveSpeed docs (test fixture)', verified_at: '2026-10-01T00:00:00Z', assumptions: 'fixture' };
   const model = await lab.saveModel(null, { provider_id: provider.id, model_id: 'wavespeed-ai/qwen-image/edit-plus', display_name: 'Qwen Edit Plus', tasks: ['image-to-image', 'multi-reference-edit'],
     sizes: ['1024*1024'], max_reference_images: 3, supports: { seed: true, size: true, negative_prompt: false, quality: [], output_format: ['png'] }, pricing }, admin);
+  await lab.updateSettings({ per_request_usd: 0.25, daily_usd: 2, monthly_usd: 20, max_runs_per_request: 6, max_active_runs: 6, enforce_sequence: false }, admin);
   return { lab, store, files, provider, model, audits, fake };
 }
 const images = async () => [{ bytes: await png('#c44'), role: 'template' as const }, { bytes: await png('#48c'), role: 'reference' as const }];
@@ -112,13 +116,13 @@ test('generation requires explicit confirmation of the exact server estimate', a
   await assert.rejects(ctx.lab.createRuns([input], admin, { total_usd: 0.02 }), (e: LabError) => e.code === 'LAB_CONFIRMATION_REQUIRED');
   await assert.rejects(ctx.lab.createRuns([input], admin, confirmed(0.001)), (e: LabError) => e.code === 'LAB_ESTIMATE_CHANGED');
   assert.equal((await ctx.lab.listRuns({})).length, 0);
-  assert.equal(ctx.fake.calls.length, 0, 'no provider call before confirmation');
+  assert.equal(ctx.fake.calls.filter(c => c.url.includes('/wavespeed-ai/qwen-image/edit-plus')).length, 0, 'no generation submitted before confirmation');
 });
 test('WaveSpeed async lifecycle: upload, submit, poll, download; sanitized history persisted', async () => {
   const ctx = await setup(waveSpeedFake({ statuses: ['created', 'processing', 'completed'] }));
   const run = await runOnce(ctx, { seed: 7, size: '1024*1024', output_format: 'png' });
   assert.equal(run.status, 'SUCCEEDED'); assert.equal(run.provider_request_id, 'pred-1');
-  assert.equal(run.cost.estimated_usd, 0.02); assert.equal(run.cost.provider_reported_usd, null); assert.match(run.cost.basis, /estimate only/);
+  assert.equal(run.cost.estimated_usd, 0.02); assert.equal(run.cost.provider_reported_usd, null); assert.match(run.cost.basis, /provider quotation; awaiting billing/); assert.equal(run.billing!.status, 'not_started');
   assert.deepEqual([run.output!.width, run.output!.height], [128, 96]);
   const submit = ctx.fake.calls.find(c => c.url.endsWith('/api/v3/wavespeed-ai/qwen-image/edit-plus'))!;
   const body = JSON.parse(String(submit.body));
@@ -134,15 +138,15 @@ test('WaveSpeed async lifecycle: upload, submit, poll, download; sanitized histo
 test('unsupported parameters are dropped, not sent', async () => {
   const ctx = await setup();
   const run = await runOnce(ctx, { negative_prompt: 'blurry', quality: 'high', size: '999*999' });
-  const body = JSON.parse(String(ctx.fake.calls.find(c => c.url.includes('/wavespeed-ai/qwen'))!.body));
+  const body = JSON.parse(String(ctx.fake.calls.find(c => c.url.endsWith('/wavespeed-ai/qwen-image/edit-plus'))!.body));
   assert.ok(!('negative_prompt' in body) && !('quality' in body) && !('size' in body));
   assert.deepEqual((run.params as { ignored_unsupported: string[] }).ignored_unsupported.sort(), ['negative_prompt', 'quality', 'size']);
 });
 test('provider failure is recorded with a redacted message, never retried, and does not count as spend', async () => {
-  const ctx = await setup(waveSpeedFake({ failSubmit: 500 }));
+  const ctx = await setup(waveSpeedFake({ failSubmit: 400 }));
   const run = await runOnce(ctx);
   assert.equal(run.status, 'FAILED'); assert.equal(run.error_code, 'LAB_PROVIDER_ERROR'); assert.ok(!run.error_message!.includes(KEY));
-  assert.equal(ctx.fake.calls.filter(c => c.url.includes('/wavespeed-ai/qwen')).length, 1, 'no automatic retry');
+  assert.equal(ctx.fake.calls.filter(c => c.url.endsWith('/wavespeed-ai/qwen-image/edit-plus')).length, 1, 'no automatic retry');
   assert.equal((await ctx.lab.budget()).spent.today_usd, 0);
   assert.equal((await ctx.lab.listModels())[0]!.status, 'failing');
 });
@@ -198,7 +202,10 @@ test('concurrent requests cannot jointly exceed the daily limit', async () => {
 });
 test('unknown pricing: requires acknowledgement, is labeled, and is rate-capped', async () => {
   const ctx = await setup();
-  const unpriced = await ctx.lab.saveModel(null, { provider_id: ctx.provider.id, model_id: 'wavespeed-ai/other', display_name: 'Other', tasks: ['image-to-image'], max_reference_images: 2 }, admin);
+  // Providers without a pricing API fall back to the Admin-configured schedule; with none configured the price is unknown.
+  const compat = await ctx.lab.createProvider({ name: 'Compat', type: 'openai_compatible', base_url: 'https://api.example-ai.com/v1' }, admin);
+  await ctx.lab.setCredential(compat.id, 'compat-key-1234567890', admin); await ctx.lab.updateProvider(compat.id, { enabled: true }, admin);
+  const unpriced = await ctx.lab.saveModel(null, { provider_id: compat.id, model_id: 'other-model', display_name: 'Other', tasks: ['image-to-image'], max_reference_images: 2 }, admin);
   assert.equal(unpriced.pricing.method, 'unknown');
   const est = await ctx.lab.estimateFor({ model_ref: unpriced.id });
   assert.equal(est.estimate.known, false); assert.equal(est.estimate.usd, null);
@@ -258,10 +265,39 @@ test('retention purge deletes image files but keeps metadata', async () => {
   const kept = await ctx.lab.getRun(run.id); assert.equal(kept.status, 'SUCCEEDED'); assert.equal(kept.output, null);
   await assert.rejects(ctx.lab.runFile(run.id, 'output'), (e: LabError) => e.status === 404);
 });
-test('connection test uses a free read-only call and records the result', async () => {
-  const ctx = await setup(); const r = await ctx.lab.testConnection(ctx.provider.id, admin);
-  assert.equal(r.ok, true); assert.equal(r.provider.last_test_status, 'ok'); assert.ok(r.provider.last_success_at);
-  assert.equal(ctx.fake.calls.length, 1); assert.ok(ctx.fake.calls[0]!.url.endsWith('/api/v3/predictions'));
+test('WaveSpeed Test Connection: GET /balance, no generation, no duplicate /api/v3, balance shown', async () => {
+  for (const base of [undefined, 'https://api.wavespeed.ai/api/v3', 'https://api.wavespeed.ai/api/v3/']) {
+    const calls: HttpRequest[] = [];
+    const ctx = await setup({ http: { async request(req: HttpRequest) { calls.push(req); return json({ code: 200, message: 'success', data: { balance: 50.25 } }); } } } as never);
+    if (base) await ctx.lab.updateProvider(ctx.provider.id, { base_url: base }, admin);
+    const r = await ctx.lab.testConnection(ctx.provider.id, admin);
+    assert.equal(r.ok, true); assert.match(r.message, /Balance: \$50\.25/); assert.equal(r.provider.last_test_status, 'ok'); assert.ok(r.provider.last_success_at);
+    assert.equal(calls.length, 1); assert.equal(calls[0]!.method, 'GET'); assert.equal(calls[0]!.url, 'https://api.wavespeed.ai/api/v3/balance');
+    assert.equal(calls[0]!.body, undefined); assert.equal(calls[0]!.headers!.Authorization, `Bearer ${KEY}`);
+  }
+});
+test('WaveSpeed Test Connection: provider errors are shown sanitized, never the key', async () => {
+  const cases: [number, unknown, RegExp][] = [
+    [400, { code: 400, message: `invalid request for key ${KEY}` }, /HTTP 400 — invalid request for key \[redacted\]/],
+    [401, { code: 401, message: 'Invalid API key' }, /rejected the API key \(HTTP 401\) — Invalid API key/],
+    [403, { code: 403, message: 'forbidden' }, /HTTP 403.*Owner, Admin, Developer or Billing/],
+    [429, { message: 'slow down' }, /rate limit.*429.*slow down/],
+    [500, { message: 'boom' }, /HTTP 500 — boom/],
+    [502, '<html><body><h1>Bad gateway</h1></body></html>', /HTTP 502 — Bad gateway/],
+    [200, { code: 401, message: 'Unauthorized' }, /code 401 — Unauthorized/],
+  ];
+  for (const [status, body, expected] of cases) {
+    const ctx = await setup({ http: { async request() { return typeof body === 'string' ? { status, headers: {}, body: Buffer.from(body) } : json(body, status); } } } as never);
+    const r = await ctx.lab.testConnection(ctx.provider.id, admin);
+    assert.equal(r.ok, false, String(status)); assert.match(r.message, expected); assert.ok(!r.message.includes(KEY));
+    assert.equal(r.provider.last_test_status, 'failed'); assert.equal(r.provider.last_test_message, r.message);
+  }
+});
+test('WaveSpeed Test Connection: network failure is reported without leaking details; stored credential is kept', async () => {
+  const ctx = await setup({ http: { async request() { throw new LabError(502, 'LAB_PROVIDER_UNREACHABLE', 'The provider could not be reached.'); } } } as never);
+  const r = await ctx.lab.testConnection(ctx.provider.id, admin);
+  assert.equal(r.ok, false); assert.match(r.message, /Could not reach WaveSpeed/);
+  assert.equal((await ctx.lab.listProviders())[0]!.credential.configured, true);
 });
 
 // ---- HTTP layer: authorization and CSRF-relevant behaviour ------------------------------------------------------
@@ -277,7 +313,7 @@ function app(role: string | null) {
 test('every Lab endpoint rejects anonymous, operator and content_manager callers server-side', async () => {
   const routes: [string, string][] = [['get', '/lab/overview'], ['get', '/lab/providers'], ['post', '/lab/providers'], ['put', '/lab/providers/x/credential'], ['delete', '/lab/providers/x/credential'], ['post', '/lab/providers/x/test'],
     ['get', '/lab/models'], ['post', '/lab/models'], ['post', '/lab/estimate'], ['post', '/lab/runs'], ['post', '/lab/compare'], ['get', '/lab/runs'], ['get', '/lab/runs/x/image/output'], ['get', '/lab/analytics'], ['get', '/lab/export.csv'],
-    ['get', '/lab/sessions'], ['get', '/lab/benchmarks'], ['post', '/lab/candidates'], ['put', '/lab/settings'], ['post', '/lab/purge']];
+    ['get', '/lab/sessions'], ['get', '/lab/benchmarks'], ['post', '/lab/candidates'], ['put', '/lab/settings'], ['post', '/lab/purge'], ['post', '/lab/quote'], ['get', '/lab/report'], ['get', '/lab/report.csv'], ['post', '/lab/providers/x/seed-models'], ['post', '/lab/models/x/verification'], ['post', '/lab/runs/x/billing'], ['post', '/lab/runs/x/recheck'], ['post', '/lab/runs/x/resolve']];
   for (const role of [null, 'operator', 'content_manager']) for (const [method, path] of routes) {
     const res = await (request(app(role)) as unknown as Record<string, (p: string) => request.Test>)[method]!(path).send({});
     assert.ok([401, 403].includes(res.status), `${role} ${method} ${path} -> ${res.status}`);

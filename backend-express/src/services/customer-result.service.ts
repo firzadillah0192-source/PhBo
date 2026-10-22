@@ -8,7 +8,7 @@ import type { CustomerIdentity } from './customer-account.service.js';
 import { AppError } from '../lib/errors.js';
 import type { NativeObjectStorage } from './native-object-storage.service.js';
 import { webResultExpiresAt } from './result-retention.js';
-import { parseGenerationSnapshot } from './generation-snapshot.js';
+import { snapshotPersonalization } from './generation-snapshot.js';
 
 export type ResultDeliveryConfig = { resultsDir: string; claimHours: number; publicOrigin: string; production: boolean; kioskResetSeconds?: number };
 const unavailable = () => new AppError(404, 'CLAIM_UNAVAILABLE', 'This photo is no longer available.');
@@ -87,8 +87,7 @@ export class CustomerResultService {
     const found = await this.owned(id, identity, true);
     const { result } = found;
     const origin = this.publicOrigin();
-    const snapshot = found.job.mode === 'CLASSIC' ? parseGenerationSnapshot(found.job.engine_config_json, 'CLASSIC') : null;
-    const embeddedToken = snapshot?.mode === 'CLASSIC' ? snapshot.personalization?.claim_token : null;
+    const embeddedToken = snapshotPersonalization(found.job.engine_config_json, found.job.mode)?.claim_token ?? null;
     // Reuse the printed QR's persisted claim, including reloads and retry buttons.
     if (embeddedToken) input = { ...input, refresh: false, reuseToken: embeddedToken };
     const expiresAt = new Date(Math.min(Math.floor(Date.now() / 1000) * 1000 + this.config.claimHours * 3600000, found.kiosk ? Infinity : (await this.model.expiresAt(result)).getTime()));

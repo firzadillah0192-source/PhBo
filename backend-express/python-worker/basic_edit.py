@@ -110,8 +110,20 @@ def prepare_identity(data):
 
 def prepare_template(data):
     image = load(data)
-    staged_geometry(image, 'TEMPLATE')
-    return encode(image)
+    contour = staged_geometry(image, 'TEMPLATE')[0]
+    return encode(blur_face(image, contour))
+
+
+def blur_face(image, contour):
+    # Hide the template actor's identity so the image model must build the face from the customer.
+    # Head size, skin brightness and light stay readable; hair, body and frame are untouched.
+    xs, ys = [float(x) for x, _ in contour], [float(y) for _, y in contour]
+    width, height = max(xs) - min(xs), max(ys) - min(ys)
+    box = (min(xs) - width * .06, min(ys) - height * .04, max(xs) + width * .06, max(ys) + height * .03)
+    mask = Image.new('L', image.size, 0)
+    ImageDraw.Draw(mask).ellipse(box, fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(max(1, width * .06)))
+    return Image.composite(image.filter(ImageFilter.GaussianBlur(max(1, width * .16))), image, mask)
 
 
 def face_mask(size, contour):

@@ -1,0 +1,23 @@
+{
+  "id": "sci-fi-space-commander-female-001",
+  "name": "Space Commander · Woman",
+  "description": "Woman with dark hair. Head-to-mid-thigh orbital fleet commander in graphite armor with blue energy accents, inside a cinematic spacecraft; engineered gunmetal frame with cyan lighting. Complete four-sided frame and integrated NXBooth footer with Powered by GenNexByte branding.",
+  "width": 1024,
+  "height": 1536,
+  "asset_filename": "template.png",
+  "preview_filename": "preview.png",
+  "face_region": [
+    426,
+    320,
+    180,
+    200
+  ],
+  "prompt": "Create a template-dominant head-to-mid-thigh photobooth portrait. Woman with dark hair. Head-to-mid-thigh orbital fleet commander in graphite armor with blue energy accents, inside a cinematic spacecraft; engineered gunmetal frame with cyan lighting. Complete four-sided frame and integrated NXBooth footer with Powered by GenNexByte branding. Keep true eye-level perspective, natural proportions, readable face, complete hairstyle and both thighs visible above the branding footer. Use the customer photo only as the identity reference; preserve their recognizable facial features. Preserve the template's costume, setting, pose, frame and NXBooth branding. Do not copy the customer's clothing or background. No close-up, waist-up crop, low-angle view, extra people, or additional brands.",
+  "composition": "head-to-mid-thigh",
+  "camera": "eye-level",
+  "branding": {
+    "footer": "NXBooth",
+    "credit": "Powered by GenNexByte"
+  },
+  "asset_generation_prompt": "Use case: compositing. Reference image 1: original NXBooth frame layout and HEAD-TO-THIGH body composition. Edit target image 2: keep its theme and costume but replace close-up with a premium portrait. Output ONE final photorealistic vertical 2:3 template, 1024x1536. Subject: young adult INDONESIAN woman with unmistakably Southeast Asian facial features, warm natural skin, long black hair, elegant graphite black-gold command armor and trousers, orbital spacecraft environment. Preview model has natural INDONESIAN/SOUTHEAST ASIAN facial features, realistic readable skin and face, calm confidence. STRICT TRUE EYE-LEVEL camera, longer-lens natural perspective. Centered STANDING HEAD TO MID-THIGH, NOT a bust portrait, NOT fullbody-to-shoes. The framing must clearly show shoulders, torso, waist, hips AND BOTH THIGHS, hands at sides. Head occupies approx y250-475, thighs end y1200. Face smaller like reference 1. Add substantial detailed engineered metallic gunmetal sci-fi frame with electric cyan blue accents matching original around ALL FOUR SIDES, inspired by original's production quality, complete frame edges. Top title plaque exactly \"SPACE COMMANDER\". Below thighs add integrated branding plate with exact text \"NXBOOTH\" and smaller \"POWERED BY GENNEXBYTE\". At bottom, restrained reference-like \"EVENT NAME\" and \"DATE\" fields. All text accurate, legible and safely inside border, no text over subject. Cinema photography, original believable production design, elegant premium aesthetics. No low-angle hero shot, no wideangle distortion, no oversized head or shoulders, no shoes required, no Western/European facial features, no extra people, no weapons, no airline/franchise logos, no plastic skin. Hijab variant must have all hair covered."
+}

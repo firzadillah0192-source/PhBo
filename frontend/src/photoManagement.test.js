@@ -7,6 +7,8 @@ import react from '@vitejs/plugin-react'
 
 test('Photo controls render only for available results and disappear after deletion', async () => {
   const vite = await createServer({ configFile: false, plugins: [react()], server: { middlewareMode: true }, appType: 'custom', logLevel: 'silent' })
+  const i18n = await vite.ssrLoadModule('/src/i18n.js')
+  i18n.setLanguage('en') // these assertions cover the English copy; Indonesian is the default and is asserted below
   try {
     const { CreationCard } = await vite.ssrLoadModule('/src/components/customer/AccountCenter.jsx')
     const { default: AdminResultPhoto } = await vite.ssrLoadModule('/src/components/admin/AdminResultPhoto.jsx')
@@ -22,5 +24,10 @@ test('Photo controls render only for available results and disappear after delet
     const deleted = render(AdminResultPhoto, { generation: { ...generation, result_deleted_at: '2026-10-02' }, onDeleted: () => {} })
     assert.match(deleted, /Foto sudah dihapus/)
     assert.doesNotMatch(deleted, /Hapus foto|Download foto|<img/)
-  } finally { await vite.close() }
+
+    i18n.setLanguage('id')
+    const indonesian = render(CreationCard, { item, onDeleted: () => {} })
+    assert.match(indonesian, /Hapus foto/); assert.match(indonesian, /Unduh/); assert.match(indonesian, /Selesai/)
+    assert.doesNotMatch(indonesian, /Delete photo/)
+  } finally { i18n.setLanguage('id'); await vite.close() }
 })

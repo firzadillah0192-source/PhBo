@@ -252,7 +252,7 @@ test('OpenAPI and capability metadata are public and accurately describe activat
   const {createMigrationApp}=await import('../src/migration-app.js');
   const app=createMigrationApp({} as never,{corsOrigins:[]});
   const caps=await request(app).get('/api/public/v1/capabilities').expect(200);
-  assert.deepEqual(caps.body,{enabled:false,storage:false,generation:false,scopes:['results:read','usage:read']});
+  assert.deepEqual(caps.body,{enabled:false,dashboard:false,webhooks:false,storage:false,generation:false,scopes:['results:read','usage:read']});
   const spec=await request(app).get('/api/public/v1/openapi.json').expect(200);
   assert.equal(spec.body.openapi,'3.1.0');
   for(const value of Object.values(spec.body.paths) as {get:{security:unknown}}[]) assert.deepEqual(value.get.security,[{bearerAuth:[]}]);

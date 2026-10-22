@@ -105,3 +105,7 @@
 .lab-estimate .admin-table{min-width:0}
 .admin-badge.ok{background:#e0edcd}.admin-badge.bad{background:#f6d5cf}
 @media(max-width:700px){.lab .admin-table td input[type=password]{width:100%}}
+.admin-badge.warn{background:#fff3c1}
+.lab-params{margin:12px 0}
+.lab-quote-actions{margin:10px 0}
+.lab-cost{border-top:1.5px dashed #ddd1bb;margin-top:14px;padding-top:10px}

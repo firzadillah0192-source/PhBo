@@ -87,3 +87,14 @@ Before production deployment: validate representative upstream usage; back up th
 ### Aggregate-estimate follow-up (2026-10-09)
 
 Deployed release: `/srv/photobooth/releases/token-estimate-20261009T025725Z`. See `docs/TOKEN_ESTIMATE_DEPLOYMENT.md`. Separately price input/output; use reported cache once; aggregate fallback uses the upper admin estimate. Complete category/cache usage retains detailed pricing. Currency/fee/credit unit remain 18,000 / 20% / Rp100. Successful calls are billed; failed calls are excluded. No retroactive repricing of already-paid jobs.
+
+### Duitku Sandbox preparation — 2026-10-17 (not deployed)
+
+A separately authorized Sandbox checkout now replaces the unavailable boundary
+when explicitly enabled with credentials and additive migration 023. Production
+wallet behavior remains unchanged: successful Sandbox payments record a separate
+sandbox-only balance, never credits usable for AI/Classic generation. Customer
+checkout/return/history and Admin Console Payments are prepared and tested.
+See `DUITKU_SANDBOX.md` for source, tests, staged images and activation requirements.
+Earlier deployment/503 descriptions above remain the history of the live stack
+until this candidate is separately approved and deployed.

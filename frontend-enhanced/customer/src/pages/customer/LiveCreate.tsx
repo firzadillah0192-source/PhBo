@@ -8,6 +8,8 @@ import { useCustomer } from '../../lib/customer'
 import { customer as api, message, type Row } from '../../../../shared/api'
 // @ts-ignore Shared pure contract validation is also tested in Node.
 import { selectionOptions } from '../../../../shared/generation.mjs'
+// @ts-ignore Shared wallet policy is tested in Node.
+import { canStart, minimumCredits, creditDescription } from '../../../../shared/credits.mjs'
 export { Home } from './Create'
 
 function FlowHeader({ current, title, subtitle }: { current: number; title: string; subtitle?: string }) {
@@ -51,7 +53,7 @@ export function CreateStyle() {
 }
 export function ClassicLayoutPick() {
   const c = useCustomer(); const navigate = useNavigate()
-  return <Page><FlowHeader current={0} title="Pick a strip layout" subtitle="Free · prints at 2×6 in." /><CatalogNotice /><div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">{c.catalog.classicLayouts.map((r: Row) => <CatalogCard key={r.id} title={r.name} blurb={`Classic · ${r.shot_count} photos`} src={r.preview_url} tag={r.theme_name} tall selected={r.id === c.layoutId} onSelect={() => c.setLayoutId(r.id)} />)}</div><StickyCta><BigButton disabled={!c.catalog.classicLayouts.some((r: Row) => r.id === c.layoutId)} onClick={() => navigate('/app/create/classic-photos')}>Continue</BigButton></StickyCta></Page>
+  return <Page><FlowHeader current={0} title="Pick a strip layout" subtitle="1 credit per successful strip · prints at 2×6 in." /><CatalogNotice /><div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">{c.catalog.classicLayouts.map((r: Row) => <CatalogCard key={r.id} title={r.name} blurb={`Classic · ${r.shot_count} photos`} src={r.preview_url} tag={r.theme_name} tall selected={r.id === c.layoutId} onSelect={() => c.setLayoutId(r.id)} />)}</div><StickyCta><BigButton disabled={!c.catalog.classicLayouts.some((r: Row) => r.id === c.layoutId)} onClick={() => navigate('/app/create/classic-photos')}>Continue</BigButton></StickyCta></Page>
 }
 export function ClassicPhotos() {
   const c = useCustomer(); const navigate = useNavigate()
@@ -81,6 +83,7 @@ export function CreateReview() {
     try {
       const options = selectionOptions(c.mode.toUpperCase(), selection, c.frameId, c.uploads, { eventName: c.eventName, capturedAt: c.uploads[0]?.captured_at, ornamentIds: c.ornaments })
       const job = await api.createGeneration(c.uploads[0].upload_id, c.mode.toUpperCase(), c.templateId, c.styleId, options)
+      void c.refreshAccount().catch(() => {})
       navigate('/app/processing?job=' + encodeURIComponent(job.job_id))
     } catch (e) { setError(message(e)) }
     finally { lock.current = false; setBusy(false) }
@@ -89,8 +92,9 @@ export function CreateReview() {
   return <Page narrow><FlowHeader current={2} title="Review" /><div className="mt-5 space-y-3">
     <SummaryRow src={c.uploads[0] ? api.uploadPreviewUrl(c.uploads[0].upload_id) : undefined} title="Your photo" body={`${count} photo${count === 1 ? '' : 's'} · kept for 24 h`} action="Replace" to={isClassic ? '/app/create/classic-photos' : '/app/create/photo'} />
     <SummaryRow src={selection?.preview_url || selection?.thumbnail || undefined} title={selection?.name || 'No design selected'} body={isClassic ? 'Classic · Photo strip' : c.mode === 'advanced' ? 'Advanced · AI art styles' : 'Basic · AI themed portrait'} action="Change" to={isClassic ? '/app/create/layout' : '/app/create/style'} />
-    {isClassic ? <InlineAlert tone="success">Classic is free. No credits are used.</InlineAlert> : <div className="rounded-md bg-accent-soft p-4"><p className="t-label-s flex items-center gap-2"><Sparkles size={16} aria-hidden />Uses 1 AI credit</p><p className="t-caption mt-0.5 text-text-muted">{Math.max(c.credits - 1, 0)} left after · returned if it fails</p></div>}
+    <div className="rounded-md bg-accent-soft p-4"><p className="t-label-s">{creditDescription(c.mode)}</p><p className="t-caption mt-0.5 text-text-muted">{c.credits} credits available{isClassic && canStart(c.mode, c.credits) ? ` · ${c.credits - 1} left after success` : ''}</p></div>
+    {!canStart(c.mode, c.credits) && <InlineAlert tone="warning">You need at least {minimumCredits(c.mode)} credits. <Link to={c.signedIn ? '/app/account/credits' : '/app/signin'} className="underline">{c.signedIn ? 'View credits' : 'Sign in'}</Link></InlineAlert>}
     {!isClassic && <p className="t-caption flex items-start gap-2 text-text-muted"><Info size={14} className="mt-0.5 shrink-0" aria-hidden />The result is an AI portrait that resembles you. It is not an exact copy of your face.</p>}
     {error && <InlineAlert tone="danger">{error}</InlineAlert>}</div>
-    <StickyCta><BigButton disabled={busy || !selection || !c.uploads[0] || (!isClassic && c.credits < 1)} icon={isClassic ? undefined : Sparkles} onClick={create}>{busy ? 'Submitting…' : isClassic ? 'Create my strip' : 'Create my photo'}</BigButton></StickyCta></Page>
+    <StickyCta><BigButton disabled={busy || !selection || !c.uploads[0] || !canStart(c.mode, c.credits)} icon={isClassic ? undefined : Sparkles} onClick={create}>{busy ? 'Submitting…' : isClassic ? 'Create my strip' : 'Create my photo'}</BigButton></StickyCta></Page>
 }

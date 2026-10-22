@@ -1,17 +1,24 @@
-import React from 'react'
-import { uploadPreviewUrl } from '../../api.js'
+import React, { useEffect, useRef, useState } from 'react'
 import { useT } from '../../i18n.js'
+import { estimateProgress, processingPhrases } from '../../processingProgress.js'
 
-export default function ProcessingStage({ job, upload, previewUrl }) {
+export default function ProcessingStage({ job }) {
   const t = useT()
   const state = job?.state || 'QUEUED'
+  // No source preview here: a moving estimate and rotating phrases show that work is under way.
+  const since = useRef({ state, at: Date.now() })
+  if (since.current.state !== state) since.current = { state, at: Date.now() }
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 400); return () => clearInterval(timer) }, [])
+  const phrases = processingPhrases(job?.mode, t)
+  const percent = estimateProgress(state, now - since.current.at, job?.mode)
+  const phrase = percent >= 85 ? phrases.at(-1) : phrases[Math.floor((now - since.current.at) / 2800) % (phrases.length - 1)]
   const copy = state === 'QUEUED'
     ? [t('Menyiapkan potret Anda', 'Preparing your portrait'), t('Studio sedang mengatur cahaya dan membuka antrean untuk Anda.', 'The studio is setting the light and opening your place in the queue.')]
     : [t('Membangun dunia Anda', 'Building your world'), t('Suasana, karakter, dan detail fotografis sedang disatukan.', 'Atmosphere, character, and photographic detail are coming together.')]
   const classicCopy = state === 'QUEUED'
     ? [t('Menyiapkan strip foto Anda', 'Preparing your photo strip'), t('Foto-foto Anda siap disusun.', 'Your photographs are ready for composition.')]
     : [t('Menyusun strip foto Anda', 'Composing your photo strip'), t('Bingkai pilihan sedang dipasang di atas foto-foto Anda.', 'The selected frame is being placed over your photographs.')]
-  const uploadId = upload?.upload_id || job?.upload_id
   const waiting = state === 'QUEUED'
 
   return (
@@ -19,11 +26,14 @@ export default function ProcessingStage({ job, upload, previewUrl }) {
       <div className="processing-portal">
         <span className="processing-orbit orbit-one" aria-hidden="true" />
         <span className="processing-orbit orbit-two" aria-hidden="true" />
-        <figure>
-          {(uploadId || previewUrl) && <img src={previewUrl || uploadPreviewUrl(uploadId)} alt={t('Potret Anda sedang disiapkan', 'Your portrait being prepared')} />}
+        <figure className="processing-meter" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={t('Perkiraan kemajuan', 'Estimated progress')}>
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle className="processing-meter-track" cx="60" cy="60" r="52" />
+            <circle className="processing-meter-fill" cx="60" cy="60" r="52" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - percent} />
+          </svg>
+          <strong>{percent}<small>%</small></strong>
+          <span key={phrase} className="processing-meter-phrase">{phrase}</span>
           <i className="processing-light" />
-          <span className="processing-depth" />
-          <span className="processing-mist" />
         </figure>
       </div>
       <div className="processing-copy">

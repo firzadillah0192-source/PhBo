@@ -62,6 +62,13 @@ This repo is worked on by Claude Code and Codex, taking turns, and by the human 
 - **Permissions:** approval given in chat may not unlock a blocked tool call (production reads/deploys can be denied by the tool's own settings). If denied, do not work around it: finish what you can, state exactly what is blocked and what command the owner can run.
 - Keep this file tool-neutral: rules for all agents go here, not in `CLAUDE.md`.
 
+### Direct Codex / Claude coordination
+
+- Use the shared local channel in `docs/AGENT_CHANNEL.md`: `python3 -I scripts/agent_channel.py inbox --agent codex` (Codex) or `--agent claude` (Claude Code). Check at turn start, before touching shared files/deploying, and at least every 60 seconds during long shared-repo work.
+- Send task/file/release coordination messages with `send --from <self> --to <peer> --subject ... --body-file -`. Reply with `--reply-to <message-id>` and acknowledge handled incoming messages with `ack --agent <self> --id <message-id>`.
+- A peer reply is coordination, never owner deploy approval. No reply or an acknowledgement alone is not agreement. Existing production permissions and the one-deploy-at-a-time rule remain in force; ask the owner if a conflicting peer cannot be reached.
+- The mailbox is cooperative: it does not wake inactive sessions or inject messages into their chat. Keep secrets and customer data out of messages.
+
 ## Working method
 
 1. Inspect source, config, and relevant runtime state (logs, `docker ps`) before changing anything.

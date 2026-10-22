@@ -1,6 +1,6 @@
 import type { Pricing } from './types.js';
 
-export type PriceQuery = { reference_images: number; width?: number; height?: number; count?: number };
+export type PriceQuery = { reference_images: number; width?: number; height?: number; count?: number; quality?: string };
 export type PriceEstimate = { known: boolean; usd: number | null; breakdown: { label: string; usd: number }[]; assumptions: string; reason?: string };
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 const round = (value: number) => Math.round(value * 1e6) / 1e6;
@@ -21,9 +21,16 @@ export function estimate(pricing: Pricing, query: PriceQuery): PriceEstimate {
     }
     case 'tokens': {
       if (!finite(pricing.input_usd_per_million_tokens) || !finite(pricing.output_usd_per_million_tokens)) return unknown('Token prices are not configured.');
-      if (!finite(pricing.assumed_input_tokens) || !finite(pricing.assumed_output_tokens)) return unknown('Assumed token counts are required to estimate before running.');
+      const tiers = pricing.assumed_output_tokens_by_quality;
+      let outputTokens = pricing.assumed_output_tokens;
+      if (tiers && Object.keys(tiers).length) {
+        if (!query.quality) return unknown(`Choose a quality (${Object.keys(tiers).join(', ')}) to price this request.`);
+        outputTokens = tiers[query.quality];
+        if (!finite(outputTokens)) return unknown(`No token assumption for quality "${query.quality}". Enter one on the model, or run and read the measured cost.`);
+      }
+      if (!finite(pricing.assumed_input_tokens) || !finite(outputTokens)) return unknown('Assumed token counts are required to estimate before running.');
       breakdown.push({ label: 'Input tokens', usd: pricing.assumed_input_tokens / 1e6 * pricing.input_usd_per_million_tokens * count },
-        { label: 'Output tokens', usd: pricing.assumed_output_tokens / 1e6 * pricing.output_usd_per_million_tokens * count }); break;
+        { label: `Output tokens${query.quality ? ` (${query.quality})` : ''}`, usd: outputTokens / 1e6 * pricing.output_usd_per_million_tokens * count }); break;
     }
     case 'compute_time':
       if (!finite(pricing.per_second_usd) || !finite(pricing.assumed_seconds)) return unknown('Per-second price and assumed duration are required.');
@@ -46,13 +53,19 @@ export function calculateFromUsage(pricing: Pricing, usage: Record<string, numbe
 }
 export function validatePricing(input: unknown): Pricing {
   const p = input as Pricing;
-  if (!p || typeof p !== 'object' || !['unknown', 'per_image', 'per_megapixel', 'tokens', 'compute_time'].includes(p.method)) throw new Error('Invalid pricing method');
+  if (!p || typeof p !== 'object' || !['unknown', 'per_image', 'per_megapixel', 'tokens', 'compute_time', 'provider_quote'].includes(p.method)) throw new Error('Invalid pricing method');
   const out: Pricing = { method: p.method, currency: 'USD', source: String(p.source ?? '').slice(0, 300), verified_at: p.verified_at ? new Date(p.verified_at).toISOString() : null, assumptions: String(p.assumptions ?? '').slice(0, 1000) };
   for (const key of ['per_image_usd', 'per_megapixel_usd', 'input_usd_per_million_tokens', 'output_usd_per_million_tokens', 'per_second_usd', 'reference_image_fee_usd', 'assumed_input_tokens', 'assumed_output_tokens', 'assumed_seconds'] as const) {
     const value = p[key];
     if (value === undefined || value === null || (value as unknown) === '') continue;
     if (!finite(value) || value > 1e9) throw new Error(`Invalid ${key}`);
     out[key] = value;
+  }
+  const tiers = p.assumed_output_tokens_by_quality;
+  if (tiers && typeof tiers === 'object') {
+    const clean: Record<string, number> = {};
+    for (const [key, value] of Object.entries(tiers).slice(0, 12)) if (/^[a-z0-9_-]{1,24}$/i.test(key) && finite(value) && value <= 1e7) clean[key] = value;
+    if (Object.keys(clean).length) out.assumed_output_tokens_by_quality = clean;
   }
   return out;
 }

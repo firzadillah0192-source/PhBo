@@ -157,6 +157,30 @@ async def compose_reviewed_classic(metadata: str = Form(...), images: list[Uploa
     return Response(await run_in_threadpool(render_reviewed), media_type='image/png')
 
 
+@api.post('/add-result-footer')
+async def add_result_footer(image: UploadFile = File(...), metadata: str = Form(...), authorization: str | None = Header(default=None)):
+    """Draw event name, date and the download QR onto an AI result without changing its size."""
+    require_engine_key(authorization)
+    data = await image_bytes(image)
+
+    def render():
+        from datetime import datetime
+        from result_footer import render_result_footer
+        try:
+            if len(metadata) > 2048:
+                raise ValueError()
+            details = json.loads(metadata)
+            if not isinstance(details, dict) or not {'kind', 'captured_at', 'download_url'} <= set(details) <= {'kind', 'event_name', 'captured_at', 'download_url', 'qr_only'}:
+                raise ValueError()
+            return render_result_footer(data, details['kind'], details.get('event_name'),
+                                        datetime.fromisoformat(details['captured_at'].replace('Z', '+00:00')), details['download_url'],
+                                        qr_only=details.get('qr_only') is True)
+        except (ValueError, KeyError, TypeError, OSError, Image.DecompressionBombError):
+            raise HTTPException(422, detail={'error_code': 'RESULT_FOOTER_INVALID'}) from None
+
+    return Response(await run_in_threadpool(render), media_type='image/png')
+
+
 @api.post('/normalize-upload')
 async def normalize_upload(image: UploadFile = File(...), authorization: str | None = Header(default=None)):
     """Image-only boundary: no accounts, database, quota, job or upload writes."""

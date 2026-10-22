@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useEffect, useState } from 'react'
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { CustomerHeader } from '../components/customer'
 import { customer as api, message, rows, type Row } from '../../../shared/api'
@@ -23,10 +23,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [layoutId, setLayoutId] = useState(draft?.layoutId || '')
   const [eventName, setEventName] = useState(draft?.eventName || '')
   useEffect(() => { saveDraft({ mode, uploads, templateId, styleId, frameId, ornaments, layoutId, eventName }) }, [mode, uploads, templateId, styleId, frameId, ornaments, layoutId, eventName])
-  const refreshAccount = async () => {
+  const refreshAccount = useCallback(async () => {
     const me = await api.getAccountMe(); setAccount(me)
     setUsage(await api.getUsage())
-  }
+  }, [])
   useEffect(() => {
     let stopped = false
     async function load() {
@@ -39,7 +39,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
     load(); return () => { stopped = true }
   }, [])
-  const value = { account, usage, credits: usage?.ai_remaining ?? 0, signedIn: !!account?.authenticated, refreshAccount, catalog, error, loading,
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') void refreshAccount().catch(() => {}) }
+    window.addEventListener('focus', refresh); document.addEventListener('visibilitychange', refresh)
+    return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) }
+  }, [refreshAccount])
+  const value = { account, usage, setUsage, credits: usage?.ai_remaining ?? 0, signedIn: !!account?.authenticated, refreshAccount, catalog, error, loading,
     mode, setMode: (next: Mode) => { setMode(next); setUploads([]) }, uploads, setUploads, templateId, setTemplateId, styleId, setStyleId, frameId, setFrameId,
     ornaments, setOrnaments, layoutId, setLayoutId: (id: string) => { setLayoutId(id); setUploads([]) }, eventName, setEventName }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

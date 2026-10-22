@@ -34,12 +34,13 @@ export default function ReviewStage({ subscription, apiRoutes, aiLane = 'standar
         </div>
 
         <aside className="review-panel">
-          {mode === 'ADVANCED' && <div className="advanced-review-summary" aria-label={t('Opsi generate yang dipilih', 'Selected generation options')}><span><small>{t('Pengalaman', 'Experience')}</small><strong>{selection.name}</strong></span><span><small>{t('Gaya bingkai', 'Frame style')}</small><strong>{frameStyle?.name || t('Natural', 'Natural')}</strong></span><span><small>{t('Ornamen', 'Ornaments')}</small><strong>{ornaments.length ? ornaments.map((item) => item.name).join(', ') : t('Tidak ada', 'None')}</strong></span><span><small>{t('Foto', 'Photo')}</small><strong>{t('Siap', 'Ready')}</strong></span></div>}
-
           {mode !== 'CLASSIC' && onEventNameChange && <div className="classic-event-details review-event-details">
             <label htmlFor="review-event-name">{t('Nama event (opsional)', 'Event name (optional)')}<input id="review-event-name" value={eventName} maxLength={80} placeholder={t('Misalnya: Ulang Tahun Budi', 'For example: Budi’s Birthday')} onChange={event => onEventNameChange(event.target.value)} disabled={busy} autoComplete="off" aria-describedby="review-event-help" /></label>
             <p id="review-event-help">{t('Muncul di footer foto bersama tanggal otomatis (WIB). QR untuk unduh selalu ada di footer.', 'Shown in the photo footer with an automatic date (WIB). The download QR is always in the footer.')}</p>
           </div>}
+
+          {mode === 'ADVANCED' && <div className="advanced-review-summary" aria-label={t('Opsi generate yang dipilih', 'Selected generation options')}><span><small>{t('Pengalaman', 'Experience')}</small><strong>{selection.name}</strong></span><span><small>{t('Gaya bingkai', 'Frame style')}</small><strong>{frameStyle?.name || t('Natural', 'Natural')}</strong></span><span><small>{t('Ornamen', 'Ornaments')}</small><strong>{ornaments.length ? ornaments.map((item) => item.name).join(', ') : t('Tidak ada', 'None')}</strong></span><span><small>{t('Foto', 'Photo')}</small><strong>{t('Siap', 'Ready')}</strong></span></div>}
+
 
           {subscription && <fieldset className="review-lane" disabled={busy}><legend>{t('Jalur generate', 'Generation lane')}</legend>
             <label><input type="radio" name="ai-lane" checked={aiLane === 'standard'} onChange={() => onAiLane('standard')} />Standard · 50 AI Credit</label>

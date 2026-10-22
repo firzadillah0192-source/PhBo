@@ -79,7 +79,7 @@ def prepare():
     target = release / 'frontend'
     shutil.copytree(source, target, ignore=shutil.ignore_patterns('node_modules', 'dist', '.env*', '.vite'))
     prior_manifest = json.loads((source.parent / 'manifest.json').read_text())
-    incremental = 'src/customerViewport.css' in prior_manifest.get('changed_files', [])
+    incremental = (target / 'src/customerViewport.css').exists() or 'src/customerViewport.css' in prior_manifest.get('changed_files', [])
     with (release / 'patch.log').open('w') as output:
         for name in PATCH_FILES:
             dest = target / name

@@ -332,6 +332,15 @@
 .processing-light { position:absolute;inset:-20%;background:linear-gradient(106deg,transparent 35%,rgba(255,255,255,.55) 49%,transparent 62%);animation:processing-sweep 5.2s ease-in-out infinite; }
 .processing-depth { position:absolute;inset:0;background:radial-gradient(circle at 50% 44%,transparent 18%,rgba(17,19,24,.34) 100%);animation:depth-breathe 7s ease-in-out infinite alternate; }
 .processing-mist { position:absolute;inset:55% -20% -20%;filter:blur(18px);background:radial-gradient(ellipse,rgba(255,255,255,.45),transparent 70%);animation:mist-breathe 5s ease-in-out infinite alternate; }
+.processing-meter { display:grid;place-items:center;align-content:center;gap:14px;color:#fff;text-align:center; }
+.processing-meter svg { position:absolute;inset:50% auto auto 50%;width:72%;transform:translate(-50%,-58%) rotate(-90deg); }
+.processing-meter circle { fill:none;stroke-width:5; }
+.processing-meter-track { stroke:currentColor;opacity:.16; }
+.processing-meter-fill { stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .4s linear; }
+.processing-meter strong { position:relative;margin-top:-6%;font-family:var(--font-display);font-size:clamp(3.4rem,8vw,5rem);font-weight:400;letter-spacing:-.05em;line-height:1; }
+.processing-meter strong small { margin-left:2px;font-size:.42em;opacity:.7; }
+.processing-meter-phrase { position:absolute;bottom:12%;left:8%;right:8%;font-size:13px;letter-spacing:.02em;animation:processing-phrase .5s ease-out both; }
+@keyframes processing-phrase { from { opacity:0;transform:translateY(8px); } }
 .processing-orbit { position:absolute;z-index:-1;border:1px solid rgba(101,88,255,.2);border-radius:50%;animation:processing-orbit 18s linear infinite; }
 .orbit-one { inset:-34px; }.orbit-two { inset:-65px;border-color:rgba(155,200,255,.2);animation-duration:28s;animation-direction:reverse; }
 .processing-copy h1 { margin:10px 0 18px;font-family:var(--font-display);font-size:clamp(3.4rem,6vw,6.4rem);font-weight:400;letter-spacing:-.065em;line-height:.88; }
@@ -481,7 +490,7 @@
 @media (prefers-reduced-motion:reduce) {
   .celestial-rig,.celestial-layer,.celestial-plate,.celestial-cloud,.celestial-print,.celestial-print img,.celestial-light,.celestial-falls,.celestial-mist,
   .customer-stage-enter,.look-card img,.template-card img,.camera-glow,.review-bridge i,.processing-orbit,.processing-light,.processing-depth,.processing-mist,
-  .processing-portal img,.processing-pulse i,.result-light { animation:none!important;transition-duration:.01ms!important; }
+  .processing-portal img,.processing-pulse i,.result-light,.processing-meter-phrase,.processing-meter-fill { animation:none!important;transition-duration:.01ms!important; }
   .look-card img,.template-card img { transform:scale(1.02)!important; }
   .review-stage.is-creating .review-composition { filter:none; }
 }

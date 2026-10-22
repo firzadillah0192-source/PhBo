@@ -3,8 +3,6 @@ import { z } from 'zod';
 
 // Preserve the existing registry. Object storage is explicitly enabled by env.
 export const migrationConfigSchema = z.object({
-  PUBLIC_API_KEY_PEPPER: z.union([z.literal(''),z.string().min(32)]).default(''),
-  PUBLIC_API_GENERATION_ENABLED: z.enum(['true','false']).default('false').transform(value=>value==='true'),
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().min(1).max(65535).default(8081),
   HOST: z.string().default('127.0.0.1'),
@@ -34,6 +32,11 @@ export const migrationConfigSchema = z.object({
   RESULT_CLAIM_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   KIOSK_RESET_SECONDS: z.coerce.number().int().min(15).max(3600).default(90),
   KIOSK_API_KEY: z.union([z.literal(''),z.string().min(32)]).default(''),
+  GENERATION_WEBHOOKS_ENABLED: z.enum(['true','false']).default('false').transform(value=>value==='true'),
+  WEBHOOK_SECRET_ENCRYPTION_KEY: z.string().default(''),
+  WEBHOOK_SECRET_ENCRYPTION_VERSION: z.string().default('v1'),
+  PUBLIC_API_GENERATION_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
+  PUBLIC_API_KEY_PEPPER: z.union([z.literal(''),z.string().min(32)]).default(''),
   NATIVE_KIOSK_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
   KIOSK_PHOTO_SESSION_TTL_SECONDS: z.coerce.number().int().min(60).max(604800).default(86400),
   KIOSK_GENERATION_LIMIT: z.coerce.number().int().min(1).max(100).default(3),

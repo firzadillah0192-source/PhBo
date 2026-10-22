@@ -104,6 +104,7 @@ export async function createGeneration(uploadId, mode, templateId = null, experi
   if (Object.hasOwn(options,'folderId')) body.folder_id = options.folderId
   if (mode !== 'CLASSIC' && options.lane) body.lane = options.lane
   if (mode === 'BASIC') body.template_id = templateId
+  if (mode !== 'CLASSIC' && options.eventName) body.event_name = options.eventName
   if (mode === 'ADVANCED') {
     body.experience_id = experienceId
     body.frame_style_id = options.frameStyleId
@@ -367,3 +368,15 @@ export async function exploreGenerationApi({token,action,file,body,id,requestKey
   }
   return {status:response.status,data:await response.json(),retryAfter:Number(response.headers.get('Retry-After'))||3}
 }
+
+function integrationQuery(query={}) {const params=new URLSearchParams();for(const [key,value] of Object.entries(query))if(value!==''&&value!==null&&value!==undefined)params.set(key,String(value));return params.size?'?'+params:''}
+export function getDeveloperDashboard(query={},options={}) {return request('/account/api-keys/dashboard'+integrationQuery(query),options)}
+export function getDeveloperGenerations(query={},options={}) {return request('/account/api-keys/generations'+integrationQuery(query),options)}
+
+const webhookPath=key=>'/account/api-keys/'+encodeURIComponent(key)+'/webhook'
+export const getIntegrationWebhook=(key,options={})=>request(webhookPath(key),options)
+export const saveIntegrationWebhook=(key,body)=>request(webhookPath(key),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+export const rotateIntegrationWebhook=key=>request(webhookPath(key)+'/rotate-secret',{method:'POST'})
+export const getWebhookDeliveries=(key,query={},options={})=>request(webhookPath(key)+'/deliveries'+integrationQuery(query),options)
+export const getWebhookAttempts=(key,id)=>request(webhookPath(key)+'/deliveries/'+encodeURIComponent(id)+'/attempts')
+export const retryWebhookDelivery=(key,id)=>request(webhookPath(key)+'/deliveries/'+encodeURIComponent(id)+'/retry',{method:'POST'})

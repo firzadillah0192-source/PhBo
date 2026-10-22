@@ -17,7 +17,7 @@ import {
 import { artStyles, classicLayouts, frameStyles, howItWorks, type Mode, modes, ornaments, styleCategories, templates } from '../../data/customer'
 import { useCustomer } from '../../lib/customer'
 
-const NO_CREDITS = 'No AI credits left. Sign up or try Classic.'
+const NO_CREDITS = 'AI requires at least 10 credits. Sign in or view your credits.'
 
 /* ───────────── 1 · Home (+ 9a/9b out of credits) ───────────── */
 
@@ -25,7 +25,7 @@ export function Home() {
   const { credits, signedIn, setMode, loading, error } = useCustomer()
   const navigate = useNavigate()
   const [sheet, setSheet] = useState(false)
-  const out = credits === 0
+  const out = credits < 10
 
   const start = (m: Mode) => {
     setMode(m)
@@ -39,7 +39,7 @@ export function Home() {
     <Page>
       <section className="grid gap-6 md:grid-cols-[1fr_420px] md:items-center md:gap-12 md:py-8">
         <div className="space-y-2 pt-2 md:space-y-4">
-          {!out && <span className="t-label-s hidden w-fit rounded-full bg-accent-soft px-3 py-1 md:inline-flex">Free to try · {credits} AI credits</span>}
+          {!out && <span className="t-label-s hidden w-fit rounded-full bg-accent-soft px-3 py-1 md:inline-flex">{credits} credits available</span>}
           <h1 className="t-h1 md:t-display">Make your photobooth moment</h1>
           <p className="t-body text-text-muted md:t-body-l">
             Turn your photo into a print-ready strip or an AI portrait in about a minute.<span className="hidden md:inline"> No app to install.</span>
@@ -61,7 +61,7 @@ export function Home() {
       <section aria-labelledby="modes" className="mt-4 space-y-3 md:mt-8">
         <h2 id="modes" className="t-h3 hidden md:block">Choose a mode</h2>
         <div className="grid gap-3 md:grid-cols-3">
-          <ModeCard mode="classic" onClick={() => start('classic')} />
+          <ModeCard mode="classic" disabledNote={credits < 1 ? 'Requires 1 credit. Sign in or view your credits.' : undefined} onClick={() => start('classic')} />
           <ModeCard mode="basic" disabledNote={out ? NO_CREDITS : undefined} onClick={() => start('basic')} />
           <ModeCard mode="advanced" disabledNote={out ? NO_CREDITS : undefined} onClick={() => start('advanced')} />
         </div>
@@ -97,12 +97,12 @@ export function Home() {
 /** 9a (guest) and 9b (account) share one sheet; copy differs by sign-in state. */
 export function OutOfCreditsSheet({ signedIn, onClose, onClassic }: { signedIn: boolean; onClose: () => void; onClassic: () => void }) {
   const navigate = useNavigate()
-  const { usage } = useCustomer()
+  const { usage, credits } = useCustomer()
   return (
-    <Sheet title={signedIn ? "You've used your credits" : "You're out of AI credits"} onClose={onClose}>
+    <Sheet title="More credits needed" onClose={onClose}>
       {signedIn ? (
         <div className="space-y-4">
-          <p className="t-body text-text-muted">Classic photo strips are always free.</p>
+          <p className="t-body text-text-muted">Classic costs 1 credit per successful strip. AI requires at least 10 credits to start; its final cost is calculated after success.</p>
           <div className="rounded-md border border-border p-4">
             <div className="flex items-center justify-between">
               <p className="t-label-s">Free plan</p>
@@ -114,18 +114,18 @@ export function OutOfCreditsSheet({ signedIn, onClose, onClassic }: { signedIn: 
             <p className="t-caption mt-2 text-text-muted">Paid plans are coming soon. No payment is needed today.</p>
           </div>
           <div className="flex flex-col gap-2">
-            <BigButton onClick={onClassic}>Try Classic — free</BigButton>
-            <BigButton variant="tertiary" onClick={onClose}>Not now</BigButton>
+            <BigButton disabled={credits < 1} onClick={onClassic}>Try Classic — 1 credit</BigButton>
+            <BigButton variant="secondary" onClick={() => navigate('/app/account/credits')}>View credits</BigButton><BigButton variant="tertiary" onClick={onClose}>Not now</BigButton>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="t-body text-text-muted">Create a free account for free credits. Your photos come with you.</p>
+          <p className="t-body text-text-muted">Create a free account for 50 credits, reset to 50 every 14 days. Your photos come with you.</p>
           <div className="flex flex-col gap-3">
             <BigButton onClick={() => navigate('/app/signup')}>Sign up free</BigButton>
             <BigButton variant="secondary" onClick={() => navigate('/app/signin')}>Continue with Google</BigButton>
             <p className="t-caption text-center text-text-muted">or</p>
-            <BigButton variant="tertiary" onClick={onClassic}>Try Classic — free</BigButton>
+            <BigButton variant="tertiary" disabled={credits < 1} onClick={onClassic}>Try Classic — 1 credit</BigButton>
           </div>
         </div>
       )}

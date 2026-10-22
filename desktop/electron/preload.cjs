@@ -2,6 +2,7 @@ const {contextBridge,ipcRenderer}=require('electron');
 const call=input=>ipcRenderer.invoke('desktop:call',input);
 contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
   state:()=>call({method:'state'}),start:(mode,selectionId,eventName)=>call({method:'start',mode,selectionId,eventName}),
+  cameraOpen:()=>call({method:'cameraOpen'}),cameraFrame:()=>call({method:'cameraFrame'}),cameraClose:()=>call({method:'cameraClose'}),
   capture:()=>call({method:'capture'}),retake:()=>call({method:'retake'}),process:()=>call({method:'process'}),
   captureWebcam:base64=>call({method:'captureWebcam',base64}),
   print:()=>call({method:'print'}),finish:()=>call({method:'finish'}),chooseFixture:()=>call({method:'fixture'}),
@@ -11,6 +12,7 @@ contextBridge.exposeInMainWorld('nxbooth',Object.freeze({
   loginStart:()=>call({method:'loginStart'}),loginCancel:()=>call({method:'loginCancel'}),loginSkip:()=>call({method:'loginSkip'}),loginShow:()=>call({method:'loginShow'}),logout:()=>call({method:'logout'}),
   openStaff:()=>call({method:'openStaff'}),pinCreate:pin=>call({method:'pinCreate',pin}),pinSkip:()=>call({method:'pinSkip'}),setApiKey:key=>call({method:'setApiKey',key}),clearApiKey:()=>call({method:'clearApiKey'}),
   updateCheck:()=>call({method:'updateCheck'}),updateInstall:()=>call({method:'updateInstall'}),
-  cameraProbe:()=>call({method:'cameraProbe'}),diagnosticsSend:()=>call({method:'diagnosticsSend'}),
+  cameraProbe:()=>call({method:'cameraProbe'}),eventSave:event=>call({method:'eventSave',...event}),eventReset:()=>call({method:'eventReset'}),resultClaim:()=>call({method:'resultClaim'}),diagnosticsSend:()=>call({method:'diagnosticsSend'}),
+  onUpdateProgress:callback=>{const handler=(_event,progress)=>callback(progress);ipcRenderer.on('desktop:update-progress',handler);return()=>ipcRenderer.removeListener('desktop:update-progress',handler);},
   onChange:callback=>{const handler=()=>callback();ipcRenderer.on('desktop:changed',handler);return()=>ipcRenderer.removeListener('desktop:changed',handler);}
 }));

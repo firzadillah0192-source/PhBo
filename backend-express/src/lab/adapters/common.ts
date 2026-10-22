@@ -9,10 +9,15 @@ export function parseJson(response: HttpResponse): Record<string, any> {
   try { const value = JSON.parse(response.body.toString('utf8')); return value && typeof value === 'object' ? value : {}; } catch { return {}; }
 }
 // Maps HTTP failures to stable, redacted errors. Rate limits are surfaced, never retried automatically.
+// Sanitized provider message: JSON message/detail/error fields, else the text body without markup; never the credential.
+export function providerMessage(ctx: AdapterContext, response: HttpResponse) {
+  const body = parseJson(response);
+  const raw = body.message ?? body.detail ?? body.error?.message ?? body.error ?? (Object.keys(body).length ? '' : response.body.toString('utf8').replace(/<[^>]*>/g, ' '));
+  return redact(typeof raw === 'string' ? raw : JSON.stringify(raw), [ctx.secret], 200);
+}
 export function failIfBad(ctx: AdapterContext, response: HttpResponse, what: string): void {
   if (response.status >= 200 && response.status < 300) return;
-  const body = parseJson(response);
-  const detail = redact(body.message ?? body.detail ?? body.error?.message ?? body.error ?? '', [ctx.secret]);
+  const detail = providerMessage(ctx, response);
   if (response.status === 401 || response.status === 403) throw new LabError(502, 'LAB_PROVIDER_AUTH', `${what}: the provider rejected the credentials (HTTP ${response.status}).`);
   if (response.status === 429) throw new LabError(429, 'LAB_PROVIDER_RATE_LIMITED', `${what}: provider rate limit reached. Not retried automatically.`);
   throw new LabError(502, 'LAB_PROVIDER_ERROR', `${what}: HTTP ${response.status}${detail ? ` - ${detail}` : ''}`);

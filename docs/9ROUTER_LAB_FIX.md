@@ -11,3 +11,7 @@ The live Lab baseline contains earlier uncommitted work. To avoid committing tha
 The Express snapshot generator lists only the running container's environment keys, with dotenv values represented by placeholders. It avoids a broad `env_file` that would inject new keys into older containers. This fixes validation of the worker lacking the Lab encryption variable without changing the worker container.
 
 Validation before release: backend 214 passed, 1 MinIO integration skipped; frontend 111 passed; TypeScript typecheck and both builds passed. The live gateway returned 14 image model IDs. Paid generation was not run.
+
+## OpenAI GPT Image request compatibility
+
+Follow-up source fix: reference-image requests for `openai/gpt-image-*` and `openai/chatgpt-image-*` omit the legacy `response_format` field, which OpenAI rejects. These models return base64 by default; output decoding is unchanged. Other 9Router routes retain their existing format request. This follow-up was deployed to API image `photobooth-express:ai-lab-20261014T072016Z`; web remains `photobooth-web:desktop-login-20261014T044733Z`. Health via web, snapshot validation, and active-adapter mocked HTTP checks passed. Paid generation was not run. Source, tests, patch, and deployment wrapper remain uncommitted. Rollback: `python3 -I scripts/deploy_9router_openai_format.py rollback` (owner approval required).

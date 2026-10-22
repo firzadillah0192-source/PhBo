@@ -5,6 +5,7 @@ import { Button, cn, InlineAlert, Thumb } from '../../components/ui'
 import { BigButton, Logo, ModeBadge, Page, Sheet, StatusBlock } from '../../components/customer'
 import { useToast } from '../../components/overlays'
 import { customer as api, date, message } from '../../../../shared/api'
+import { useCustomer } from '../../lib/customer'
 import { useResource } from '../../../../shared/useResource'
 import { QRCode } from '../../../../shared/QRCode'
 // @ts-ignore Shared contract validation is tested in Node.
@@ -14,8 +15,10 @@ import { useSearchParams } from 'react-router-dom'
 export function Processing() {
   const [params] = useSearchParams(); const id = params.get('job'); const navigate = useNavigate()
   const resource = useResource(async () => { if (!id) throw new Error('No generation job was selected.'); return api.getGeneration(id) }, [id], 2000)
+  const { refreshAccount } = useCustomer()
   const job = resource.data; const destination = job && jobDestination(job)
   useEffect(() => { if (destination) navigate(destination, { replace: true }) }, [destination, navigate])
+  useEffect(() => { if (job?.state === 'COMPLETED' || job?.state === 'FAILED') void refreshAccount().catch(() => {}) }, [job?.state, job?.credit_charge?.status, refreshAccount])
   const failed = job?.state === 'FAILED'; const state = job?.state
   const refunded = /REFUND/i.test(job?.credit_charge?.status || '')
   return <div className="min-h-screen bg-stage-bg text-stage-text">
@@ -26,18 +29,20 @@ export function Processing() {
     <main className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-16">
       {resource.error && <StatusBlock dark icon={TriangleAlert} tone="danger" title="We couldn't check your photo" body={resource.error}><BigButton icon={RefreshCw} onClick={resource.refresh}>Retry status check</BigButton><Link to="/app" className="t-label inline-flex h-12 items-center justify-center rounded-md text-stage-primary hover:bg-stage-primary-soft">Back to Create</Link></StatusBlock>}
       {!resource.error && failed && <StatusBlock dark icon={TriangleAlert} tone="danger" title="We couldn't create this photo" body={refunded ? 'Something went wrong on our side. Your credit was returned.' : 'Something went wrong on our side. Please try again.'}>
-        {refunded && <span className="t-label-s inline-flex h-8 items-center gap-1.5 rounded-full bg-stage-success-soft px-3 text-stage-success"><Check size={16} aria-hidden />1 credit returned</span>}
+        {refunded && <span className="t-label-s inline-flex h-8 items-center gap-1.5 rounded-full bg-stage-success-soft px-3 text-stage-success"><Check size={16} aria-hidden />Credit returned</span>}
         <p className="t-mono text-stage-muted">Reference ID: {String(job.job_id || id).slice(0, 8)}</p>
         <div className="flex w-full flex-col gap-2"><BigButton icon={RefreshCw} onClick={() => navigate('/app/create/review')}>Try again</BigButton><Link to="/app/create/style" className="t-label inline-flex h-12 items-center justify-center rounded-md text-stage-primary hover:bg-stage-primary-soft">Choose another style</Link></div>
       </StatusBlock>}
       {!resource.error && !failed && state === 'PROCESSING' && <StatusBlock dark icon={Loader2} tone="primary" title="Creating your photo…" body="Still working. Busy moments can take a little longer."><div className="h-1.5 w-56 overflow-hidden rounded-full bg-stage-surface-2" role="progressbar" aria-label="Creating"><div className="h-full w-2/3 animate-pulse rounded-full bg-stage-primary" /></div><p className="t-caption text-stage-muted">You can leave this page. Find it later in My Creations.</p></StatusBlock>}
-      {!resource.error && !failed && state === 'COMPLETED' && <StatusBlock dark icon={Loader2} tone="primary" title="Almost done…" body="Checking that your photo is ready." />}
+      {!resource.error && !failed && state === 'COMPLETED' && <StatusBlock dark icon={Loader2} tone="primary" title={job.credit_charge?.status === 'NEEDS_TOP_UP' ? 'More credits needed' : 'Confirming final cost…'} body={job.credit_charge?.credits != null ? `This result costs ${job.credit_charge.credits} credits. It stays protected until payment is confirmed.` : 'Your result is saved. Waiting for usage details before calculating the final cost.'}><Link to="/app/account/credits" className="underline">View credits</Link><BigButton onClick={resource.refresh}>Check again</BigButton></StatusBlock>}
       {!resource.error && !failed && state !== 'PROCESSING' && state !== 'COMPLETED' && <StatusBlock dark icon={Clock} tone="info" title="In line…" body="You're next. This usually takes under a minute."><p className="t-caption text-stage-muted">You can leave this page. We'll keep working.</p></StatusBlock>}
     </main>
   </div>
 }
 
 export function Result() {
+  const { refreshAccount } = useCustomer()
+  useEffect(() => { void refreshAccount().catch(() => {}) }, [refreshAccount])
   const { kind: id = '' } = useParams(); const navigate = useNavigate(); const toast = useToast()
   const resource = useResource(() => api.getResult(id), [id])
   const jobInfo = useResource(async () => resource.data?.job_id ? api.getGeneration(resource.data.job_id).catch(() => null) : null, [resource.data?.job_id])
@@ -62,7 +67,7 @@ export function Result() {
     <div className="grid gap-6 md:grid-cols-[minmax(0,420px)_1fr] md:gap-12">
       <div className="mx-auto w-full max-w-sm md:max-w-none"><Thumb src={api.resultImageUrl(id)} alt="Your completed photo" className={cn('w-full shadow-e2', isClassic ? 'aspect-[1/3] max-h-[560px] !rounded-md !object-contain' : 'aspect-[2/3] !object-contain')} /></div>
       <div className="space-y-5 md:pt-6">
-        <div className="space-y-2"><h1 className="t-h2 md:t-h1">Your photo is ready</h1><p className="t-body-s flex items-center gap-2 text-text-muted">{mode && <ModeBadge mode={mode} />}{date(row.created_at)}</p></div>
+        <div className="space-y-2"><h1 className="t-h2 md:t-h1">Your photo is ready</h1>{jobInfo.data?.credit_charge?.credits != null && <p className="t-body-s text-text-muted">{jobInfo.data.credit_charge.credits} credits charged</p>}<p className="t-body-s flex items-center gap-2 text-text-muted">{mode && <ModeBadge mode={mode} />}{date(row.created_at)}</p></div>
         <div className="flex flex-col gap-3 md:max-w-sm">
           <a href={api.resultDownloadUrl(id)} className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-5 font-semibold text-white hover:bg-primary-hover" onClick={() => toast({ tone: 'success', title: 'Download started' })}><Download size={20} aria-hidden />Download</a>
           {row.print_download_url && <a href={row.print_download_url} className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-surface px-5 font-semibold"><Download size={20} aria-hidden />Download print strip (2×6 in, 300 dpi)</a>}

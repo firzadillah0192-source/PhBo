@@ -1,0 +1,19 @@
+--- a/backend-express/src/services/customer-generation.service.ts
++++ b/backend-express/src/services/customer-generation.service.ts
+@@ -10,6 +10,7 @@
+ import { generationRequest } from './generation-request.js';
+ import type { KioskGenerationContext } from '../models/native-kiosk.model.js';
+ import { composeAdvancedPrompt,composeBasicPrompt } from './advanced-prompt.service.js';
++import { composeFastBasicPrompt } from './fast-basic-prompt.service.js';
+ import type { GenerationSnapshot } from './generation-snapshot.js';
+ import { randomBytes } from 'node:crypto';
+ 
+@@ -57,7 +58,7 @@
+       let frozen;
+       try { frozen = await this.assets.freezeBasicTemplate(template); }
+       catch (error) { if (error instanceof CatalogAssetError) throw new AppError(422, 'BASIC_TEMPLATE_INVALID', 'Basic template is invalid.'); throw error; }
+-      snapshot = { version: 2,mode: 'BASIC',prompt: composeBasicPrompt(template.name,template.description),model: preset.model,template: frozen,...(kiosk ? {} : { personalization: aiPersonalization(input, source.upload.created_at) }) };
++      snapshot = { version: 2,mode: 'BASIC',prompt: input.lane === 'fast' ? composeFastBasicPrompt(template.name,template.description) : composeBasicPrompt(template.name,template.description),model: preset.model,template: frozen,...(kiosk ? {} : { personalization: aiPersonalization(input, source.upload.created_at) }) };
+     } else if (input.mode === 'CLASSIC') {
+       const layout = await this.model.layout(input.layout_id!);
+       if (!layout?.active) throw new AppError(404, 'CLASSIC_LAYOUT_NOT_FOUND', 'Classic layout unavailable');

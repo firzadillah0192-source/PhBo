@@ -163,13 +163,13 @@ test('v2 real PostgreSQL: conversion, separate wallets, concurrent daily limits,
     assert.equal(aiInvoice.amount_rupiah, 10000);
     await assert.rejects(payments.create('owner', 'synthetic-ai-order', 1000, invoiceExpiry, { kind: 'subscription', code: 'starter', amount_rupiah: 25000, policy_version: 2 }));
     await assert.rejects(routes.provider('fast'), { code: 'AI_PROVIDER_NOT_CONNECTED' });
-    await routes.save('fast', { enabled: true, model: 'gpt-image-2.5-flare', api_key: 'synthetic-fast-key', confirm: true }, 'synthetic-admin');
+    await routes.save('fast', { enabled: true, model: 'openai/gpt-image-2.5-flare', api_key: 'synthetic-fast-key', confirm: true }, 'synthetic-admin');
     const safe = await routes.list();
     assert.equal(safe.find(r => r.lane === 'fast')!.ready, true);
     assert.equal(JSON.stringify(safe).includes('synthetic-fast-key'), false);
     assert.equal((await sql.query("SELECT encrypted_key FROM generation_api_routes WHERE lane='fast'")).rows[0].encrypted_key.includes('synthetic-fast-key'), false);
     assert.equal((await routes.provider('fast')).available(), true);
-    await routes.save('fast', { enabled: false, model: 'gpt-image-2.5-flare', clear_key: true, confirm: true }, 'synthetic-admin');
+    await routes.save('fast', { enabled: false, model: 'openai/gpt-image-2.5-flare', clear_key: true, confirm: true }, 'synthetic-admin');
     assert.equal((await routes.availability()).fast, false);
   } finally { await db.$disconnect(); await sql.end(); }
 });

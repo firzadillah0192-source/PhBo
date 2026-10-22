@@ -141,3 +141,76 @@ production builds and 26 browser assertions (isolated fixtures) pass. Screenshot
 in `/tmp/nxbooth-v2-ui-check/`. Still open: visual comparison against the Figma frames
 side by side and physical camera/Google/provider acceptance on the live URL.
 Express snapshot validation still reports `image differs` (pre-existing, unrelated).
+
+## Credit alignment follow-up (11 October 2026)
+
+Frontend-only correction deployed with owner approval. The Figma copy incorrectly
+said Classic was free and AI cost one credit. Current production wallet rules
+are documented in `docs/CREDIT_WALLET_TOPUP.md`: Classic costs one credit per
+successful result; Basic/Advanced require ten available credits to start, then
+use the backend's final charge rather than a frontend estimate. Failed jobs do
+not spend credits. Both customer and kiosk now gate by these start thresholds.
+
+Credits & plan shows real available/free/additional balances, spend for the
+current period, wallet reset allocation/interval/date and the actual current
+plan (including the Free fallback when absent from the plan list). Free credits
+reset to 50 every 14 days, not a fixed five-credit signup or monthly prototype
+allowance. Existing checkout stays behind the backend's unavailable boundary.
+The header refreshes on account/visibility changes and terminal generation
+states. Completed but unpaid jobs show their real charge and remain protected
+until PAID, with a credits link/status retry instead of an endless completion
+animation. Legacy refund notices no longer claim exactly one credit returned.
+
+Validation: six shared tests pass, plus 40 browser assertions using intercepted
+fixtures, including 0/1/9/10 credit thresholds, free/additional wallet display,
+reset copy, NEEDS_TOP_UP protection and a 23-credit settlement with updated
+balance. No production credit grants, uploads or AI calls were made. A profile
+navigation refresh race found by the browser suite was fixed by refreshing the
+account center on entry to Credits & plan instead of every account tab.
+No commit/push is requested; these corrections remain uncommitted.
+
+Prepared correction release: `frontend-v2-20261011T060721Z`, image
+`photobooth-web:frontend-v2-20261011T060721Z`. Typecheck/build, six shared
+tests, 40 browser assertions, nginx syntax, Compose config and inherited main
+HTML preservation PASS. Three deploy-routing tests PASS. Rollback is the live
+`photobooth-web:frontend-v2-20261011T053003Z` image. Deployed with owner approval on 11 October 2026. Only `photobooth-web` was recreated; other container IDs and the main UI HTML were preserved.
+
+Postdeploy: web healthy with zero restarts; API/worker/helper unchanged with
+zero restarts. Origin HTML matches all three prepared bundles. Live public
+health/catalog reads pass. Public browser mode labels and Credits & plan
+authentication guard pass; admin/kiosk sign-in pages render without JS errors.
+Authenticated wallet display remains verified with isolated fixtures rather
+than a live customer session. An initial smoke assertion expected the old
+admin heading; the actual production heading is `Admin console`, verified
+at the origin and public domain. No production photos/credits were used.
+
+## Kiosk idle timing follow-up (11 October 2026)
+
+The v2 live kiosk warning is delayed to two minutes without interaction on the
+result page, and five minutes on mode/design selection. The confirmation gives
+60 seconds before resetting instead of 15. Pressing "I'm still here" restarts
+the full idle interval. Camera, processing, sign-in and attract remain excluded
+from idle reset. Only live timing constants and browser regression checks were
+changed; the original export prototype timing is unused in the live route.
+
+A prepared web release is pending deployment approval. Browser checks use a
+virtual clock and fixture API to verify no warning at 119 seconds, warning after
+two minutes, the extension button, the full 60-second grace period and reset.
+No production sessions, photos or credits are changed by those checks. The
+source corrections (including prior credit fixes) remain uncommitted.
+
+Prepared idle release: `frontend-v2-20261011T061540Z` (same web image tag suffix).
+Typecheck/build, six shared tests, 45 fixture browser assertions, nginx and
+Compose checks PASS. Not deployed. Rollback: live credit-fix web image
+`photobooth-web:frontend-v2-20261011T060721Z`.
+
+Idle release deployment: `frontend-v2-20261011T061540Z` deployed on owner
+approval; live web image `photobooth-web:frontend-v2-20261011T061540Z`. Only
+web recreated; main HTML and all other container IDs preserved. Zero restarts
+on web/API/worker/helper. Public kiosk bundle matches the prepared image;
+kiosk/customer/admin render without JS errors; public health/catalogs PASS.
+Idle behavior verified by virtual-clock fixture checks, not a live staff
+session. Rollback image: `photobooth-web:frontend-v2-20261011T060721Z`.
+Another agent prepared `frontend-v2-20261011T061715Z` (image/cache changes);
+owner explicitly chose the timer release 061540Z. That other package was left
+undeployed and its source edits untouched. No commit/push performed.

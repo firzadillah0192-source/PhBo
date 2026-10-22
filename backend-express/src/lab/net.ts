@@ -21,7 +21,7 @@ export function isPublicAddress(address: string): boolean {
 
 // Fixed API hosts per provider type. Only custom_rest accepts an arbitrary public HTTPS host.
 export const PROVIDER_HOSTS: Record<ProviderType, string[] | null> = {
-  wavespeed: ['api.wavespeed.ai'], openai: ['api.openai.com'], openai_compatible: null, fal: ['queue.fal.run', 'fal.run'], '9router': [], custom_rest: null,
+  wavespeed: ['api.wavespeed.ai'], openai: ['api.openai.com'], openai_compatible: null, fal: ['queue.fal.run', 'fal.run'], '9router': [], recraft: ['external.api.recraft.ai'], runway: ['api.dev.runwayml.com'], custom_rest: null,
 };
 export type NetworkPolicy = { internalOrigin?: string };
 

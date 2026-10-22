@@ -29,17 +29,21 @@ def containers():
 
 action = sys.argv[1]
 if action == 'prepare':
+    source = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else ROOT/'backend/app/data/classic-single-window-v4'
+    allowed = [ROOT/'backend/app/data/classic-single-window-v4', ROOT/'backend/app/data/classic-footer-background-v5']
+    if source not in allowed:
+        raise SystemExit('Use an explicitly reviewed v4 or footer-background-v5 asset directory')
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     release = Path('/srv/photobooth/releases') / ('classic-single-window-'+stamp)
     release.mkdir()
-    shutil.copytree(ROOT/'backend/app/data/classic-single-window-v4', release/'assets')
+    shutil.copytree(source, release/'assets')
     rows = json.loads((release/'assets/collection.json').read_text())
     assert rows['status'] == 'PASS' and len(rows['frames']) == 36
     for row in rows['frames']:
         directory = release/'assets'/row['id']
         for filename, expected in json.loads((directory/'checksums.json').read_text()).items():
             assert hashlib.sha256((directory/filename).read_bytes()).hexdigest() == expected
-    (release/'manifest.json').write_text(json.dumps({'containers': containers(), 'asset_only': True}, indent=2))
+    (release/'manifest.json').write_text(json.dumps({'containers': containers(), 'asset_only': True, 'source_assets': str(source), 'deployed': False}, indent=2))
     catalog_action(release, 'snapshot')
     POINTER.write_text(str(release))
     print(json.dumps({'status': 'PASS', 'release': str(release), 'deployed': False, 'frames': 36}))

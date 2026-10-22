@@ -13,7 +13,7 @@ const scenarioSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('basic'), template_id: z.string().min(1).max(128) }).strict(),
   z.object({ kind: z.literal('advanced'), experience_id: z.string().min(1).max(128), frame_style_id: z.string().min(1).max(128) }).strict(),
 ]);
-const runPayload = z.object({ scenario: scenarioSchema.optional(),
+const runPayload = z.object({ scenario: scenarioSchema.optional(), params: z.record(z.string().regex(/^[a-z_]{1,40}$/), z.union([z.string().max(40), z.number(), z.boolean()])).optional(),
   model_ref: z.string().min(1).max(64), prompt: z.string().max(4000).default(''), negative_prompt: z.string().max(2000).optional(), size: z.string().max(24).optional(), quality: z.string().max(24).optional(),
   seed: z.number().int().optional(), output_format: z.string().max(12).optional(), confirm: z.boolean().optional(), confirmed_estimate_usd: z.number().nullable().optional(),
   acknowledge_unknown_cost: z.boolean().optional(), override_reason: z.string().max(300).optional(),
@@ -62,6 +62,11 @@ export function labRoutes(auth: AdminAuthService, lab: LabService, maxUpload: nu
     return { ...base, prompt: plan.prompt, negative_prompt: undefined, scenario: plan, images: plan.images };
   };
   router.get('/scenarios', act(() => lab.scenarioCatalog()));
+  // Non-billable quotation for exactly these inputs (multipart, same fields as /runs).
+  router.post('/quote', limiter(30), authorizedUpload, act(async req => {
+    const { confirm: _c, confirmed_estimate_usd: _e, acknowledge_unknown_cost: _a, override_reason: _o, scenario, ...rest } = parsed(req, runPayload);
+    return lab.quoteRun(await withScenario(req, scenario, rest));
+  }));
   router.post('/runs', limiter(10), authorizedUpload, act(async (req, actor) => {
     const p = parsed(req, runPayload), { confirm, confirmed_estimate_usd, acknowledge_unknown_cost, override_reason, scenario, ...rest } = p;
     const input = await withScenario(req, scenario, rest);
@@ -74,6 +79,13 @@ export function labRoutes(auth: AdminAuthService, lab: LabService, maxUpload: nu
     const created = await lab.createRuns(model_refs.map(model_ref => ({ ...shared, model_ref })), actor, { confirm, total_usd: confirmed_total_usd ?? null, acknowledge_unknown_cost, override_reason });
     return lab.saveSession({ name: name || `Comparison ${new Date().toISOString().slice(0, 16)}`, run_ids: created.runs.map(r => r.id) }, actor);
   }, 202));
+  router.post('/providers/:id/seed-models', limiter(10), act((req, a) => lab.registerModels(id(req), a)));
+  router.post('/models/:id/verification', limiter(30), act((req, a) => lab.setVerification(id(req), req.body, a)));
+  router.post('/runs/:id/billing', limiter(30), act((req, a) => lab.reconcileBilling(id(req), a)));
+  router.post('/runs/:id/recheck', limiter(30), act((req, a) => lab.recheckResult(id(req), a)));
+  router.post('/runs/:id/resolve', limiter(10), act((req, a) => lab.resolveAmbiguous(id(req), req.body, a)));
+  router.get('/report', act(req => lab.report(Number(req.query.threshold) || 4)));
+  router.get('/report.csv', async (req, res) => { await guard(req); res.type('text/csv').attachment('nxbooth-lab-model-report.csv').send(await lab.reportCsv(Number(req.query.threshold) || 4)); });
   router.get('/runs', act(req => lab.listRuns(query(req))));
   router.get('/runs/:id', act(req => lab.runView(id(req))));
   router.delete('/runs/:id/files', limiter(30), act((req, a) => lab.deleteRunFiles(id(req), a), 204));

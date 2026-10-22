@@ -159,9 +159,9 @@ function Attract({ onStart }: { onStart: () => void }) {
 }
 
 export const modeRows = [
-  { id: 'classic', name: 'Classic', blurb: 'Photo strip · 1–4 shots', price: 'Free', icon: Film, tile: 'bg-[#3a2218] text-stage-classic', chip: 'bg-stage-success-soft text-stage-success' },
-  { id: 'basic', name: 'Basic', blurb: 'AI themed portrait', price: '1 credit', icon: SquareUser, tile: 'bg-[#0f2e2a] text-stage-basic', chip: 'bg-stage-accent-soft text-stage-accent' },
-  { id: 'advanced', name: 'Advanced', blurb: 'AI art styles', price: '1 credit', icon: Sparkles, tile: 'bg-stage-primary-soft text-stage-primary', chip: 'bg-stage-accent-soft text-stage-accent' },
+  { id: 'classic', name: 'Classic', blurb: 'Photo strip · 1–4 shots', price: '1 credit', icon: Film, tile: 'bg-[#3a2218] text-stage-classic', chip: 'bg-stage-success-soft text-stage-success' },
+  { id: 'basic', name: 'Basic', blurb: 'AI themed portrait', price: 'Minimum 10 credits', icon: SquareUser, tile: 'bg-[#0f2e2a] text-stage-basic', chip: 'bg-stage-accent-soft text-stage-accent' },
+  { id: 'advanced', name: 'Advanced', blurb: 'AI art styles', price: 'Minimum 10 credits', icon: Sparkles, tile: 'bg-stage-primary-soft text-stage-primary', chip: 'bg-stage-accent-soft text-stage-accent' },
 ]
 
 function ModeChoice({ onPick }: { onPick: () => void }) {

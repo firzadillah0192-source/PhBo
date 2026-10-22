@@ -1,0 +1,395 @@
+{
+  "version": 2,
+  "status": "CANDIDATE",
+  "published": false,
+  "templates": [
+    {
+      "id": "arctic-expedition-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "82be43ecebcbb27fd86f9b9906ab6ccbf2b5340cb690c68b858ef51264c1c52f",
+      "plate_removal_box": [
+        289,
+        1398,
+        735,
+        1468
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "arctic-expedition-hijab-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "99c0f6825ddb2f43b7de7a61cf16330278632d2c14447814d156015a9d9a6b07",
+      "plate_removal_box": [
+        286,
+        1409,
+        745,
+        1467
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "arctic-expedition-man-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "8546383e58ecf07515f777392e2cb987f7f1b50c967375d7a0c57f45bd605905",
+      "plate_removal_box": [
+        280,
+        1421,
+        773,
+        1484
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "aviation-captain-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "bc9a2d7c74a960db0ffde462791bc686331da09c842b2ce9f779f7db9818b23e",
+      "plate_removal_box": [
+        277,
+        1430,
+        772,
+        1493
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "aviation-captain-hijab-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "d6b85841c1ef578d1bd1a178dd07a8fffbf4f3253a095697ab20bd357d53c9e6",
+      "plate_removal_box": [
+        253,
+        1413,
+        782,
+        1479
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "aviation-captain-man-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "ba6c802e2fcc393bb7e454135645aa298835adccf5f0d1d9ab6a798e3f9302fa",
+      "plate_removal_box": [
+        251,
+        1400,
+        783,
+        1468
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "cyberpunk-neon-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "7ba2c5622db65e418891a21aacaf889798ab9586b84ace7968b4cf5b92bd1a22",
+      "plate_removal_box": [
+        288,
+        1398,
+        734,
+        1464
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "cyberpunk-neon-hijab-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "2913731a97ef1eaf095cf1af60747fb06ea75852fba67bec03d2476ff9bf13ca",
+      "plate_removal_box": [
+        289,
+        1399,
+        734,
+        1464
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "cyberpunk-neon-man-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "1fe6328b3f3acd8136e08ea206c600a98a0e1db444872b4e5dc33933cb90d2b8",
+      "plate_removal_box": [
+        285,
+        1401,
+        735,
+        1465
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "royal-nusantara-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "4be1bec5741e921ed31716424470eb9931c52eb03f117c81bf941de1baaaf4fa",
+      "plate_removal_box": [
+        281,
+        1420,
+        744,
+        1474
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "royal-nusantara-hijab-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "059071ccf7d41deb91ef3312d56abda4e7642e5c8cf12be613f115afc7a8d5a4",
+      "plate_removal_box": [
+        244,
+        1429,
+        774,
+        1488
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [
+        [
+          480,
+          1483,
+          540,
+          1488
+        ]
+      ],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "royal-nusantara-man-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "b7b459ef9e46e85c88251e9e9265dde7481e1e0728271e47900e1827bb5cd8a7",
+      "plate_removal_box": [
+        260,
+        1419,
+        769,
+        1479
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "sci-fi-space-commander-female-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "436cf822087e0b3f5f0030c3e328bb1d88df01bc4093521a983b07e1e562a491",
+      "plate_removal_box": [
+        289,
+        1392,
+        735,
+        1465
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "sci-fi-space-commander-framed-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "ac471e7913d173f5edeecf3a28980b790821d2b6aeb5a4e96f15ba91270d39e6",
+      "plate_removal_box": [
+        288,
+        1394,
+        735,
+        1465
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "sci-fi-space-commander-hijab-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "0122a8d6766b0b2248bcbf5ced0b387fc4b0b0bcb69160b96082501ba9f5c7fc",
+      "plate_removal_box": [
+        289,
+        1392,
+        735,
+        1465
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": true,
+      "protected_rectangles": [],
+      "metadata_byte_identical": true
+    },
+    {
+      "id": "sci-fi-space-commander-001",
+      "version": 2,
+      "status": "CANDIDATE_PENDING_VISUAL_REVIEW",
+      "source_sha256": "b60def2bba8ddb489b93a6880489432bfc74be2f02b4c03900a3b371c78dcdf1",
+      "source_dimensions": [
+        1060,
+        1484
+      ],
+      "output_dimensions": [
+        1024,
+        1536
+      ],
+      "normalization": {
+        "content_size": [
+          1010,
+          1414
+        ],
+        "offset": [
+          7,
+          0
+        ],
+        "aspect_preserved": true,
+        "crop": false,
+        "footer_band_height": 122
+      },
+      "plate_removal_box": [
+        266,
+        1427,
+        768,
+        1473
+      ],
+      "qr_removal_box": [
+        831,
+        1274,
+        990,
+        1433
+      ],
+      "qr_style": "B: original outer mounting detail preserved",
+      "outside_mask_identical": false,
+      "outside_mask_reference": "aspect-preserving normalized source",
+      "metadata_byte_identical": false,
+      "metadata_changes": [
+        "width",
+        "height",
+        "face_region",
+        "face_anchors",
+        "mask_polygon"
+      ]
+    }
+  ],
+  "deferred": []
+}

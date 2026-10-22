@@ -6,15 +6,17 @@ import { GoogleSignIn } from '../../../shared/GoogleSignIn'
 import { QRCode } from '../../../shared/QRCode'
 // @ts-ignore Same tested validation as the customer flow.
 import { selectionOptions } from '../../../shared/generation.mjs'
+// @ts-ignore Shared wallet thresholds match the customer flow.
+import { canStart, creditDescription } from '../../../shared/credits.mjs'
 import { cn, Thumb } from '../components/ui'
 import { BrandRow, Collage, H1, IdleDialog, KButton, KHeader, Muted, Screen, Stage, modeRows } from './Kiosk'
 
 type Step = 'signin' | 'attract' | 'mode' | 'style' | 'camera' | 'processing' | 'result'
 type Mode = 'CLASSIC' | 'BASIC' | 'ADVANCED'
 
-const IDLE_AFTER_RESULT_MS = 20_000
-const IDLE_AFTER_OTHER_MS = 90_000
-const IDLE_COUNTDOWN_S = 15
+const IDLE_AFTER_RESULT_MS = 120_000
+const IDLE_AFTER_OTHER_MS = 300_000
+const IDLE_COUNTDOWN_S = 60
 const JOB_KEY = 'nxbooth:v2:kiosk-job'
 const previewUrl = (row: Row) => '/api/kiosk/web/uploads/' + row.upload_id + '/preview'
 
@@ -104,10 +106,12 @@ export function Kiosk() {
     const [l, t, e, f, usage] = await Promise.all([api.getClassicLayouts(), api.getTemplates(), api.getExperiences(), api.getFrameStyles(), api.getUsage()])
     return { CLASSIC: rows(l), BASIC: rows(t, 'templates').filter(r => r.basic_available && r.enabled), ADVANCED: rows(e, 'experiences'), frames: rows(f).filter(r => r.enabled), usage }
   }, [allowed])
+  const usage = useResource(async () => allowed ? api.getUsage() : null, [allowed, step])
   const poll = useResource(async () => job && allowed ? api.getGeneration(job) : null, [job, allowed], job && allowed && step === 'processing' ? 2000 : 0)
   useEffect(() => {
+    if (['COMPLETED', 'FAILED'].includes(poll.data?.state)) usage.refresh()
     if (poll.data?.state === 'COMPLETED' && poll.data.result_id && (!poll.data.credit_charge || poll.data.credit_charge.status === 'PAID')) { setResultId(poll.data.result_id); setStep('result') }
-  }, [poll.data])
+  }, [poll.data?.state, poll.data?.result_id, poll.data?.credit_charge?.status])
   const result = useResource(() => resultId && allowed ? api.getResult(resultId) : Promise.resolve(null), [resultId, allowed])
   useEffect(() => {
     if (!resultId || !allowed) return
@@ -117,7 +121,7 @@ export function Kiosk() {
   }, [resultId, allowed])
   const reset = useCallback(() => { setUploads([]); setDesign(null); setFrame(''); setEventName(''); setJob(null); setResultId(null); setClaim(null); setError(''); setIdle(false); setStep('attract'); try { sessionStorage.removeItem(JOB_KEY) } catch {} lastActivity.current = Date.now() }, [])
 
-  // Idle reset: 20 s on the result screen, 90 s elsewhere, then a 15 s "Still there?" countdown.
+  // Idle reset: 2 min on the result screen, 5 min elsewhere, then a 60 s confirmation.
   useEffect(() => {
     lastActivity.current = Date.now()
     const activity = () => { if (!idle) lastActivity.current = Date.now() }
@@ -141,7 +145,7 @@ export function Kiosk() {
   const designs: Row[] = (catalog.data as any)?.[mode] || []
   const frames: Row[] = catalog.data?.frames?.filter((r: Row) => !design?.compatible_frame_style_ids?.length || design.compatible_frame_style_ids.includes(r.id)) || []
   const shots = mode === 'CLASSIC' ? design?.shot_count ?? 0 : 1
-  const credits = (catalog.data as any)?.usage?.ai_remaining
+  const credits = usage.data?.ai_remaining ?? (catalog.data as any)?.usage?.ai_remaining
   // Classic needs the layout first (it decides how many shots); AI modes take the photo first.
   const flow: ('mode' | 'style' | 'camera' | 'result')[] = mode === 'CLASSIC' ? ['mode', 'style', 'camera', 'result'] : ['mode', 'camera', 'style', 'result']
   const stepName = { mode: 'Mode', style: mode === 'CLASSIC' ? 'Layout' : 'Style', camera: 'Photo', result: 'Result' } as const
@@ -178,14 +182,14 @@ export function Kiosk() {
     body = <Screen gap="gap-16"><BrandRow /><div className="flex flex-1 flex-col items-center justify-center gap-16">
       <div className="h-[780px] w-[520px] overflow-hidden rounded-[32px] bg-stage-surface-2">{uploads[0] && <Thumb src={previewUrl(uploads[0])} alt="Your photo" className="h-full w-full !rounded-none opacity-80" />}</div>
       <div className="flex flex-col items-center gap-5 text-center">
-        <H1>{state === 'FAILED' ? 'We could not create your photo' : state === 'COMPLETED' ? 'Finishing up…' : state === 'PROCESSING' ? 'Creating your photo…' : 'You are in line…'}</H1>
-        <Muted>{state === 'FAILED' ? (mode === 'CLASSIC' ? 'Please try again.' : 'Any credit used is refunded automatically. Please try again.') : 'This can take up to a minute.'}</Muted>
+        <H1>{state === 'FAILED' ? 'We could not create your photo' : state === 'COMPLETED' ? poll.data?.credit_charge?.status === 'NEEDS_TOP_UP' ? 'More credits needed' : 'Confirming final cost…' : state === 'PROCESSING' ? 'Creating your photo…' : 'You are in line…'}</H1>
+        <Muted>{state === 'FAILED' ? 'Failed jobs do not spend credits. Please try again.' : state === 'COMPLETED' ? 'Your result is saved and remains protected until the credit charge is confirmed.' : 'This can take up to a minute.'}</Muted>
       </div>
       {state === 'FAILED'
         ? <div className="flex w-[760px] gap-6"><KButton variant="secondary" icon={RotateCcw} onClick={reset} className="flex-1">Start over</KButton><KButton icon={Sparkles} className="flex-1" onClick={() => { setJob(null); try { sessionStorage.removeItem(JOB_KEY) } catch {} setError(''); setStep(uploads.length ? (mode === 'CLASSIC' ? 'camera' : 'style') : 'attract') }}>Try again</KButton></div>
         : <div role="progressbar" aria-label="Creating" className="h-3 w-[600px] overflow-hidden rounded-full bg-stage-surface-2"><div className="h-full w-1/3 animate-pulse rounded-full bg-stage-primary" /></div>}
-      {poll.data?.credit_charge && poll.data.credit_charge.status !== 'PAID' && state !== 'FAILED' && <p className="text-2xl text-stage-muted">Confirming your credit…</p>}
-    </div>{alert}</Screen>
+      {poll.data?.credit_charge && poll.data.credit_charge.status !== 'PAID' && state !== 'FAILED' && <p className="text-2xl text-stage-muted">{poll.data.credit_charge.credits != null ? `Final cost: ${poll.data.credit_charge.credits} credits.` : 'Waiting for usage details.'} {poll.data.credit_charge.status === 'NEEDS_TOP_UP' && 'Ask staff to add credits, then check again.'}</p>}
+    </div>{state === 'COMPLETED' && <KButton onClick={poll.refresh}>Check again</KButton>}{alert}</Screen>
   }
   else if (step === 'result' && resultId) body = <Screen gap="gap-14">{header('result')}
     <div className="flex gap-12">
@@ -209,13 +213,13 @@ export function Kiosk() {
   else if (step === 'mode') body = <Screen gap="gap-12">{header('mode')}
     <H1>What would you like to make?</H1>
     <div className="flex flex-col gap-10">
-      {modeRows.map(m => <button key={m.id} type="button" aria-label={`${m.id.toUpperCase()} ${m.price === 'Free' ? 'Free' : '1 AI credit'}`} onClick={() => pick(m.id.toUpperCase() as Mode)} className="flex h-[244px] items-center gap-10 rounded-[28px] bg-stage-surface p-10 text-left active:opacity-80">
+      {modeRows.map(m => <button key={m.id} type="button" aria-label={`${m.id.toUpperCase()} ${m.price}`} disabled={!canStart(m.id, credits)} onClick={() => pick(m.id.toUpperCase() as Mode)} className="flex h-[244px] items-center gap-10 rounded-[28px] bg-stage-surface p-10 text-left active:opacity-80">
         <span className={cn('flex h-[140px] w-[140px] shrink-0 items-center justify-center rounded-[28px]', m.tile)}><m.icon size={72} aria-hidden /></span>
         <span className="flex min-w-0 flex-1 flex-col gap-3"><span className="font-display text-[42px] font-bold leading-[54px]">{m.name}</span><span className="text-2xl text-stage-muted">{m.blurb}</span><span className={cn('inline-flex h-12 w-fit items-center rounded-full px-5 text-xl font-semibold', m.chip)}>{m.price}</span></span>
         <ChevronRight size={56} className="shrink-0 text-stage-muted" aria-hidden />
       </button>)}
     </div>
-    {typeof credits === 'number' && <p className="flex items-center gap-4 text-2xl text-stage-muted"><Sparkles size={36} aria-hidden />{credits} AI credit{credits === 1 ? '' : 's'} available</p>}
+    {typeof credits === 'number' && <p className="flex items-center gap-4 text-2xl text-stage-muted"><Sparkles size={36} aria-hidden />{credits} credit{credits === 1 ? '' : 's'} available</p>}
     {alert}
   </Screen>
   else if (step === 'style') body = <Screen>{header('style')}
@@ -236,7 +240,7 @@ export function Kiosk() {
     {alert}
     {mode === 'CLASSIC'
       ? <KButton icon={Camera} disabled={!design || (needsEvent && !eventName.trim())} onClick={() => { setUploads([]); setStep('camera') }} className="self-end">Continue</KButton>
-      : <div className="flex justify-between gap-6"><KButton variant="secondary" icon={RotateCcw} onClick={() => { setUploads([]); setStep('camera') }}>Retake photo</KButton><KButton icon={Sparkles} disabled={busy || !design || (mode === 'ADVANCED' && !frame) || (needsEvent && !eventName.trim())} onClick={generate}>{busy ? 'Submitting…' : 'Create my photo'}</KButton></div>}
+      : <div className="flex justify-between gap-6"><KButton variant="secondary" icon={RotateCcw} onClick={() => { setUploads([]); setStep('camera') }}>Retake photo</KButton><KButton icon={Sparkles} disabled={busy || !canStart(mode, credits) || !design || (mode === 'ADVANCED' && !frame) || (needsEvent && !eventName.trim())} onClick={generate}>{busy ? 'Submitting…' : 'Create my photo'}</KButton></div>}
   </Screen>
   else if (step === 'camera') body = <Screen>{header('camera')}
     {uploads.length < shots || !shots
@@ -244,9 +248,9 @@ export function Kiosk() {
       : <>
         <H1>Ready to create?</H1>
         <div className="flex flex-1 flex-wrap content-start justify-center gap-6 overflow-y-auto">{uploads.map((u, i) => <img key={u.upload_id} src={previewUrl(u)} alt={`Photo ${i + 1}`} className="h-[420px] rounded-2xl object-cover" />)}</div>
-        <Muted>{design?.name} · {mode === 'CLASSIC' ? 'Classic is free.' : 'Uses 1 AI credit. Failed jobs are refunded automatically.'}</Muted>
+        <Muted>{design?.name} · {creditDescription(mode)}</Muted>
         {alert}
-        <div className="flex gap-6"><KButton variant="secondary" icon={RotateCcw} className="flex-1" onClick={() => setUploads([])}>Retake</KButton><KButton icon={Sparkles} className="flex-1" disabled={busy} onClick={generate}>{busy ? 'Submitting…' : 'Create my photo'}</KButton></div>
+        <div className="flex gap-6"><KButton variant="secondary" icon={RotateCcw} className="flex-1" onClick={() => setUploads([])}>Retake</KButton><KButton icon={Sparkles} className="flex-1" disabled={busy || !canStart(mode, credits)} onClick={generate}>{busy ? 'Submitting…' : 'Create my photo'}</KButton></div>
       </>}
   </Screen>
   else body = null

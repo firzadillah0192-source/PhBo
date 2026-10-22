@@ -1,0 +1,7 @@
+--- a/backend-express/src/lab/adapters/openai.ts
++++ b/backend-express/src/lab/adapters/openai.ts
+@@ -52 +52,3 @@
+-        response = await send(ctx, { method: 'POST', url: join(ctx.baseUrl, `${prefix}/images/generations`), auth: true, timeoutMs: ctx.timeoutMs, headers: { ...authHeaders(ctx), 'Content-Type': 'application/json' }, body: JSON.stringify({ ...common, response_format: 'b64_json', images }) });
++        // OpenAI GPT Image returns base64 by default and rejects the legacy response_format field.
++        const format = type === '9router' && /^openai\/(?:gpt-image-|chatgpt-image-)/i.test(req.model_id) ? {} : { response_format: 'b64_json' };
++        response = await send(ctx, { method: 'POST', url: join(ctx.baseUrl, `${prefix}/images/generations`), auth: true, timeoutMs: ctx.timeoutMs, headers: { ...authHeaders(ctx), 'Content-Type': 'application/json' }, body: JSON.stringify({ ...common, ...format, images }) });

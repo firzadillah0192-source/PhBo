@@ -1,0 +1,23 @@
+{
+  "id": "royal-nusantara-hijab-001",
+  "name": "Royal Nusantara · Hijab Woman",
+  "description": "Woman wearing a neatly styled hijab covering all hair. Head-to-mid-thigh Indonesian heritage portrait in elegant indigo and bronze batik, inside a carved teak palace; coordinated carved wood and batik frame. Complete four-sided frame and integrated NXBooth footer with Powered by GenNexByte branding.",
+  "width": 1024,
+  "height": 1536,
+  "asset_filename": "template.png",
+  "preview_filename": "preview.png",
+  "face_region": [
+    464,
+    338,
+    150,
+    190
+  ],
+  "prompt": "Create a template-dominant head-to-mid-thigh photobooth portrait. Woman wearing a neatly styled hijab covering all hair. Head-to-mid-thigh Indonesian heritage portrait in elegant indigo and bronze batik, inside a carved teak palace; coordinated carved wood and batik frame. Complete four-sided frame and integrated NXBooth footer with Powered by GenNexByte branding. Keep true eye-level perspective, natural proportions, readable face, complete hairstyle and both thighs visible above the branding footer. Use the customer photo only as the identity reference; preserve their recognizable facial features. Preserve the template's costume, setting, pose, frame and NXBooth branding. Do not copy the customer's clothing or background. No close-up, waist-up crop, low-angle view, extra people, or additional brands.",
+  "composition": "head-to-mid-thigh",
+  "camera": "eye-level",
+  "branding": {
+    "footer": "NXBooth",
+    "credit": "Powered by GenNexByte"
+  },
+  "asset_generation_prompt": "Use case: compositing. Input image 1 is the ORIGINAL framed NXBooth template, authoritative reference for body crop, composition and branding. Input image 2 is the edit target. Create ONE final premium cinematic photorealistic template in 1024x1536 portrait 2:3. Subject: young adult Indonesian woman wearing a neatly wrapped navy hijab covering all hair, modest indigo bronze batik tailoring with long sleeves and long skirt, carved teak heritage palace with warm natural light. Distinct natural Indonesian/Southeast Asian facial features with readable realistic skin, calm confident expression. TRUE EYE-LEVEL longer-lens photograph, natural proportions. CRITICAL: STANDING HEAD-TO-MID-THIGH portrait like reference 1; keep all head and hairstyle visible, complete shoulders, torso, waist and hips, then enough of BOTH thighs clearly visible ABOVE the bottom plate. Hands naturally at sides. Face approx y300-500 and both thighs visible near y1100-1200. NOT a bust crop, not waist-up, not head-to-shoes. Rebuild substantial intricate premium indigo bronze frame with finely carved Indonesian geometric batik and teak ornament, restrained and elegant on ALL FOUR EDGES. Top title plaque reads exactly \"ROYAL NUSANTARA\". Integrated branding footer BELOW thighs reads exactly \"NXBOOTH\" with smaller \"POWERED BY GENNEXBYTE\". Lowest reference-like strip: \"EVENT NAME\" and \"DATE\". All lettering clear, exact and inside canvas. Theme and frame must be beautifully coherent, high-end editorial movie-still quality, original refined design, not kitsch. Frame surrounds photo without hiding body. No oversized head, no Western/European features, no low angle, no wide-angle distortion, no weapons, no hats/helmets covering face, no extra people, no recognizable brands. Hijab variants all hair covered; non-hijab woman long dark hair visible."
+}

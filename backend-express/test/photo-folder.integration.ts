@@ -1,3 +1,5 @@
+import { DeveloperDashboardModel } from '../src/models/developer-dashboard.model.js';
+import { DeveloperDashboardService } from '../src/services/developer-dashboard.service.js';
 import { PublicApiKeyModel } from '../src/models/public-api-key.model.js';
 import { PublicApiKeyService } from '../src/services/public-api-key.service.js';
 import test from 'node:test';
@@ -150,12 +152,37 @@ test('disposable PostgreSQL + HTTP: folder isolation, real job hooks, quotas, ex
   assert.equal((await wallets.snapshot({account_id:a,guest_id:null})).ai.remaining,150);
   const retried=await request(genApp).post('/api/public/v1/generations').set('Authorization',header).set('Idempotency-Key','generation-real-db-1').send(body);
   assert.equal(retried.status,202);assert.equal(retried.body.job_id,genId);assert.equal(queueIds.length,1);
+  const retryKey=await keys.create(a,{name:'Retry from other key',scopes:['generations:create']});
+  const otherRetry=await request(genApp).post('/api/public/v1/generations').set('Authorization',auth(retryKey.secret)).set('Idempotency-Key','generation-real-db-1').send(body);assert.equal(otherRetry.status,202);assert.equal(otherRetry.body.job_id,genId);assert.equal(queueIds.length,1);
   const conflict=await request(genApp).post('/api/public/v1/generations').set('Authorization',header).set('Idempotency-Key','generation-real-db-1').send({...body,template_id:'different'});assert.equal(conflict.status,409);
   await jobs.queueFailed(genId);
   const failed=await request(genApp).get('/api/public/v1/generations/'+genId).set('Authorization',header);
   assert.equal(failed.status,200);assert.equal(failed.body.state,'FAILED');assert.equal(failed.body.credit_charge.status,'REFUNDED');assert.equal(failed.body.credit_charge.credits,50);
   assert.equal((await wallets.snapshot({account_id:a,guest_id:null})).ai.remaining,200);
+  const dashboard=new DeveloperDashboardService(new DeveloperDashboardModel(db),wallets);
+  let stats=await dashboard.summary(a,{days:30});assert.equal(stats.totals.jobs,1);assert.equal(stats.totals.failed,1);assert.equal(stats.totals.credits_refunded,50);assert.equal(stats.totals.credits_spent,0);
+  assert.equal(stats.keys.find(k=>k.id===retryKey.id)?.jobs,0);
+  const perKey=stats.keys.find(k=>k.id===genKey.id)!;assert.equal(perKey.jobs,1);assert.equal(perKey.credits_refunded,50);
+  const apiHistory=await dashboard.history(a,{key_id:genKey.id});assert.equal(apiHistory.generations.length,1);assert.equal(apiHistory.generations[0].job_id,genId);assert.equal(apiHistory.generations[0].credit_charge.status,'REFUNDED');assert.equal(apiHistory.generations[0].result_available,false);
+  assert.equal((await dashboard.history(b,{})).generations.length,0);await assert.rejects(dashboard.history(b,{key_id:genKey.id}),{code:'API_KEY_NOT_FOUND'});
+  assert.equal((await sql.query("SELECT count(*)::int n FROM generation_events WHERE job_id=$1 AND event_type='api_generation_created'",[genId])).rows[0].n,1);
+  await keys.revoke(a,genKey.id);stats=await dashboard.summary(a,{days:30});assert.equal(stats.totals.jobs,1);assert.ok(stats.keys.find(k=>k.id===genKey.id)?.revoked_at);
+
   assert.ok(!JSON.stringify(failed.body).includes('synthetic-test-model'));
+  // Read-side metadata fixtures only: these are not real generated images.
+  const historyFixtures=[legacyId(),legacyId(),legacyId()];
+  for(let n=0;n<historyFixtures.length;n++){
+    const id=historyFixtures[n];
+    await sql.query("INSERT INTO generation_jobs(id,account_id,mode,state,template_id,created_at) VALUES($1,$2,'BASIC','COMPLETED','synthetic-history-fixture',now()-interval '1 minute'+$3*interval '1 second')",[id,a,n]);
+    await sql.query("INSERT INTO subscription_v2_jobs(job_id,owner_scope,lane,currency,credits,monthly_part,top_up_part,period_start,day_wib,retention_days,storage_reserved,status) VALUES($1,$2,'standard','AI',50,0,50,now(),(now() AT TIME ZONE 'Asia/Jakarta')::date,7,0,'CONSUMED')",[id,'account:'+a]);
+    await sql.query("INSERT INTO results(id,job_id,size_bytes,deleted_at) VALUES($1,$1,0,CASE WHEN $2::int=2 THEN now() ELSE NULL END)",[id,n]);
+    await sql.query("INSERT INTO subscription_v2_results(result_id,owner_scope,retention_days,expires_at) VALUES($1,$2,7,CASE WHEN $3::int=1 THEN now()-interval '1 hour' ELSE now()+interval '7 days' END)",[id,'account:'+a,n]);
+    await sql.query("INSERT INTO generation_events(id,job_id,event_type,metadata_json) VALUES($1,$2,'api_generation_created',$3)",[legacyId(),id,JSON.stringify({key_id:genKey.id})]);
+  }
+  const finished=await dashboard.history(a,{state:'COMPLETED',key_id:genKey.id});assert.equal(finished.generations.length,3);assert.equal(finished.generations.filter(j=>j.result_available).length,1);assert.ok(finished.generations.filter(j=>!j.result_available).every(j=>j.download_url===null&&j.result_id===null));
+  const h1=await dashboard.history(a,{limit:2}),h2=await dashboard.history(a,{limit:2,cursor:h1.next_cursor!});assert.equal(h1.generations.length,2);assert.equal(h2.generations.length,2);assert.equal(new Set([...h1.generations,...h2.generations].map(j=>j.job_id)).size,4);
+  const finalStats=await dashboard.summary(a,{days:30});assert.equal(finalStats.totals.jobs,4);assert.equal(finalStats.totals.credits_spent,150);assert.equal(finalStats.totals.credits_refunded,50);
+
   const bGen=await keys.create(b,{name:'other generation',scopes:['generations:read']});
   assert.equal((await request(genApp).get('/api/public/v1/generations/'+genId).set('Authorization',auth(bGen.secret))).status,404);
   // Expiry / revocation denies reads; moves and folder deletion preserve charged credits and original object references.

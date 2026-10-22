@@ -53,14 +53,16 @@ try {
     const page = await context.newPage()
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
+    // Strict one-screen fit only on large screens; small/short ones may scroll vertically.
+    const strict = width > 800 && height > 600
     const fit = async (selectors, stage, checkScroll = true) => {
       await page.evaluate(() => document.fonts.ready)
       await page.locator('.studio-picker-image img, .classic-selected-frame img').evaluateAll(nodes => Promise.all(nodes.map(img => img.decode().catch(() => {}))))
       const boxes = await page.locator(selectors).evaluateAll(nodes => nodes.map(node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right } }))
       assert.ok(boxes.length, stage + ' exists')
-      const bad = boxes.filter(r => r.top < -1 || r.bottom > height + 1 || r.left < -1 || r.right > width + 1)
+      const bad = boxes.filter(r => r.left < -1 || r.right > width + 1 || (strict && (r.top < -1 || r.bottom > height + 1)))
       const scroll = await page.evaluate(() => ({ y: scrollY, height: document.documentElement.scrollHeight, modal: document.querySelector('.studio-popup-body') ? document.querySelector('.studio-popup-body').scrollHeight - document.querySelector('.studio-popup-body').clientHeight : null }))
-      if (bad.length || (checkScroll && (scroll.y || (scroll.modal === null ? scroll.height > height + 1 : scroll.modal > 1)))) failures.push({ width, height, stage, bad, scroll })
+      if (bad.length || (strict && checkScroll && (scroll.y || (scroll.modal === null ? scroll.height > height + 1 : scroll.modal > 1)))) failures.push({ width, height, stage, bad, scroll })
       await page.screenshot({ path: `${output}/${width}x${height}-${stage}.png` })
     }
     await page.goto(origin)

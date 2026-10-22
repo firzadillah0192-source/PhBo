@@ -344,4 +344,60 @@
     .retro-app .advanced-ornaments { grid-column: 1; grid-row: 3; }
     .retro-app .advanced-options .selection-dock { grid-column: 2; grid-row: 3; margin: 0; align-self: end; }
   }
+  /* Small or short screens: readable sizes win over a strict no-scroll fit.
+     Stages stack in one column, content is never hidden or clipped to a few
+     pixels, and the page scrolls vertically when it has to. */
+  @media (max-width: 800px), (max-height: 600px) {
+    .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account']) { height: auto; min-height: 100svh; }
+    .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-main { flex: none; }
+    .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-main>:is(.photo-stage, .review-stage, .result-stage) { height: auto; }
+    .customer-app.retro-app>.creation-chooser { flex: none; }
+    .customer-app.retro-app .customer-nav:not(.landing-nav) { min-height: 0; }
+    .customer-app.retro-app :is(.classic-capture, .photo-stage, .review-stage, .result-stage, .advanced-options) {
+      display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: auto; height: auto; gap: 12px;
+    }
+    .customer-app.retro-app :is(.classic-capture, .photo-stage, .review-stage, .result-stage, .advanced-options)>* { grid-column: 1/-1; grid-row: auto; margin: 0; }
+    .customer-app.retro-app .customer-progress { display: grid; }
+    .customer-app.retro-app .customer-progress>span { display: block; }
+    .customer-app.retro-app .customer-progress li { font-size: 13px; }
+    .customer-app.retro-app .capture-navigation .customer-inline-button { font-size: 13px !important; padding: 10px 12px !important; }
+    .customer-app.retro-app :is(.stage-heading p, .photo-guidance, .photo-file-note, .camera-message, .review-create>span, .classic-capture-heading p, .advanced-ornaments p, .advanced-style-card small, .classic-selected-frame figcaption, .result-phone-panel p, .result-phone-panel small, .advanced-options .gallery-heading p, .classic-event-details p) { display: block; font-size: 13px; line-height: 1.4; }
+    .customer-app.retro-app :is(.advanced-ornaments button, .advanced-option-tabs button, .studio-picker-pages button) { font-size: 13px; }
+    .customer-app.retro-app .classic-capture .stage-heading h1, .customer-app.retro-app .classic-review-guidance, .customer-app.retro-app .classic-capture .stage-heading .customer-kicker { display: block; }
+    .customer-app.retro-app .classic-capture .camera-stage, .customer-app.retro-app .photo-stage .camera-stage { height: auto; min-height: clamp(260px, 52svh, 520px); aspect-ratio: auto; }
+    .customer-app.retro-app .classic-capture .camera-actions { flex-direction: row; flex-wrap: wrap; }
+    .customer-app.retro-app .classic-selected-frame { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; padding: 8px; }
+    .customer-app.retro-app .classic-selected-frame img { width: auto; height: 130px; max-width: 40%; object-fit: contain; }
+    .customer-app.retro-app .classic-selected-frame figcaption { text-align: left; }
+    .customer-app.retro-app .review-composition { height: auto; }
+    .customer-app.retro-app .review-composition img { height: auto; max-height: 45svh; }
+    .customer-app.retro-app .result-frame { height: auto; min-height: 260px; max-height: none; }
+    .customer-app.retro-app .result-frame img { max-height: 60svh; object-fit: contain; }
+    .customer-app.retro-app .result-phone-panel { flex-direction: row; text-align: left; align-items: center; }
+    .customer-app.retro-app .review-stage .advanced-review-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .customer-app.retro-app .review-stage .advanced-review-summary span { font-size: 13px; }
+    .customer-app.retro-app .review-stage .advanced-review-summary small { font-size: 11px; }
+    .customer-app.retro-app .advanced-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .customer-app.retro-app .frame-style-preview { height: 90px; }
+    .customer-app.retro-app .advanced-options .selection-dock { position: static; }
+    .retro-app .creation-chooser { display: block; }
+    .retro-app .creation-chooser .landing-mode-grid { grid-template-rows: none; }
+    .retro-app .creation-chooser .landing-mode-card { grid-template-columns: 96px minmax(0, 1fr); align-items: start; }
+    .retro-app .creation-chooser .landing-mode-image { height: auto; min-height: 96px; align-self: stretch; }
+    .retro-app .creation-chooser .landing-image-fallback { font-size: 0; padding: 0; }
+    .retro-app .creation-chooser .landing-mode-number { top: 8px; left: 8px; }
+    .retro-app .creation-chooser .landing-mode-copy>p:not(.landing-eyebrow) { display: block; font-size: 13px; }
+    .retro-app .creation-chooser .landing-mode-copy ul { display: flex; flex-wrap: wrap; gap: 6px; }
+    .retro-app .creation-chooser .landing-mode-copy li { font-size: 12px; }
+    .retro-app .creation-footnote { font-size: 12px; }
+    .studio-popup.is-wide .studio-popup-body:has(.studio-picker-grid) { display: flex; flex-direction: column; overflow-y: auto; gap: 10px; }
+    .studio-popup.is-wide .studio-picker-grid { flex: none; grid-template-rows: none; grid-auto-rows: auto; overflow: visible; }
+    .studio-popup.is-wide .studio-picker-card { grid-template-rows: auto auto auto; }
+    .studio-popup.is-wide .studio-picker-image { height: 120px; min-height: 84px; }
+    .studio-popup.is-wide .studio-picker-card :is(strong, small) { display: block; overflow: visible; -webkit-line-clamp: unset; }
+    .studio-popup.is-wide .studio-picker-card strong { font-size: 15px; }
+    .studio-popup.is-wide .studio-picker-card small { display: block; font-size: 13px; line-height: 1.4; }
+    .studio-popup.is-wide .studio-picker-pages { position: sticky; bottom: 0; padding-block: 8px; background: #f7f2e8; }
+    .studio-popup.is-wide .studio-picker-pages span { font-size: 13px; }
+  }
 }

@@ -109,3 +109,12 @@ test('the bridge imports only read paths of the production code (no queue, credi
   for (const m of source.matchAll(/from '([^']+)'/g)) assert.ok(!/queue|credit|runner|native-provider|ninerouter|wallet|worker|customer-generation\.service|provider-run/.test(m[1]!), m[1]);
   assert.ok(!/\.(create|update|delete|upsert)\(/.test(source) && !/freezeBasicTemplate\(/.test(source));
 });
+
+test('condensed Basic prompt fits 800 characters and keeps the production directives', async () => {
+  const { compactBasicPrompt } = await import('../src/lab-bridge/nx-scenarios.js');
+  for (const name of ['Cyberpunk Neon · Man', 'X'.repeat(200)]) {
+    const text = compactBasicPrompt(name);
+    assert.ok(text.length <= 800, String(text.length));
+    for (const needle of ['Image 1', 'Image 2', 'subtle, template-dominant', 'not a literal replacement', 'lettering', 'NXBooth']) assert.ok(text.includes(needle), needle);
+  }
+});

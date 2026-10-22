@@ -67,7 +67,7 @@ export class Runtime {
     const file=id+(result.path.endsWith('.png')?'.png':'.jpg');
     // Only accept the predetermined asset path; never trust a process-provided arbitrary path.
     if(result.path!==join(this.assets,file))throw new Error('CAPTURE_PATH_INVALID');
-    const info=inspectImage(await readFile(result.path));s.captures.push({id,file,...info,simulated:result.simulated,capturedAt:new Date().toISOString()});
+    const info=inspectImage(await readFile(result.path));s.captures.push({id,file,...info,simulated:result.simulated,source:result.source||'simulated',capturedAt:new Date().toISOString()});
     if(s.captures.length===s.shots)s.phase='REVIEWING';await this.save();return this.state();
   });}
   async captureBytes(bytes){return this.exclusive(async()=>{
@@ -121,5 +121,11 @@ export class Runtime {
     try{const r=await this.bridge.call('printer.submit',{jobId:id,path:join(this.assets,s.resultFile),profile:s.mode==='CLASSIC'?'classic-two-strips-4r':'photo-4r'});if(!['SIMULATED','ACCEPTED'].includes(r.status))throw new Error('PRINT_STATUS_UNSUPPORTED');await this.journal.print(id,s.id,r.status);}
     catch(e){await this.journal.print(id,s.id,notSubmitted.has(e.message)?'REJECTED':'UNKNOWN');throw e;}return this.state();
   });}
+  /** Download QR for the current result. Not exclusive: it only reads, and the finished session already holds the guest cookie. */
+  async resultClaim(){
+    const s=this.session;if(!s||s.phase!=='RESULT_READY'||!s.resultId)throw new Error('RESULT_REQUIRED');
+    const secret=await this.secrets.get(s.id);if(!secret?.cookie)throw new Error('CREDENTIAL_RECOVERY_REQUIRED');
+    return new ControlClient(this.origins,this.apiKey,secret.cookie).claimResult(s.resultId);
+  }
   async finish(){return this.exclusive(async()=>{if(!this.session)throw new Error('SESSION_REQUIRED');this.session.phase='FINISHED';await this.save();this.session=null;return this.state();});}
 }

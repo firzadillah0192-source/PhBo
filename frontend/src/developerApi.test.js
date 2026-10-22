@@ -32,3 +32,9 @@ test('Generation Explorer uploads FormData and sanitizes errors without echoing 
  globalThis.fetch=async(url,options)=>{seen={url,options};return new Response(JSON.stringify({detail:{error_code:'CREDIT_BALANCE_EXHAUSTED',message:token}}),{status:403})}
  try{await assert.rejects(exploreGenerationApi({token,action:'upload',file:new Blob(['synthetic'],{type:'image/png'})}),e=>e.definitiveRejection&&!e.message.includes(token));assert.ok(seen.options.body instanceof FormData);assert.equal(seen.options.headers['Content-Type'],undefined)}finally{globalThis.fetch=original}
 })
+
+test('developer dashboard requests use account session and encode filters without account override',async()=>{
+ const {getDeveloperDashboard,getDeveloperGenerations}=await import('./api.js');const original=globalThis.fetch,seen=[]
+ globalThis.fetch=async(url,options)=>{seen.push({url,options});return new Response(JSON.stringify({generations:[],keys:[],daily:[]}),{status:200})}
+ try{await getDeveloperDashboard({days:7,key_id:'a'.repeat(16)});await getDeveloperGenerations({days:7,state:'FAILED',cursor:'opaque+page',limit:20});assert.ok(seen.every(r=>r.options.credentials==='include'&&!r.options.headers.Authorization));const first=new URL(seen[0].url,'https://test.invalid'),second=new URL(seen[1].url,'https://test.invalid');assert.equal(first.pathname,'/api/account/api-keys/dashboard');assert.equal(first.searchParams.get('days'),'7');assert.equal(second.pathname,'/api/account/api-keys/generations');assert.equal(second.searchParams.get('cursor'),'opaque+page');assert.equal(second.searchParams.get('state'),'FAILED')}finally{globalThis.fetch=original}
+})

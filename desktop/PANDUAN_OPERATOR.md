@@ -23,7 +23,7 @@ Format `BESAR.SEDANG.KECIL`, misalnya `1.1.19`:
 | **SEDANG** (kedua) | Pembaruan fitur, model, desain, dll | `1.1.19` -> `1.2.0` |
 | **KECIL** (ketiga) | Perbaikan kecil / patching | `1.1.19` -> `1.1.20` |
 
-Saat satu bagian naik, bagian di kanannya kembali ke 0. Versi sekarang: **1.0.0**. Server menerima tiga angka (masing-masing sampai 4 digit) dan membandingkannya sebagai angka, jadi `1.10.0` lebih baru dari `1.9.0`. Nomor ini diubah hanya di `desktop\package.json`.
+Saat satu bagian naik, bagian di kanannya kembali ke 0. Versi pengembangan sekarang: **1.1.0** (mode event dan progres update); installer yang sudah dipublish saat handoff: **1.0.1**. Server menerima tiga angka (masing-masing sampai 4 digit) dan membandingkannya sebagai angka, jadi `1.10.0` lebih baru dari `1.9.0`. Saat mengubah versi di `desktop\package.json`, sinkronkan juga `package-lock.json`.
 
 ## B. Membuat installer (setiap rilis)
 
@@ -50,7 +50,18 @@ Masuk bertahan sekitar 14 hari dan diperpanjang otomatis selama kiosk dipakai. T
 
 1. Build installer baru (bagian B) dengan versi yang lebih tinggi.
 2. Di server, publish: `python3 -I scripts/publish_desktop_update.py /path/NXBooth-Setup-1.0.1.exe --notes "Perbaikan kamera"`. Skrip menghitung hash, menaruh file di `/srv/photobooth/desktop-updates`, dan menyisakan 3 installer terakhir (`--keep N` untuk mengubah).
-3. Di kiosk, **tidak ada sesi foto yang berjalan**: **Menu staf** -> (PIN) -> **Cek update** -> **Pasang versi x.y.z**. Aplikasi mengunduh, memeriksa ukuran dan hash, menjalankan installer, lalu terbuka lagi.
+3. Di kiosk, **tidak ada sesi foto yang berjalan**: **Menu staf** -> (PIN) -> **Cek update** -> **Pasang versi x.y.z**. Mulai 1.1.0, aplikasi menampilkan tahap unduhan, progress bar, persen, dan MB terunduh/total. Setelah ukuran dan hash diperiksa (serta tanda tangan bila dikonfigurasi), tahap berubah menjadi Memasang. Aplikasi menutup setelah Windows menerima proses installer, lalu installer membuka aplikasi kembali. Jika installer gagal dijalankan, aplikasi tetap terbuka dan menampilkan error.
+
+## Mode event online (v1.1.0)
+
+1. Masuk akun, sambungkan webcam dan printer, lalu buka **Menu staf** (PIN bila dipasang).
+2. Di **Mode event**, isi **Nama event** dan **Tanggal event**. Centang template yang boleh dipakai: Classic, Basic, Advanced, atau campurannya. Centang **Aktifkan mode event di kiosk ini**, lalu **Simpan mode event** dan **Tutup menu**. Pengaturan tersimpan di PC ini. Tutup sesi yang masih aktif sebelum mengaktifkan event.
+3. Tamu menekan **Mulai**. Bila hanya satu template, langsung ke kamera; bila beberapa, tamu memilih template dulu. Kamera mengambil foto otomatis setelah hitung mundur **5 detik** per foto. Ada **4 detik** untuk **Ulangi foto ini** sebelum lanjut ke foto berikutnya.
+4. Setelah semua foto selesai, aplikasi memproses otomatis, mengirim hasil ke printer, dan menampilkan QR unduhan. Bila printer tidak terdeteksi, layar menampilkan **Printer di luar jangkauan**; QR tetap tersedia. **Coba cetak lagi** dipakai setelah perangkat diperiksa.
+5. **Mulai ulang** kembali ke layar awal tanpa PIN. Layar hasil juga kembali otomatis setelah **120 detik**. Jika koneksi terputus, gunakan **Coba lagi** atau **Mulai ulang** pada layar gagal. Di mode manual, tombol **Mulai ulang** juga tersedia setelah hasil selesai.
+6. Untuk kembali ke mode manual, buka Menu staf, hilangkan centang **Aktifkan mode event di kiosk ini**, lalu simpan.
+
+Mode event membutuhkan internet untuk proses dan QR. Basic/Advanced memakai kredit AI sesuai aturan server; Classic tidak memakai AI. Tanggal event ditampilkan di layar; tanggal yang dicetak pada frame Classic tetap mengikuti waktu pengambilan foto. Alur event sudah diuji dengan webcam browser. Integrasi Canon USB sedang dikerjakan di sesi terpisah dan masih memerlukan validasi gabungan serta tes perangkat Windows sebelum dinyatakan berfungsi.
 
 ### Apa yang terjadi pada versi lama dan datanya
 

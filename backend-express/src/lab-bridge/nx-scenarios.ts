@@ -13,6 +13,12 @@ import { LabError, type NxScenarioSource, type ScenarioCatalog, type ScenarioPla
 const variantOf = (id: string): 'man' | 'woman' | 'hijab' | 'other' => /-hijab(-|$)/.test(id) ? 'hijab' : /-man(-|$)/.test(id) ? 'man' : /-(woman|female)(-|$)/.test(id) ? 'woman' : 'woman';
 const themeOf = (id: string) => id.replace(/-(hijab|man|woman|female|framed)(?=-|$)/g, '').replace(/-\d+$/, '');
 
+// Same directives as the production Basic prompt, shortened to fit models that cap prompts at 800 characters.
+// Used only for those models, and flagged on the run. Production itself always sends the full prompt.
+export function compactBasicPrompt(templateName: string) {
+  return `Edit Image 1 (template "${templateName.trim().slice(0, 60)}") using the person in Image 2. Keep Image 1's scene, costume, body, pose, head position, hair, skin tone, lighting, frame, title and all lettering unchanged. Bring in the recognizable eye shape, eyebrows, nose and lips of the person in Image 2 as a subtle, template-dominant resemblance, not a literal replacement; do not copy their cheek, jaw or chin outline. Match Image 1's lighting and rendering so the face looks naturally photographed, never pasted. Return one complete image at Image 1's canvas, preserving every existing letter and graphic including NXBooth.`;
+}
+
 export class NxScenarios implements NxScenarioSource {
   constructor(private readonly catalogModel: CustomerCatalogModel, private readonly assets: CatalogAssetsService,
     private readonly images: NativeImageEngineService, private readonly basicModelExperienceId: string) {}
@@ -45,7 +51,7 @@ export class NxScenarios implements NxScenarioSource {
     const model = (await this.catalogModel.experience(this.basicModelExperienceId))?.model ?? null;
     const canvas = { width: info.width, height: info.height };
     return { kind: 'basic', label: `Basic · ${row.name}`, production_model: model, meta: { template_id: row.id, variant: variantOf(row.id), canvas: `${canvas.width}x${canvas.height}` },
-      prompt: composeBasicPrompt(row.name, row.description), images: [{ bytes: base, role: 'template' }, { bytes: identity, role: 'reference' }], production_size: canvas,
+      prompt: composeBasicPrompt(row.name, row.description), compact_prompt: compactBasicPrompt(row.name), images: [{ bytes: base, role: 'template' }, { bytes: identity, role: 'reference' }], production_size: canvas,
       // Production returns the provider image as-is when the canvas matches, otherwise fits it without cropping.
       finish: async bytes => { const m = await sharp(bytes, { limitInputPixels: 64_000_000 }).metadata();
         return m.width === canvas.width && m.height === canvas.height ? bytes : sharp(bytes).resize(canvas.width, canvas.height, { fit: 'contain', background: 'white' }).png().toBuffer(); } };

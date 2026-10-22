@@ -1,7 +1,7 @@
 // Pure helpers for the AI Provider Lab UI (unit-tested; no React).
 export const PRICING_METHODS = [
   ['unknown', 'Pricing Unknown'], ['per_image', 'Fixed price per image'], ['per_megapixel', 'Price per megapixel'],
-  ['tokens', 'Input / output tokens'], ['compute_time', 'Compute time'],
+  ['tokens', 'Input / output tokens'], ['compute_time', 'Compute time'], ['provider_quote', 'Provider price quotation (per request)'],
 ]
 export const RATING_LABELS = [
   ['identity', 'Facial identity preservation'], ['template', 'Template preservation'], ['hair_pose', 'Hair and pose consistency'],
@@ -16,6 +16,8 @@ export function pricingPayload(form) {
   for (const key of ['per_image_usd', 'per_megapixel_usd', 'input_usd_per_million_tokens', 'output_usd_per_million_tokens', 'per_second_usd', 'reference_image_fee_usd', 'assumed_input_tokens', 'assumed_output_tokens', 'assumed_seconds']) {
     const value = numberOrUndefined(form[key]); if (value !== undefined) out[key] = value
   }
+  // Per-quality token assumptions have no form field; keep them when a model is edited.
+  if (form.assumed_output_tokens_by_quality && typeof form.assumed_output_tokens_by_quality === 'object') out.assumed_output_tokens_by_quality = form.assumed_output_tokens_by_quality
   return out
 }
 export function splitList(text) { return String(text || '').split(',').map((item) => item.trim()).filter(Boolean) }
@@ -35,7 +37,7 @@ export function runBody(form, caps) {
   const seed = numberOrUndefined(form.seed); if (caps.seed && seed !== undefined && Number.isInteger(seed)) body.seed = seed
   return body
 }
-export const isTerminal = (run) => run && (run.status === 'SUCCEEDED' || run.status === 'FAILED')
+export const isTerminal = (run) => run && ['SUCCEEDED', 'FAILED', 'AMBIGUOUS'].includes(run.status)
 
 // NXBooth scenarios: Basic sends template + customer photo (2 images); Advanced sends the customer photo (1 image).
 export const SCENARIO_KINDS = [['freeform', 'Free test (own images & prompt)'], ['basic', 'NXBooth Basic (template → face)'], ['advanced', 'NXBooth Advanced (experience + frame)']]
@@ -56,3 +58,42 @@ export function allowedFrames(catalog, experienceId) {
   return exp?.compatible_frame_style_ids ? all.filter((f) => exp.compatible_frame_style_ids.includes(f.id)) : all
 }
 
+
+// ---- schema-driven parameters (WaveSpeed models carry a verified parameter schema) ----
+export function paramsFor(model) {
+  if (!model) return []
+  if (model.params) return model.params
+  const s = model.supports || {}, out = []
+  if (s.size) out.push({ name: 'size', label: 'Size', type: model.sizes?.length ? 'enum' : 'text', values: model.sizes })
+  if (s.quality?.length) out.push({ name: 'quality', label: 'Quality', type: 'enum', values: s.quality })
+  if (s.seed) out.push({ name: 'seed', label: 'Seed', type: 'int' })
+  if (s.output_format?.length) out.push({ name: 'output_format', label: 'Output format', type: 'enum', values: s.output_format })
+  return out
+}
+// Only values the admin actually set are sent; empty means "provider default" (so the quote matches the provider's own default).
+export function cleanParams(model, values) {
+  const out = {}
+  for (const spec of paramsFor(model)) {
+    const v = values?.[spec.name]
+    if (v === undefined || v === null || v === '' || v === false) continue
+    if (spec.type === 'int') { const n = Number(v); if (Number.isInteger(n)) out[spec.name] = n } else if (spec.type === 'bool') { if (v === true || v === 'true') out[spec.name] = true; else if (v === 'false') out[spec.name] = false }
+    else out[spec.name] = String(v)
+  }
+  return out
+}
+export function quoteKey(parts) { return JSON.stringify(parts) }
+export const COST_TONE = { Estimated: '', 'Pending Billing': 'warn', Confirmed: 'ok', Unavailable: 'bad', Review: 'warn' }
+export function tokenLabel(tokens) {
+  if (!tokens || tokens.availability !== 'reported') return 'N/A'
+  const f = (n) => (n === null || n === undefined ? '—' : n.toLocaleString())
+  return `${f(tokens.input)} in / ${f(tokens.output)} out / ${f(tokens.total)} total`
+}
+export function diffLabel(diff) { if (diff === null || diff === undefined) return '—'; return (diff > 0 ? '+' : diff < 0 ? '−' : '±') + '$' + Math.abs(diff).toFixed(4) }
+export function nextInQueue(models) { return [...models].filter((m) => typeof m.sequence === 'number').sort((a, b) => a.sequence - b.sequence).find((m) => (m.verification?.status || 'unverified') === 'unverified') || null }
+
+// Why a model cannot run a Basic/Advanced test (shown next to the model name).
+export function whyNotFit(model, kind) {
+  if (!model || kind === 'freeform' || modelFits(model, kind)) return ''
+  if (!model.tasks.some((t) => t !== 'text-to-image')) return 'text-to-image only: cannot take a face photo'
+  return `accepts ${model.max_reference_images} input image(s); ${kind === 'basic' ? 'Basic needs 2' : 'Advanced needs 1'}`
+}

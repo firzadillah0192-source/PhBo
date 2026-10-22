@@ -87,7 +87,7 @@ export function publicApiRoutes(deps: PublicApiDeps) {
     const body = generationBody.parse(req.body);
     // The prefix keeps API retries from colliding with keys the same account used on the website.
     res.status(202).json(job(await deps.generations.create({ mode: 'BASIC', upload_id: body.input_id, template_id: body.template_id,
-      ...(body.folder_id!==undefined?{folder_id:body.folder_id}:{}) }, identity(req), `pub_${key}`)));
+      ...(body.folder_id!==undefined?{folder_id:body.folder_id}:{}) }, identity(req), `pub_${key}`, undefined, {keyId:req.principal!.key.id})));
   });
   router.get('/generations/:id', auth('generations:read', 'read', 120), async (req: Authed, res) => {
     const status = await deps.generations.status(param(req, 'id'), identity(req));

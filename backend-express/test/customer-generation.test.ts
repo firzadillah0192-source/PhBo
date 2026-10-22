@@ -146,3 +146,25 @@ test('native prompt composition is deterministic for all ten editable style IDs'
   }
   assert.throws(() => composeAdvancedPrompt('', 'frame')); assert.throws(() => composeAdvancedPrompt('experience', ' '));
 });
+
+test('Basic and Advanced accept an optional event name and always freeze a footer claim',async()=>{
+  assert.equal(generationInput.safeParse({mode:'BASIC',upload_id:'u',template_id:'t',event_name:'Ulang Tahun Budi'}).success,true);
+  assert.equal(generationInput.safeParse({mode:'ADVANCED',upload_id:'u',experience_id:'e',event_name:'Gathering'}).success,true);
+  assert.equal(generationInput.safeParse({mode:'BASIC',upload_id:'u',template_id:'t',event_name:'A\nB'}).success,false);
+  const timestamp=new Date('2026-10-10T07:00:00.000Z'),rows:any[]=[];
+  const experience={id:'e',status:'published',enabled:true,model:'m',internal_prompt:'p',compatible_frame_style_ids_json:null,compatible_ornament_ids_json:null,max_ornaments:3};
+  const model={template:async()=>({enabled:true,image_path:'t.png',name:'T',description:'d'}),experience:async()=>experience,frame:async()=>({id:'natural',enabled:true,prompt_fragment:'f'}),
+    ornaments:async()=>[],findRequest:async()=>null,create:async(data:any)=>{rows.push(data);return {...data,created_at:timestamp}}};
+  const uploads={owned:async(id:string)=>({upload:{id,created_at:timestamp}})};
+  const assets={file:async()=>'/x',freezeBasicTemplate:async()=>({asset:'t.png',sha256:'a'.repeat(64),width:1024,height:1536})};
+  const service=new CustomerGenerationService(model as never,uploads as never,assets as never,{enqueue:async()=>{}});
+  const identity={account:null,guest:{id:'guest'},clearAccount:false,newGuest:null,sessionId:null} as never;
+  await service.create({mode:'BASIC',upload_id:'u',template_id:'t',event_name:'Ulang Tahun Budi'},identity);
+  await service.create({mode:'BASIC',upload_id:'u',template_id:'t'},identity);
+  await service.create({mode:'ADVANCED',upload_id:'u',experience_id:'e',event_name:'Gathering'},identity);
+  const [named,anonymous,advanced]=rows.map(row=>JSON.parse(row.engine_config_json).personalization);
+  assert.equal(named.event_name,'Ulang Tahun Budi');assert.equal(named.captured_at,timestamp.toISOString());assert.match(named.claim_token,/^[A-Za-z0-9_-]{43}$/);
+  assert.equal('event_name' in anonymous,false);assert.match(anonymous.claim_token,/^[A-Za-z0-9_-]{43}$/);assert.notEqual(anonymous.claim_token,named.claim_token);
+  assert.equal(advanced.event_name,'Gathering');
+  await assert.rejects(service.create({mode:'BASIC',upload_id:'u',template_id:'t',captured_at:'2026-10-10T05:00:00.000Z'},identity),(error:any)=>error.code==='CAPTURE_TIME_INVALID');
+});

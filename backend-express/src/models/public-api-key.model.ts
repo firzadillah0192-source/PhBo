@@ -7,7 +7,7 @@ type NewKey = Pick<PublicApiKeyRow, 'id' | 'account_id' | 'name' | 'prefix' | 's
 
 // Raw SQL on the additive tables from backend/migrations/025_public_api_keys.sql (no Prisma model, no schema push).
 export class PublicApiKeyModel {
-  constructor(private readonly db: PrismaClient) {}
+  constructor(private readonly db: PrismaClient, private readonly webhooksEnabled=false) {}
   async create(key: NewKey) {
     const [row] = await this.db.$queryRaw<PublicApiKeyRow[]>`INSERT INTO integration_api_keys(id,account_id,name,prefix,secret_hash,scopes,expires_at,rotated_from)
       VALUES(${key.id},${key.account_id},${key.name},${key.prefix},${key.secret_hash},${key.scopes}::text[],${key.expires_at},${key.rotated_from}) RETURNING *`;
@@ -47,8 +47,11 @@ export class PublicApiKeyModel {
     return Number(row.count);
   }
   async revoke(accountId: string, id: string) {
-    const [row] = await this.db.$queryRaw<PublicApiKeyRow[]>`UPDATE integration_api_keys SET revoked_at=COALESCE(revoked_at,now()) WHERE id=${id} AND account_id=${accountId} RETURNING *`;
-    return row ?? null;
+    return this.db.$transaction(async tx=>{
+      const [row] = await tx.$queryRaw<PublicApiKeyRow[]>`UPDATE integration_api_keys SET revoked_at=COALESCE(revoked_at,now()) WHERE id=${id} AND account_id=${accountId} RETURNING *`;
+      if(row && this.webhooksEnabled)await tx.$executeRaw`UPDATE integration_webhook_deliveries SET state='CANCELLED',lease_token=NULL,lease_until=NULL,updated_at=now() WHERE key_id=${id} AND account_id=${accountId} AND state IN ('PENDING','IN_FLIGHT')`;
+      return row ?? null;
+    });
   }
   // Only ever shortens an expiry.
   async limitExpiry(accountId: string, id: string, at: Date) {
