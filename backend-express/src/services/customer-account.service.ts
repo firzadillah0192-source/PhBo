@@ -7,13 +7,16 @@ import type { GoogleVerifier } from './google-identity.service.js';
 import type { CatalogAssetsService } from './catalog-assets.service.js';
 import type { NxPlan, NxSubscription } from '@prisma/client';
 import { webResultExpiresAt } from './result-retention.js';
+import type { SubscriptionWalletModel } from '../models/subscription-wallet.model.js';
+import type { GenerationApiRoutesService } from './generation-api-routes.service.js';
+import type { PaymentService } from './payment.service.js';
 
 export type CustomerIdentity = { account: NxAccount | null; guest: NxGuestSession | null; clearAccount: boolean; newGuest: string | null; sessionId: string };
 type Identity = CustomerIdentity;
 export type AccountConfig = { sessionDays: number; cookieSecure: boolean; sessionSecret: string };
 export class CustomerAccountService {
   readonly signer: CustomerCookieSigner;
-  constructor(private readonly model: CustomerAccountModel, readonly config: AccountConfig, private readonly googleVerifier?: GoogleVerifier, private readonly assets?: CatalogAssetsService) { this.signer = new CustomerCookieSigner(config.sessionSecret); }
+  constructor(private readonly model: CustomerAccountModel, readonly config: AccountConfig, private readonly googleVerifier?: GoogleVerifier, private readonly assets?: CatalogAssetsService, readonly payments?: PaymentService, readonly subscriptions?: SubscriptionWalletModel, readonly apiRoutes?: GenerationApiRoutesService, readonly photoFoldersEnabled=false) { this.signer = new CustomerCookieSigner(config.sessionSecret); }
 
   async resolve(cookies: Record<string, unknown>): Promise<Identity> {
     const raw = this.signer.unsign(cookies[accountCookie]);
@@ -39,6 +42,12 @@ export class CustomerAccountService {
   async usage(identity: Identity) {
     const owner = identity.account ?? identity.guest;
     if (!owner) throw new AppError(500, 'IDENTITY_UNAVAILABLE', 'Identity unavailable');
+    if (this.subscriptions) {
+      const subscription = await this.subscriptions.snapshot({ account_id: identity.account?.id ?? null, guest_id: identity.guest?.id ?? null });
+      return { photo_folders_enabled:this.photoFoldersEnabled, authenticated: Boolean(identity.account), quota_type: identity.account ? 'account' : 'guest', subscription,
+        api_routes: await this.apiRoutes?.availability(), credit_wallet: null,
+        ai_total: subscription.ai.remaining, ai_used: 0, ai_reserved: 0, ai_remaining: subscription.ai.remaining };
+    }
     const snapshot = identity.account ? await this.model.wallet(identity.account.id) : null;
     const wallet = snapshot ? { free_remaining: snapshot.free_remaining, top_up_remaining: snapshot.top_up_remaining, free_allocation: snapshot.free_allocation, reset_every_days: snapshot.reset_every_days, next_reset_at: snapshot.next_reset_at, spend_order: snapshot.spend_order } : null;
     return { credit_wallet: wallet, authenticated: Boolean(identity.account), quota_type: identity.account ? 'account' : 'guest',
@@ -95,6 +104,8 @@ export class CustomerAccountService {
   async center(identity: Identity) {
     const account = this.requireAccount(identity);
     const data = await this.model.center(account.id);
+    const currentUsage = await this.usage(identity);
+    const retentionDays = currentUsage.subscription?.plan.retention_days ?? 14;
     const planResponse = (plan: NxPlan | null, subscription: NxSubscription | null = null) => plan ? {
       id: plan.id, code: plan.code, name: plan.name, description: plan.description, monthly_ai_credits: plan.monthly_ai_credits || null,
       billing_period: plan.billing_period, is_active: plan.is_active, status: subscription?.status ?? null,
@@ -104,7 +115,7 @@ export class CustomerAccountService {
     for (const job of data.jobs) {
       const result = await this.model.creationResult(job.id);
       if (result?.deleted_at) continue;
-      const expiresAt = result && !result.kiosk ? webResultExpiresAt(result.created_at) : null;
+      const expiresAt = result && !result.kiosk ? await this.model.resultExpiry(result.id, webResultExpiresAt(result.created_at)) : null;
       const retentionExpired = Boolean(expiresAt && expiresAt <= new Date());
       const experience = job.experience_id ? await this.model.creationExperience(job.experience_id) : null;
       const template = job.template_id ? await this.model.creationTemplate(job.template_id) : null;
@@ -115,9 +126,9 @@ export class CustomerAccountService {
         experience_id: job.experience_id, template_id: job.template_id || null, image_url: available ? `/api/results/${result!.id}/image` : null,
         download_url: available ? `/api/results/${result!.id}/download` : null, created_at: job.created_at, expires_at: expiresAt, expired: retentionExpired || Boolean(job.state === 'COMPLETED' && result && !available && (!billing || billing.status === 'PAID')) });
     }
-    return { account: await this.me(identity), usage: { ...await this.usage(identity), used_this_period: Math.abs(data.spent) }, current_plan: planResponse(data.plan, data.subscription), plans: data.plans.map(plan => planResponse(plan)), creations,
+    return { account: await this.me(identity), usage: { ...currentUsage, used_this_period: Math.abs(data.spent) }, current_plan: currentUsage.subscription ? { ...currentUsage.subscription.plan, id: `nx-v2-${currentUsage.subscription.plan.code}`, monthly_ai_credits: currentUsage.subscription.plan.monthly_ai_credits, status: 'active', current_period_start: currentUsage.subscription.period_start, current_period_end: currentUsage.subscription.period_end } : planResponse(data.plan, data.subscription), plans: data.plans.map(plan => planResponse(plan)), creations,
       sessions: data.sessions.map(session => ({ id: session.id, created_at: session.created_at, last_seen_at: session.last_seen_at, expires_at: session.expires_at, active: session.expires_at > new Date(), is_current: session.id === identity.sessionId })),
-      billing: { enabled: false, message: 'Pembayaran isi kredit belum terhubung. Tidak ada tagihan otomatis.', payment_method_available: false, invoices_available: false },
-      privacy: { creation_deletion_available: true, retention_configured: true, retention_days: 14, retention_message: 'Foto hasil di web disimpan selama 14 hari sejak selesai dibuat, lalu dihapus otomatis. Download sebelum kedaluwarsa; foto juga bisa dihapus kapan saja dari My Creations.', export_available: false, deletion_available: false } };
+      billing: { enabled: this.payments?.available() ?? false, environment: 'sandbox', message: this.payments?.available() ? this.payments.settings().message : 'Pembayaran isi kredit belum terhubung. Tidak ada tagihan otomatis.', payment_method_available: this.payments?.available() ?? false, invoices_available: false },
+      privacy: { creation_deletion_available: true, retention_configured: true, retention_days: retentionDays, retention_message: `Foto baru mengikuti retensi paket ${retentionDays} hari. Tanggal kedaluwarsa setiap hasil ditampilkan di My Creations. Download sebelum kedaluwarsa atau hapus kapan saja.`, export_available: false, deletion_available: false } };
   }
 }

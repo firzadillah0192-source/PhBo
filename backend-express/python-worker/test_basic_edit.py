@@ -111,3 +111,18 @@ class BasicEditTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TemplateFaceBlurTest(unittest.TestCase):
+    def test_blurs_only_the_face_area(self):
+        rng = np.random.default_rng(0)
+        base = Image.fromarray(rng.integers(0, 255, (200, 160, 3), dtype=np.uint8), 'RGB')
+        contour = [(60, 60), (100, 60), (110, 100), (80, 130), (50, 100)]
+        out = np.asarray(basic_edit.blur_face(base, contour)).astype(int)
+        original = np.asarray(base).astype(int)
+        self.assertEqual(out.shape, original.shape)
+        self.assertGreater(np.abs(out[90, 80] - original[90, 80]).sum() + np.abs(out[95, 85] - original[95, 85]).sum(), 0)
+        self.assertLess(out[80:110, 65:95].std(), original[80:110, 65:95].std() / 2)
+        self.assertTrue((out[:30] == original[:30]).all())
+        self.assertTrue((out[170:] == original[170:]).all())
+

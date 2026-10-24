@@ -1,0 +1,35 @@
+--- a/backend-express/src/lab/adapters/openai.ts
++++ b/backend-express/src/lab/adapters/openai.ts
+@@ -68 +68,13 @@
+-export const nineRouterAdapter = make('9router', '', '', 'json');
++export const nineRouterAdapter: LabAdapter = {
++  ...make('9router', '', '', 'json'),
++  async discover(ctx) {
++    // The general model list is a different catalog and may omit image-only routes.
++    const response = await send(ctx, { method: 'GET', url: join(ctx.baseUrl, '/models/image'), auth: true, headers: authHeaders(ctx) });
++    failIfBad(ctx, response, '9router image model list');
++    const data = parseJson(response).data;
++    if (!Array.isArray(data) || data.some(item => typeof item?.id !== 'string' || !item.id.trim())) {
++      throw new LabError(502, 'LAB_PROVIDER_ERROR', '9Router returned an invalid image model list.');
++    }
++    return [...new Set<string>(data.map(item => item.id))].slice(0, 2000);
++  },
++};
+--- a/backend-express/src/lab/service.ts
++++ b/backend-express/src/lab/service.ts
+@@ -549,0 +550 @@
++    if (provider.type === '9router' && !provider.secret_enc) throw new LabError(409, 'LAB_CREDENTIAL_MISSING', 'Save a 9Router access key before registering its image models.');
+@@ -552 +553 @@
+-      catch (error) { note = `Live model list failed (${error instanceof LabError ? redact(error.message, [this.d.vault.decrypt(provider.secret_enc)], 120) : 'unreachable'}); registered the documented candidates instead.`; }
++      catch (error) { if (provider.type === '9router') throw error; note = `Live model list failed (${error instanceof LabError ? redact(error.message, [this.d.vault.decrypt(provider.secret_enc)], 120) : 'unreachable'}); registered the documented candidates instead.`; }
+@@ -557 +558 @@
+-    if (live) for (const id of live.filter(i => looksLikeImageModel(i, provider.type) && !wanted.some(c => c.model_id === i))) {
++    if (live) for (const id of live.filter(i => (provider.type === '9router' || looksLikeImageModel(i, provider.type)) && !wanted.some(c => c.model_id === i))) {
+--- a/frontend/src/components/admin/AiProviderLab.jsx
++++ b/frontend/src/components/admin/AiProviderLab.jsx
+@@ -44 +44 @@
+-  const add = (e) => { e.preventDefault(); run('add', () => labSend('POST', '/providers', { name: form.name, type: form.type, ...(form.base_url ? { base_url: form.base_url } : {}) }), 'Provider registered (disabled until a credential is added).').then(() => setForm({ name: '', type: 'wavespeed', base_url: '' })) }
++  const add = (e) => { e.preventDefault(); run('add', () => labSend('POST', '/providers', { name: form.name, type: form.type, ...(form.type !== '9router' && form.base_url ? { base_url: form.base_url } : {}) }), () => { setForm({ name: '', type: 'wavespeed', base_url: '' }); return 'Provider registered (disabled until a credential is added).' }) }
+@@ -65 +65 @@
+-      <Field label="API base URL" hint="Leave blank for the official endpoint (required for OpenAI-compatible; include /v1 if the vendor uses it). HTTPS only; validated server-side."><input value={form.base_url} placeholder="default" onChange={(e) => setForm({ ...form, base_url: e.target.value })} /></Field>
++      <Field label="API base URL" hint={form.type === '9router' ? 'Uses the gateway configured on this server automatically. Save a 9Router access key, then click Register models to load its image catalog. OpenAI keys and OAuth connections are managed in 9Router.' : 'Leave blank for the official endpoint (required for OpenAI-compatible; include /v1 if the vendor uses it). HTTPS only; validated server-side.'}><input disabled={form.type === '9router'} value={form.type === '9router' ? '' : form.base_url} placeholder={form.type === '9router' ? 'Server-configured 9Router gateway' : 'default'} onChange={(e) => setForm({ ...form, base_url: e.target.value })} /></Field>

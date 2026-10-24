@@ -10,6 +10,10 @@ export const migrationConfigSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:5173').transform(value => value.split(',').map(item => item.trim()).filter(Boolean)),
   RUNTIME_DIR: z.string().default('/srv/photobooth'),
   TEMPLATES_DIR: z.string().default('/srv/photobooth/templates'),
+  PHOTO_FOLDERS_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  NXDUET_ENABLED: z.enum(['true','false']).default('false').transform(value=>value==='true'),
+  NXDUET_MODEL: z.string().trim().default(''),
+  SUBSCRIPTION_V2_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   STORAGE_BACKEND: z.enum(['filesystem', 'minio']).default('filesystem'),
   MINIO_ENDPOINT: z.string().default(''),
   MINIO_PORT: z.coerce.number().int().min(1).max(65535).default(9000),
@@ -30,6 +34,11 @@ export const migrationConfigSchema = z.object({
   RESULT_CLAIM_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   KIOSK_RESET_SECONDS: z.coerce.number().int().min(15).max(3600).default(90),
   KIOSK_API_KEY: z.union([z.literal(''),z.string().min(32)]).default(''),
+  GENERATION_WEBHOOKS_ENABLED: z.enum(['true','false']).default('false').transform(value=>value==='true'),
+  WEBHOOK_SECRET_ENCRYPTION_KEY: z.string().default(''),
+  WEBHOOK_SECRET_ENCRYPTION_VERSION: z.string().default('v1'),
+  PUBLIC_API_GENERATION_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
+  PUBLIC_API_KEY_PEPPER: z.union([z.literal(''),z.string().min(32)]).default(''),
   NATIVE_KIOSK_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
   KIOSK_PHOTO_SESSION_TTL_SECONDS: z.coerce.number().int().min(60).max(604800).default(86400),
   KIOSK_GENERATION_LIMIT: z.coerce.number().int().min(1).max(100).default(3),
@@ -51,12 +60,23 @@ export const migrationConfigSchema = z.object({
   NINEROUTER_TIMEOUT_SECONDS: z.coerce.number().positive().max(600).default(300),
   PROVIDER_RESULT_ORIGINS: z.string().default('').transform(value => value.split(',').map(item => item.trim()).filter(Boolean)),
   GOOGLE_CLIENT_ID: z.string().default(''),
+  DUITKU_ENABLED: z.enum(['true','false']).default('false').transform(value => value === 'true'),
+  DUITKU_ENVIRONMENT: z.literal('sandbox').default('sandbox'),
+  DUITKU_MERCHANT_CODE: z.string().trim().default(''),
+  DUITKU_API_KEY: z.string().default(''),
+  DUITKU_PUBLIC_ORIGIN: z.string().url().default('https://nxbooth.gennexbyte.com').refine(value => {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash;
+  }, 'Use an HTTPS origin without path, credentials or query').transform(value => new URL(value).origin),
   ADMIN_TOKEN: z.string().default(''),
+  // AI Provider Lab only: encrypts Lab provider credentials at rest. Never reuse a production secret here.
+  LAB_ENCRYPTION_KEY: z.string().default(''),
   ADMIN_DEFAULT_ROLE: z.enum(['superadmin', 'operator', 'content_manager']).default('superadmin'),
   UPLOAD_MIN_DIMENSION: z.coerce.number().int().positive().default(256),
   UPLOAD_MAX_DIMENSION: z.coerce.number().int().positive().default(8000),
   UPLOAD_CLEANUP_INTERVAL_SECONDS: z.coerce.number().int().min(60).max(86400).default(3600),
 }).refine(value => value.NODE_ENV !== 'production' || Boolean(value.SESSION_SECRET_KEY.trim()), { message: 'SESSION_SECRET_KEY is required in production', path: ['SESSION_SECRET_KEY'] })
+  .refine(value => !value.DUITKU_ENABLED || Boolean(value.DUITKU_MERCHANT_CODE && value.DUITKU_API_KEY.trim()), { message: 'Duitku Sandbox credentials are required when enabled', path: ['DUITKU_ENABLED'] })
   .refine(value => value.STORAGE_BACKEND !== 'minio' || Boolean(value.MINIO_ENDPOINT.trim() && value.MINIO_ACCESS_KEY.trim() && value.MINIO_SECRET_KEY && /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(value.MINIO_BUCKET)), { message: 'MinIO endpoint, credentials and a valid bucket are required', path: ['STORAGE_BACKEND'] })
   .refine(value => !value.NATIVE_KIOSK_ENABLED || value.KIOSK_API_KEY.length >= 32,{ message: 'A Kiosk API key is required when native Kiosk is enabled',path: ['KIOSK_API_KEY'] })
   .refine(value => !value.MINIO_SIGNED_URLS_ENABLED || value.STORAGE_BACKEND==='minio' && /^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(value.MINIO_PUBLIC_ENDPOINT) &&

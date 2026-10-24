@@ -8,6 +8,9 @@
     "node": ">=22.12"
   },
   "scripts": {
+    "test:nxduet": "tsx --test test/nxduet.test.ts",
+    "test:nxduet-integration": "tsx --test test/nxduet.integration.ts",
+    "test:nxduet-integration:isolated": "node scripts/test-nxduet-integration.mjs",
     "dev:migration": "tsx watch src/migration-server.ts",
     "start:migration": "node --enable-source-maps dist/migration-server.js",
     "worker:migration": "tsx src/migration-worker.ts",
@@ -16,7 +19,7 @@
     "dev:classic": "node scripts/dev-classic.mjs",
     "start": "node --enable-source-maps dist/server.js",
     "worker": "tsx src/worker.ts",
-    "test": "tsx --test test/api.test.ts test/models.test.ts test/engines.test.ts test/candidate.test.mjs test/customer-catalog.test.ts test/customer-account.test.ts test/upload-image-engine.test.ts test/customer-generation.test.ts test/customer-generation-worker.test.ts test/native-runtime.test.ts test/native-generation-runner.test.ts test/native-object-storage.test.ts test/catalog-object-storage.test.ts test/generation-request.test.ts test/native-kiosk.test.ts test/postgres-generation-queue.test.ts test/native-signed-delivery.test.ts test/credit-pricing.test.ts test/topup-checkout.test.ts test/analytics.test.ts test/kiosk-web-access.test.ts test/startup-stage.test.ts",
+    "test": "tsx --test test/api.test.ts test/models.test.ts test/engines.test.ts test/candidate.test.mjs test/customer-catalog.test.ts test/customer-account.test.ts test/upload-image-engine.test.ts test/customer-generation.test.ts test/customer-generation-worker.test.ts test/native-runtime.test.ts test/native-generation-runner.test.ts test/native-object-storage.test.ts test/catalog-object-storage.test.ts test/generation-request.test.ts test/native-kiosk.test.ts test/postgres-generation-queue.test.ts test/native-signed-delivery.test.ts test/credit-pricing.test.ts test/topup-checkout.test.ts test/duitku-payment.test.ts test/analytics.test.ts test/kiosk-web-access.test.ts test/startup-stage.test.ts test/lab.test.ts test/lab-scenarios.test.ts test/lab-wavespeed.test.ts test/lab-providers.test.ts test/desktop-update.test.ts test/native-provider-payload.test.ts test/kiosk-device.test.ts test/subscription-policy.test.ts test/generation-api-routes.test.ts test/public-api.test.ts test/photo-folder.test.ts test/developer-dashboard.test.ts test/generation-webhook.test.ts",
     "test:request-integration": "tsx --test test/generation-request.integration.test.ts",
     "test:kiosk": "tsx --test test/native-kiosk.test.ts",
     "test:kiosk-integration": "tsx --test test/generation-request.integration.test.ts",
@@ -33,7 +36,10 @@
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "worker:start": "node --enable-source-maps dist/worker.js",
-    "test:postgres-queue-integration": "tsx --test test/generation-request.integration.test.ts"
+    "test:postgres-queue-integration": "tsx --test test/generation-request.integration.test.ts",
+    "test:subscription-integration": "tsx --test test/subscription-v2.integration.ts",
+    "test:public-api-integration": "tsx --test test/public-api.integration.ts",
+    "test:photo-folder-integration": "tsx --test test/photo-folder.integration.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.0.0",

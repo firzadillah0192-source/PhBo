@@ -1,6 +1,6 @@
 {
   "name": "nxbooth-desktop",
-  "version": "0.1.0",
+  "version": "1.1.3",
   "private": true,
   "type": "module",
   "main": "electron/main.mjs",
@@ -11,9 +11,15 @@
     "test": "node --test tests/*.test.mjs",
     "test:ui": "node tests/electron-ui.mjs",
     "bridge:build": "dotnet build native/KioskBridge -c Release",
-    "package:win": "node scripts/package-windows.mjs"
+    "package:win": "node scripts/package-windows.mjs",
+    "test:webcam-ui": "node tests/webcam-ui.mjs",
+    "test:setup-ui": "node tests/setup-ui.mjs",
+    "test:event-ui": "node tests/event-ui.mjs",
+    "test:canon-ui": "node tests/canon-ui.mjs",
+    "test:activity-ui": "node tests/activity-ui.mjs"
   },
   "dependencies": {
+    "qrcode.react": "4.2.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "sql.js": "1.14.2",
@@ -21,9 +27,9 @@
   },
   "devDependencies": {
     "electron": "44.7.0",
-    "vite": "8.3.3",
+    "electron-builder": "26.15.3",
     "playwright": "1.64.0",
-    "electron-builder": "26.15.3"
+    "vite": "8.3.3"
   },
   "build": {
     "appId": "com.gennexbyte.nxbooth.desktop",
@@ -41,15 +47,40 @@
       {
         "from": "native/publish/win-x64",
         "to": "bridge"
+      },
+      {
+        "from": "native/publish/update-signer.json",
+        "to": "update-signer.json"
       }
     ],
     "win": {
       "target": [
-        "zip"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "signAndEditExecutable": false
+    },
+    "extraFiles": [
+      {
+        "from": "WINDOWS_SETUP.md",
+        "to": "WINDOWS_SETUP.md"
+      }
+    ],
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "NXBooth-Setup-${version}.exe"
     }
   },
-  "description": "NXBooth Windows event desktop scaffold with isolated control/media clients and simulated native devices",
+  "description": "NXBooth Windows kiosk with Canon USB SDK capture and Windows printing",
   "author": "Photobooth AI"
 }

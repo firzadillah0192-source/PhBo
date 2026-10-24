@@ -1,3 +1,5 @@
+import type { GenerationWebhookModel } from './generation-webhook.model.js';
+import type { PhotoFolderModel } from './photo-folder.model.js';
 import type { PrismaClient, Prisma } from '@prisma/client';
 import { CreditAccountingModel } from './credit-accounting.model.js';
 import { legacyId } from '../services/customer-credentials.service.js';
@@ -6,14 +8,15 @@ import type { GenerationRequest } from '../services/generation-request.js';
 import { readGenerationCharge } from '../services/generation-credit-charge.service.js';
 import { AppError } from '../lib/errors.js';
 import type { KioskGenerationContext } from './native-kiosk.model.js';
-import { parseGenerationSnapshot } from '../services/generation-snapshot.js';
+import { snapshotPersonalization } from '../services/generation-snapshot.js';
 import { tokenHash } from '../services/customer-credentials.service.js';
+import type { SubscriptionWalletModel } from './subscription-wallet.model.js';
 import { webResultExpiresAt } from '../services/result-retention.js';
 
 export class CustomerGenerationModel {
   private readonly credits: CreditAccountingModel;
   readonly leases: WorkerLeaseModel;
-  constructor(private readonly db: PrismaClient,private readonly maxWorkerAttempts = 3) { this.credits = new CreditAccountingModel(db); this.leases = new WorkerLeaseModel(db); }
+  constructor(private readonly db: PrismaClient,private readonly maxWorkerAttempts = 3, readonly subscriptions?: SubscriptionWalletModel, readonly folders?: PhotoFolderModel, readonly webhooks?: GenerationWebhookModel) { this.credits = new CreditAccountingModel(db, subscriptions); this.leases = new WorkerLeaseModel(db); }
   template(id: string) { return this.db.nxTemplate.findUnique({ where: { id } }); }
   layout(id: string) { return this.db.nxClassicLayout.findUnique({ where: { id } }); }
   experience(id: string) { return this.db.nxExperience.findUnique({ where: { id } }); }
@@ -40,23 +43,28 @@ export class CustomerGenerationModel {
     return tx.nxGenerationJob.findUniqueOrThrow({ where: { id: rows[0].job_id } });
   }
   findRequest(request: GenerationRequest) { return this.db.$transaction(tx => this.requestIn(tx, request)); }
-  createOnce(data: Prisma.NxGenerationJobCreateInput, request: GenerationRequest, kiosk?: KioskGenerationContext) {
+  createOnce(data: Prisma.NxGenerationJobCreateInput, request: GenerationRequest, kiosk?: KioskGenerationContext, lane: 'standard' | 'fast' = 'standard', folderId?: string | null) {
     return this.db.$transaction(async tx => {
       // Serialize retries from the same owner and key before reserving credit.
       // Hash collisions only serialize unrelated requests; the full key is checked.
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${request.scope + ':' + request.key},0))::text`;
       const existing = await this.requestIn(tx, request);
       if (existing) return { job: existing, reused: true };
-      const job = await this.createIn(tx, data, kiosk);
+      const job = await this.createIn(tx, data, kiosk, lane, folderId);
       await tx.$executeRaw`INSERT INTO generation_requests(owner_scope,request_key,request_hash,job_id)
         VALUES (${request.scope},${request.key},${request.hash},${job.id})`;
+      if(request.integrationKeyId){
+        const key=await tx.$queryRaw<{id:string}[]>`SELECT id FROM integration_api_keys WHERE id=${request.integrationKeyId} AND account_id=${job.account_id}`;
+        if(!key.length)throw new AppError(403,'API_CONTEXT_INVALID','Invalid integration context');
+        await tx.nxGenerationEvent.create({data:{id:legacyId(),job_id:job.id,event_type:'api_generation_created',detail:'Created through integration API',metadata_json:JSON.stringify({key_id:request.integrationKeyId})}});
+      }
       return { job, reused: false };
     });
   }
-  create(data: Prisma.NxGenerationJobCreateInput) {
-    return this.db.$transaction(tx => this.createIn(tx, data));
+  create(data: Prisma.NxGenerationJobCreateInput, lane: 'standard' | 'fast' = 'standard', folderId?: string | null) {
+    return this.db.$transaction(tx => this.createIn(tx, data, undefined, lane, folderId));
   }
-  private async createIn(tx: Prisma.TransactionClient, data: Prisma.NxGenerationJobCreateInput, kiosk?: KioskGenerationContext) {
+  private async createIn(tx: Prisma.TransactionClient, data: Prisma.NxGenerationJobCreateInput, kiosk?: KioskGenerationContext, lane: 'standard' | 'fast' = 'standard', folderId?: string | null) {
       let eventId: string | null = null;
       if (kiosk) {
         const sessions = await tx.$queryRaw<{ event_id: string | null; capture_upload_ids_json: string }[]>`SELECT event_id,capture_upload_ids_json FROM kiosk_sessions
@@ -84,13 +92,19 @@ export class CustomerGenerationModel {
           }
         }
       }
+      if (!kiosk && this.subscriptions) await this.subscriptions.ensureIn(tx, { account_id: data.account_id as string | null, guest_id: data.guest_id as string | null });
       const job = await tx.nxGenerationJob.create({ data });
       if (kiosk) await tx.$executeRaw`UPDATE generation_jobs SET kiosk_session_id=${kiosk.id},event_id=${eventId} WHERE id=${job.id}`;
       if (job.account_id) await tx.nxAccount.update({ where: { id: job.account_id }, data: { last_activity_at: new Date() } });
       const owner = { account_id: job.account_id, guest_id: job.guest_id };
       if (kiosk) {
         if (job.mode !== 'CLASSIC') await this.credits.reserveKioskIn(tx, job.id, owner);
+      } else if (this.subscriptions) {
+        await tx.nxQuotaReservation.create({ data: { id: legacyId(), job_id: job.id, ...owner, amount: 0 } });
+        await tx.$executeRaw`INSERT INTO generation_credit_charges(job_id,status) VALUES(${job.id},'PENDING_RESULT')`;
+        await this.subscriptions.reserveIn(tx, job, owner, lane);
       } else await this.credits.reserveIn(tx, job.id, owner);
+      if (!kiosk && this.folders && job.account_id) await this.folders.reserveIn(tx,job.account_id,job.id,folderId);
       await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: job.id, event_type: 'job_queued', detail: 'Generation job queued' } });
       return job;
   }
@@ -99,7 +113,7 @@ export class CustomerGenerationModel {
     const changed = await tx.nxGenerationJob.updateMany({ where: { id, state: 'QUEUED' }, data: {
       state: 'FAILED', error_code: 'QUEUE_UNAVAILABLE', error_message: 'Generation queue is unavailable.', finished_at: new Date(), updated_at: new Date(),
     } });
-    if (changed.count) await this.credits.settleIn(tx, id, false);
+    if (changed.count) { await this.credits.settleIn(tx, id, false); await this.webhooks?.terminalIn(tx,id); }
     });
   }
   claim(id: string, token: string) {
@@ -114,6 +128,7 @@ export class CustomerGenerationModel {
         if (changed.count) {
           await this.credits.settleIn(tx,id,false);
           await tx.nxGenerationEvent.create({ data: { id: legacyId(),job_id: id,event_type: 'job_failed',detail: 'WORKER_RETRY_EXHAUSTED' } });
+          await this.webhooks?.terminalIn(tx,id);
         }
         await this.leases.releaseIn(tx,'customer',id,token);
         return null;
@@ -135,12 +150,15 @@ export class CustomerGenerationModel {
       if (!changed.count) return false;
       const saved = await tx.nxResult.create({ data: result });
       const job = await tx.nxGenerationJob.findUniqueOrThrow({ where: { id } });
-      const snapshot = job.mode === 'CLASSIC' ? parseGenerationSnapshot(job.engine_config_json,job.mode) : null;
-      if (snapshot?.mode === 'CLASSIC' && snapshot.personalization) {
-        await tx.nxResultClaim.create({ data: { id: legacyId(), result_id: saved.id, token_hash: tokenHash(snapshot.personalization.claim_token), expires_at: webResultExpiresAt(saved.created_at) } });
+      const personalization = snapshotPersonalization(job.engine_config_json,job.mode);
+      if (personalization) {
+        await tx.nxResultClaim.create({ data: { id: legacyId(), result_id: saved.id, token_hash: tokenHash(personalization.claim_token), expires_at: webResultExpiresAt(saved.created_at) } });
       }
       await this.credits.settleIn(tx, id, true);
+      if(this.folders) await this.folders.completeIn(tx,id,saved.id,job.account_id);
+      if (this.subscriptions && personalization) await tx.$executeRaw`UPDATE result_claims SET expires_at=p.expires_at FROM subscription_v2_results p WHERE result_claims.result_id=${saved.id} AND p.result_id=${saved.id}`;
       await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: id, event_type: 'result_stored', detail: 'Generation result stored' } });
+      await this.webhooks?.terminalIn(tx,id);
       await this.leases.releaseIn(tx, 'customer', id, token);
       return true;
     });
@@ -154,6 +172,7 @@ export class CustomerGenerationModel {
       if (!changed.count) return false;
       await this.credits.settleIn(tx, id, false);
       await tx.nxGenerationEvent.create({ data: { id: legacyId(), job_id: id, event_type: 'job_failed', detail: code } });
+      await this.webhooks?.terminalIn(tx,id);
       await this.leases.releaseIn(tx, 'customer', id, token);
       return true;
     });

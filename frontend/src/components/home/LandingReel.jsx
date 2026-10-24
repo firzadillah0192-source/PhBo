@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { CatalogImage } from './ModeCards.jsx'
+import { useT } from '../../i18n.js'
 
 // An animated editorial preview, using only art returned by the public catalog.
 // It never captures a photo or starts a customer generation.
 export default function LandingReel({ previews = [] }) {
+  const t = useT()
   const root = useRef(null)
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -38,19 +40,19 @@ export default function LandingReel({ previews = [] }) {
     return () => window.clearInterval(timer)
   }, [running, previews.length])
 
-  return <div ref={root} className={`landing-reel ${running ? 'is-playing' : 'is-paused'}`} role="region" aria-label="Animated experience preview">
+  return <div ref={root} className={`landing-reel ${running ? 'is-playing' : 'is-paused'}`} role="region" aria-label={t('Pratinjau pengalaman beranimasi', 'Animated experience preview')}>
     <div className="landing-reel-stage" key={item ? `${item.mode}:${item.id}` : 'empty'}>
       <div className="landing-reel-flash" aria-hidden="true" />
       <div className="landing-reel-viewfinder" aria-hidden="true"><i /><i /><i /><i /></div>
       {item && <figure className="landing-reel-photo">
-        <CatalogImage key={item.preview} src={item.preview} alt={`${item.name} experience preview`} loading="eager" />
+        <CatalogImage key={item.preview} src={item.preview} alt={t(`Pratinjau pengalaman ${item.name}`, `${item.name} experience preview`)} loading="eager" />
         <figcaption><span>{item.name}</span><small>NXBooth</small></figcaption>
       </figure>}
       <div className="landing-reel-progress" aria-hidden="true"><span /></div>
     </div>
     <div className="landing-reel-controls">
-      <span><i aria-hidden="true" /> Experience preview <small>{String((index % Math.max(1, previews.length)) + 1).padStart(2, '0')} / {String(previews.length).padStart(2, '0')}</small></span>
-      <button type="button" aria-label={paused ? 'Play experience animation' : 'Pause experience animation'} onClick={() => setPaused((value) => !value)} disabled={reduced || !item}>{paused || reduced ? 'Play' : 'Pause'} <span aria-hidden="true">{paused || reduced ? '▷' : 'Ⅱ'}</span></button>
+      <span><i aria-hidden="true" /> {t('Pratinjau pengalaman', 'Experience preview')} <small>{String((index % Math.max(1, previews.length)) + 1).padStart(2, '0')} / {String(previews.length).padStart(2, '0')}</small></span>
+      <button type="button" aria-label={paused ? t('Putar animasi pengalaman', 'Play experience animation') : t('Jeda animasi pengalaman', 'Pause experience animation')} onClick={() => setPaused((value) => !value)} disabled={reduced || !item}>{paused || reduced ? t('Putar', 'Play') : t('Jeda', 'Pause')} <span aria-hidden="true">{paused || reduced ? '▷' : 'Ⅱ'}</span></button>
     </div>
   </div>
 }

@@ -1,3 +1,7 @@
+import type { GenerationWebhookService } from './services/generation-webhook.service.js';
+import { generationWebhookRoutes } from './routes/generation-webhook.routes.js';
+import type { PhotoFolderService } from './services/photo-folder.service.js';
+import { photoFolderRoutes } from './routes/photo-folder.routes.js';
 import {installAnalytics} from './services/analytics.service.js';
 import express from 'express';
 import { randomUUID } from 'node:crypto';
@@ -24,8 +28,21 @@ import type { NativeRateLimitService } from './services/native-rate-limit.servic
 import type { NativeKioskService } from './services/native-kiosk.service.js';
 import { kioskWebAccess } from './routes/kiosk-web.routes.js';
 import { nativeKioskRoutes } from './routes/native-kiosk.routes.js';
+import { desktopUpdateRoutes } from './routes/desktop-update.routes.js';
+import { desktopDiagnosticsRoutes } from './routes/desktop-diagnostics.routes.js';
+import { DesktopDiagnosticsService } from './services/desktop-diagnostics.service.js';
+import { DesktopUpdateService } from './services/desktop-update.service.js';
+import { desktopDeviceApiRoutes, desktopDeviceApproveRoutes } from './routes/desktop-device.routes.js';
+import type { KioskDeviceService } from './services/kiosk-device.service.js';
+import { paymentRoutes } from './routes/payment.routes.js';
+import type { DeveloperDashboardService } from './services/developer-dashboard.service.js';
+import { storageOpenApi, generationOpenApi } from './routes/storage-openapi.js';
+import { publicApiBase, publicApiRoutes, type PublicApiDeps } from './routes/public-api.routes.js';
+import { publicApiKeyManagementRoutes } from './routes/public-api-keys.routes.js';
+import type { DuetService } from './nxduet/service.js';
+import { duetRoutes,duetAdminRoutes } from './nxduet/routes.js';
 
-export type MigrationAppConfig = { corsOrigins: string[]; uploadMaxBytes?: number; trustProxy?: boolean; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService };
+export type MigrationAppConfig = { corsOrigins: string[]; duet?:DuetService; uploadMaxBytes?: number; trustProxy?: boolean; folders?:PhotoFolderService; admin?:NativeAdminServices; limiter?:NativeRateLimitService; health?:()=>Promise<object>; kiosk?: NativeKioskService; desktopUpdateDir?: string; desktopDiagnosticsDir?: string; devices?: KioskDeviceService; publicApi?: Pick<PublicApiDeps, 'keys' | 'keyModel' | 'window' | 'generationEnabled'> & {dashboard?:DeveloperDashboardService;webhooks?:GenerationWebhookService} };
 
 // Candidate /api contract, independent of the incompatible upstream /api/v1 API.
 // Unported routes remain unavailable; there is no forwarding to FastAPI.
@@ -58,9 +75,16 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
   app.use(cookieParser());
   installAnalytics(app);
   if (config.kiosk) app.use('/api/v1',nativeKioskRoutes(config.kiosk,catalog,config.uploadMaxBytes ?? 12*1024*1024));
+  if (config.devices) { app.use('/api/v1',desktopDeviceApiRoutes(config.devices)); app.use('/api/desktop-device',desktopDeviceApproveRoutes(config.devices)); }
+  if (config.kiosk && config.desktopUpdateDir) app.use('/api/v1',desktopUpdateRoutes(config.kiosk,new DesktopUpdateService(config.desktopUpdateDir)));
+  if (config.kiosk && config.desktopDiagnosticsDir) app.use('/api/v1',desktopDiagnosticsRoutes(config.kiosk,new DesktopDiagnosticsService(config.desktopDiagnosticsDir)));
   app.get('/health', (_req, res) => { res.json({ status: 'ok', service: 'nxbooth-express' }); });
   if(config.health)app.get('/api/health',async(_req,res)=>{res.json(await config.health!());});
   if(config.admin)app.use('/api/admin',nativeAdminRoutes(config.admin,config.uploadMaxBytes??12*1024*1024));
+  app.get('/api/nxduet/capabilities',(_req,res)=>{res.json({enabled:Boolean(config.duet),preparation_credits:100});});
+  if(config.duet&&account)app.use('/api/nxduet',duetRoutes(config.duet,account,config.uploadMaxBytes??12*1024*1024));
+  if(config.duet&&config.admin)app.use('/api/admin/nxduet',duetAdminRoutes(config.duet,config.admin.auth));
+  if(account?.payments)app.use('/api/payments',paymentRoutes(account.payments));
   // Restricted web kiosk uses the existing signed account session and provider pipeline.
   if(account){
     app.use('/api/kiosk',kioskWebAccess(account));
@@ -70,6 +94,15 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
     if(uploads)app.use('/api/kiosk/web',customerUploadRoutes(uploads,account,config.uploadMaxBytes??12*1024*1024));
     if(generations)app.use('/api/kiosk/web',customerGenerationRoutes(generations,account));
   }
+  app.get('/api/public/v1/capabilities', (_req, res) => res.json({ enabled: Boolean(config.publicApi), dashboard: Boolean(config.publicApi?.dashboard), webhooks: Boolean(config.publicApi?.webhooks), storage: Boolean(config.publicApi && config.folders), generation: Boolean(config.publicApi?.generationEnabled), scopes: config.publicApi?.generationEnabled ? ['catalog:read','inputs:write','generations:create','generations:read','results:read','usage:read'] : ['results:read', 'usage:read'] }));
+  app.get('/api/public/v1/openapi.json', (_req, res) => res.json(config.publicApi?.generationEnabled ? generationOpenApi : storageOpenApi));
+  // Integration API (API-key auth). Mounted only when PUBLIC_API_KEY_PEPPER is configured; separate from the cookie /api routes and from /api/v1.
+  if (config.publicApi && account && uploads && results && generations) {
+    if(config.publicApi.webhooks)app.use('/api/account/api-keys', ...(config.limiter ? [config.limiter.middleware('integration-webhook-management',30)] : []), generationWebhookRoutes(config.publicApi.webhooks,account));
+    app.use('/api/account/api-keys', ...(config.limiter ? [config.limiter.middleware('integration-key-management', 30)] : []), publicApiKeyManagementRoutes(config.publicApi.keys, account, config.publicApi.dashboard));
+    app.use(publicApiBase, publicApiRoutes({ ...config.publicApi, catalog, uploads, generations, results, maxUploadBytes: config.uploadMaxBytes ?? 12 * 1024 * 1024, folders:config.folders }));
+  }
+  if(config.folders && account) app.use('/api',photoFolderRoutes(config.folders,account,config.limiter));
   app.use('/api', customerCatalogRoutes(catalog));
   if (account) app.use('/api/account', customerAccountRoutes(account));
   if (account && results) app.use('/api', customerResultRoutes(results, account,config.limiter));

@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import { AppError } from '../lib/errors.js';
 
+// Footer personalization for AI modes. The claim token is always present so the printed QR resolves to the stored result; the event name is optional.
+const footer = z.object({ event_name: z.string().min(1).max(80).optional(), captured_at: z.string().datetime(), claim_token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict().optional();
 const snapshotSchema = z.union([
   z.object({ version: z.literal(2),mode: z.literal('BASIC'),prompt: z.string().trim().min(1),model: z.string().trim().min(1),
     template: z.object({ asset: z.string().min(1),sha256: z.string().regex(/^[a-f0-9]{64}$/),
-      width: z.number().int().positive().max(10000),height: z.number().int().positive().max(10000) }).strict() }).strict(),
-  z.object({ version: z.literal(1),mode: z.enum(['BASIC','ADVANCED']),prompt: z.string().trim().min(1),model: z.string().trim().min(1) }).strict(),
+      width: z.number().int().positive().max(10000),height: z.number().int().positive().max(10000) }).strict(),personalization: footer }).strict(),
+  z.object({ version: z.literal(1),mode: z.enum(['BASIC','ADVANCED']),prompt: z.string().trim().min(1),model: z.string().trim().min(1),personalization: footer }).strict(),
   z.object({ version: z.literal(1),mode: z.literal('CLASSIC'),layout: z.object({
     id: z.string().min(1),slug: z.string().min(1),name: z.string().min(1),active: z.literal(true),
     canvas_width: z.literal(1200),canvas_height: z.literal(3600),shot_count: z.number().int().min(1).max(4),
@@ -20,4 +22,9 @@ export function parseGenerationSnapshot(raw: string | null | undefined,mode: str
     if (snapshot.mode!==mode) throw new Error();
     return snapshot;
   } catch { throw new AppError(422,'GENERATION_SNAPSHOT_INVALID','Saved generation configuration is invalid.'); }
+}
+// AI-mode jobs created before footers existed may carry older snapshot shapes; they simply have no footer.
+export function snapshotPersonalization(raw: string | null | undefined,mode: string) {
+  if (mode==='CLASSIC') return parseGenerationSnapshot(raw,mode)?.personalization ?? null;
+  try { return parseGenerationSnapshot(raw,mode)?.personalization ?? null; } catch { return null; }
 }

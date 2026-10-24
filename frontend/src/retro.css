@@ -227,6 +227,8 @@
 .retro-app .processing-stage { margin-block: 35px; }
 .retro-app .processing-portal figure { overflow: hidden; border: var(--retro-border); border-radius: 12px; background: var(--sky); box-shadow: 6px 6px 0 var(--ink); }
 .retro-app .processing-orbit { border: 2px dashed var(--ink); opacity: .2; }
+.retro-app .processing-meter { color: var(--ink); }
+.retro-app .processing-meter-fill { stroke: var(--ink); }
 .retro-app .processing-pulse { padding: 10px 14px; border: var(--retro-border); border-radius: 7px; background: var(--sun); color: var(--ink); font-size: var(--fs-xs); }
 .retro-app .processing-pulse i { background: var(--ink); box-shadow: none; }
 .retro-app .processing-copy>p:not(.customer-kicker), .retro-app .processing-copy small { color: var(--muted); font-size: var(--fs-sm); }

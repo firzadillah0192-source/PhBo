@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "tests": "2 passed, 36 subtests passed in 76.68s",
+  "command": "python -m pytest test_classic_footer_background.py -q",
+  "templates": 36,
+  "repaired": 31,
+  "unchanged_pixels": 5,
+  "checks": [
+    "original alpha exact",
+    "photo area exact",
+    "outside repair mask exact",
+    "lower footer exact",
+    "layout metadata preserved",
+    "actual Classic compositor",
+    "master and print QR decode",
+    "master and print DPI/resolution"
+  ],
+  "visual_review": "All 36 corrected previews reviewed; final comparison inspected separately",
+  "ai_used": false
+}

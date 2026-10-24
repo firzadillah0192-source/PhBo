@@ -4,10 +4,12 @@ import { CLASSIC_RETAKE_LIMIT, CLASSIC_REVIEW_SECONDS, runClassicCaptureSequence
 import { cameraFailureMessage, requestPortraitCamera } from '../../cameraAccess.js'
 import { readCustomerFlow, updateCustomerFlow } from '../../customerSession.js'
 import { CatalogImage } from '../home/ModeCards.jsx'
+import { getLanguage, useT } from '../../i18n.js'
 
 const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
 export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
+  const t = useT()
   const saved = readCustomerFlow()
   const sameSession = saved?.mode === 'CLASSIC' && saved.classicCaptureLayoutId === layout.id
   const videoRef = useRef(null)
@@ -34,6 +36,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
   const [message, setMessage] = useState('')
   const [eventName, setEventName] = useState(saved?.classicEventLayoutId === layout.id ? saved.classicEventName || '' : '')
   const eventReady = !layout.requires_event_name || (eventName.trim().length > 0 && !/[\p{Cc}\p{Cf}]/u.test(eventName))
+  const [eventConfirmed, setEventConfirmed] = useState(!layout.requires_event_name || (sameSession && uploadsRef.current.length > 0 && eventReady))
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -74,12 +77,12 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
     } catch {
       if (!mountedRef.current || stream !== streamRef.current) return
       setPreviewBlocked(true)
-      setMessage('Camera preview paused. Tap Resume preview to continue.')
+      setMessage(t('Pratinjau kamera terjeda. Ketuk Lanjutkan pratinjau untuk melanjutkan.', 'Camera preview paused. Tap Resume preview to continue.'))
     }
   }
   useEffect(() => { if (camera) playPreview() }, [camera])
   const openCamera = async () => {
-    if (!eventReady) { setMessage('Isi nama event sebelum mengambil foto.'); return }
+    if (!eventReady) { setMessage(t('Isi nama event sebelum mengambil foto.', 'Enter the event name before taking photos.')); return }
     if (openingRef.current || runningRef.current) return
     openingRef.current = true
     setOpening(true)
@@ -94,7 +97,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
       streamRef.current = stream
       setCamera(true)
     } catch (error) {
-      if (mountedRef.current && run === runRef.current) setMessage(cameraFailureMessage(error))
+      if (mountedRef.current && run === runRef.current) setMessage(cameraFailureMessage(error, getLanguage()))
     } finally {
       openingRef.current = false
       if (mountedRef.current) setOpening(false)
@@ -156,7 +159,7 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
       updateCustomerFlow({ classicCaptureLayoutId: null, classicRetakesRemaining: null })
     } catch (error) {
       if (mountedRef.current && run === runRef.current) {
-        setMessage(error?.message || 'Could not complete the photo sequence. Please try again.')
+        setMessage(error?.message || t('Rangkaian foto belum bisa diselesaikan. Silakan coba lagi.', 'Could not complete the photo sequence. Please try again.'))
         setBusy(false)
         setPhase('idle')
         setCountdown(null)
@@ -164,11 +167,11 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
     } finally { runningRef.current = false }
   }
   const uploadSet = async (files) => {
-    if (!eventReady) { setMessage('Isi nama event terlebih dahulu.'); return }
+    if (!eventReady) { setMessage(t('Isi nama event terlebih dahulu.', 'Enter the event name first.')); return }
     if (runningRef.current) return
     const chosen = Array.from(files || [])
     if (!chosen.length) return
-    if (chosen.length !== layout.shot_count) { setMessage('Choose exactly ' + layout.shot_count + ' photographs for this layout.'); return }
+    if (chosen.length !== layout.shot_count) { setMessage(t('Pilih tepat ' + layout.shot_count + ' foto untuk tata letak ini.', 'Choose exactly ' + layout.shot_count + ' photographs for this layout.')); return }
     updateCustomerFlow({ classicCapturedAt: new Date().toISOString() })
     runningRef.current = true
     const run = ++runRef.current
@@ -188,39 +191,54 @@ export default function ClassicCaptureStage({ layout, onComplete, onBack }) {
       await onComplete(uploads)
       updateCustomerFlow({ classicCaptureLayoutId: null, classicRetakesRemaining: null })
     } catch (error) {
-      if (mountedRef.current) { setMessage(error?.message || 'Could not upload the photographs. Please try again.'); setBusy(false); setPhase('idle') }
+      if (mountedRef.current) { setMessage(error?.message || t('Foto belum bisa diunggah. Silakan coba lagi.', 'Could not upload the photographs. Please try again.')); setBusy(false); setPhase('idle') }
     } finally { runningRef.current = false }
   }
+  if (!eventConfirmed) return (
+    <section className="photo-stage classic-capture classic-event-stage customer-stage-enter">
+      <nav className="capture-navigation" aria-label={t('Navigasi Photo Booth', 'Photo Booth navigation')}><button className="customer-inline-button" onClick={onBack}>← {t('Ganti bingkai', 'Change frame')}</button></nav>
+      <header className="stage-heading">
+        <p className="customer-kicker">Photo Booth · {layout.shot_count} {t('foto', 'photos')}</p>
+        <h1>{t('Nama event.', 'Event name.')}</h1>
+      </header>
+      <div className="classic-event-details"><label htmlFor="classic-event-name">{t('Nama event', 'Event name')}<input id="classic-event-name" value={eventName} maxLength={80} placeholder={t('Misalnya: Pernikahan Sarah & Arif', 'For example: Sarah & Arif’s Wedding')} onChange={event => { setEventName(event.target.value); updateCustomerFlow({ classicEventName: event.target.value.trim(), classicEventLayoutId: layout.id }); setMessage('') }} autoComplete="off" required aria-describedby="classic-event-help" /></label><p id="classic-event-help">{t('Tanggal otomatis (WIB). QR untuk unduh foto.', 'Automatic date (WIB). QR to download the photos.')}</p></div>
+      <div className="camera-actions"><button className="customer-solid-button" disabled={!eventReady || opening} onClick={() => { updateCustomerFlow({ classicEventName: eventName.trim(), classicEventLayoutId: layout.id }); setEventConfirmed(true); window.scrollTo({ top: 0, behavior: 'auto' }) }}>{t('Lanjut ambil foto', 'Continue to photos')} →</button></div>
+      <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={t(`Pratinjau bingkai ${layout.name}`, `Frame preview ${layout.name}`)} loading="eager" fallback={t('Pratinjau bingkai belum tersedia', 'Frame preview not available yet')} /><figcaption>{t('Pratinjau bingkai', 'Frame preview')} · {layout.name}<br />{t(`${layout.shot_count} foto dalam satu strip`, `${layout.shot_count} photos in one strip`)}</figcaption></figure>
+    </section>
+  )
   return (
     <section className="photo-stage classic-capture customer-stage-enter">
-      <header className="stage-heading">
-        <button className="customer-inline-button stage-back" onClick={onBack} disabled={busy}>← Change frame</button>
-        <p className="customer-kicker">Photo Booth · {layout.shot_count} photos</p>
-        <h1>Make your photo strip.</h1>
-        <p>{completed} of {layout.shot_count} photographs accepted</p>
-        <p className="classic-retake-allowance">{retakes} of {CLASSIC_RETAKE_LIMIT} retakes remaining for this session</p>
-        <p className="classic-review-guidance">Review each photo for 10 seconds. Next continues automatically.</p>
+      <nav className="capture-navigation" aria-label={t('Navigasi Photo Booth', 'Photo Booth navigation')}>
+        <button className="customer-inline-button" onClick={onBack} disabled={busy}>← {t('Ganti bingkai', 'Change frame')}</button>
+        {layout.requires_event_name && completed === 0 && !busy && <button className="customer-inline-button" onClick={() => { stopCamera(); setEventConfirmed(false); window.scrollTo({ top: 0, behavior: 'auto' }) }}>{t('Ubah nama event', 'Edit event name')}</button>}
+      </nav>
+      <header className="stage-heading classic-capture-heading">
+        <h1>{t('Buat strip foto Anda.', 'Make your photo strip.')}</h1>
+        <div className="classic-capture-status">
+          <p>{t(`${completed} dari ${layout.shot_count} foto diterima`, `${completed} of ${layout.shot_count} photographs accepted`)}</p>
+          <p className="classic-retake-allowance">{t(`${retakes} dari ${CLASSIC_RETAKE_LIMIT} foto ulang tersisa`, `${retakes} of ${CLASSIC_RETAKE_LIMIT} retakes remaining`)}</p>
+        </div>
+        <p className="classic-review-guidance">{t('Tinjau 10 detik · Berikutnya berlanjut otomatis.', '10-second review · Next continues automatically.')}</p>
       </header>
-      {layout.requires_event_name && <div className="classic-event-details"><label htmlFor="classic-event-name">Nama event<input id="classic-event-name" value={eventName} maxLength={80} disabled={busy || completed > 0} placeholder="Misalnya: Pernikahan Sarah & Arif" onChange={event => { setEventName(event.target.value); updateCustomerFlow({ classicEventName: event.target.value.trim(), classicEventLayoutId: layout.id }); setMessage('') }} autoComplete="off" required aria-describedby="classic-event-help" /></label><p id="classic-event-help">Tanggal mengikuti waktu pengambilan foto dalam WIB. QR akan membuka hasil foto untuk di-download.</p></div>}
-      <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>Preview frame · {layout.name}<br />{layout.shot_count} foto dalam satu strip</figcaption></figure>
+      <figure className="classic-selected-frame"><CatalogImage key={layout.id} src={layout.preview_url} alt={`Preview frame ${layout.name}`} loading="eager" fallback="Preview frame belum tersedia" /><figcaption>{layout.name}{layout.requires_event_name && <><br />{eventName.trim()}</>}</figcaption></figure>
       <div className="camera-stage classic-camera-stage">
-        {camera ? <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setReady(true)} aria-label="Live camera preview" /> : <button type="button" className="camera-idle" onClick={openCamera} disabled={busy || opening}><span className="camera-lens" aria-hidden="true"><i /></span><strong>{opening ? 'Opening camera…' : 'Open the camera'}</strong></button>}
-        {reviewPhoto && <img className="classic-shot-preview" src={reviewPhoto.url} alt={'Photo ' + (reviewPhoto.shot + 1) + ' for review'} />}
+        {camera ? <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setReady(true)} aria-label={t('Pratinjau kamera langsung', 'Live camera preview')} /> : <button type="button" className="camera-idle" onClick={openCamera} disabled={busy || opening}><span className="camera-lens" aria-hidden="true"><i /></span><strong>{opening ? t('Membuka kamera…', 'Opening camera…') : t('Buka kamera', 'Open the camera')}</strong></button>}
+        {reviewPhoto && <img className="classic-shot-preview" src={reviewPhoto.url} alt={t('Foto ' + (reviewPhoto.shot + 1) + ' untuk ditinjau', 'Photo ' + (reviewPhoto.shot + 1) + ' for review')} />}
         {countdown && <strong className="classic-countdown" role="status">{countdown}</strong>}
       </div>
       {message && <p className="camera-message" role="alert">{message}</p>}
       {reviewPhoto ? <div className="classic-shot-review">
-        <h2>Photo {reviewPhoto.shot + 1} of {layout.shot_count}</h2>
-        <p role="status">{reviewPhoto.shot + 1 === layout.shot_count ? 'Creating your strip' : 'Next photo'} in {reviewSeconds}s</p>
+        <h2>{t(`Foto ${reviewPhoto.shot + 1} dari ${layout.shot_count}`, `Photo ${reviewPhoto.shot + 1} of ${layout.shot_count}`)}</h2>
+        <p role="status">{reviewPhoto.shot + 1 === layout.shot_count ? t('Membuat strip Anda', 'Creating your strip') : t('Foto berikutnya', 'Next photo')} {t('dalam', 'in')} {reviewSeconds}{t(' dtk', 's')}</p>
         <div className="camera-actions">
-          <button className="customer-outline-button" onClick={() => finishReview('retake')} disabled={retakes === 0}>Retake photo · {retakes} left</button>
-          <button className="customer-solid-button" onClick={() => finishReview('next')}>{reviewPhoto.shot + 1 === layout.shot_count ? 'Next · Create photo strip' : 'Next photo'} · {reviewSeconds}s</button>
+          <button className="customer-outline-button" onClick={() => finishReview('retake')} disabled={retakes === 0}>{t('Ulangi foto', 'Retake photo')} · {retakes} {t('tersisa', 'left')}</button>
+          <button className="customer-solid-button" onClick={() => finishReview('next')}>{reviewPhoto.shot + 1 === layout.shot_count ? t('Berikutnya · Buat strip foto', 'Next · Create photo strip') : t('Foto berikutnya', 'Next photo')} · {reviewSeconds}{t(' dtk', 's')}</button>
         </div>
-        {retakes === 0 && <p>No retakes left. Your next photo will still use the normal countdown.</p>}
+        {retakes === 0 && <p>{t('Tidak ada foto ulang tersisa. Foto berikutnya tetap memakai hitung mundur biasa.', 'No retakes left. Your next photo will still use the normal countdown.')}</p>}
       </div> : <div className="camera-actions">
-        {previewBlocked && <button className="customer-outline-button" onClick={playPreview}>Resume preview</button>}
-        <button className="customer-solid-button" onClick={completed === layout.shot_count || camera ? runCapture : openCamera} disabled={busy || opening || !eventReady || (camera && !ready)}>{busy ? phase === 'composing' ? 'Creating your photo strip…' : phase === 'uploading' ? 'Saving your photo…' : 'Capturing ' + (completed + 1) + ' of ' + layout.shot_count + '…' : completed === layout.shot_count ? 'Create photo strip' : camera ? 'Start photo ' + (completed + 1) + ' countdown' : 'Open camera'}</button>
-        <button className="customer-outline-button" onClick={() => inputRef.current?.click()} disabled={busy || !eventReady}>Choose {layout.shot_count} photos</button>
+        {previewBlocked && <button className="customer-outline-button" onClick={playPreview}>{t('Lanjutkan pratinjau', 'Resume preview')}</button>}
+        <button className="customer-solid-button" onClick={completed === layout.shot_count || camera ? runCapture : openCamera} disabled={busy || opening || !eventReady || (camera && !ready)}>{busy ? phase === 'composing' ? t('Membuat strip foto Anda…', 'Creating your photo strip…') : phase === 'uploading' ? t('Menyimpan foto Anda…', 'Saving your photo…') : t('Mengambil ' + (completed + 1) + ' dari ' + layout.shot_count + '…', 'Capturing ' + (completed + 1) + ' of ' + layout.shot_count + '…') : completed === layout.shot_count ? t('Buat strip foto', 'Create photo strip') : camera ? t('Mulai hitung mundur foto ' + (completed + 1), 'Start photo ' + (completed + 1) + ' countdown') : t('Buka kamera', 'Open camera')}</button>
+        <button className="customer-outline-button" onClick={() => inputRef.current?.click()} disabled={busy || !eventReady}>{t(`Pilih ${layout.shot_count} foto`, `Choose ${layout.shot_count} photos`)}</button>
       </div>}
       <input ref={inputRef} hidden multiple type="file" accept="image/*,.heic,.heif" onChange={(event) => { uploadSet(event.target.files); event.target.value = '' }} />
     </section>

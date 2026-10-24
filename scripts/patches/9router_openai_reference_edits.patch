@@ -1,0 +1,130 @@
+--- a/open-sse/handlers/imageProviders/openai.js
++++ b/open-sse/handlers/imageProviders/openai.js
+@@ -1,15 +1,42 @@
+ // OpenAI-compatible adapter (used by openai, minimax, openrouter, recraft)
++import { fetchImageAsBase64, parseDataUri } from "../../translator/concerns/image.js";
++import { MAX_IMAGE_BYTES } from "../../config/mediaConfig.js";
+ import { PROVIDER_MEDIA } from "../../providers/index.js";
+ 
+ const imageCfg = (id) => PROVIDER_MEDIA[id]?.imageConfig || {};
+ const imageUrl = (id) => imageCfg(id).baseUrl;
+ 
++function references(body) {
++  return [...(Array.isArray(body.images) ? body.images : []), ...(body.image ? [body.image] : [])];
++}
++
++async function editBody(fields, refs) {
++  const form = new FormData();
++  for (const [key, value] of Object.entries(fields)) form.append(key, String(value));
++  for (const [index, ref] of refs.entries()) {
++    const url = typeof ref === "string" ? ref : ref?.image_url;
++    if (typeof url !== "string") throw new Error("Invalid image reference");
++    const data = /^https?:\/\//i.test(url) ? await fetchImageAsBase64(url) : { url };
++    const parsed = data && parseDataUri(data.url);
++    if (!parsed || !["image/png", "image/jpeg", "image/webp"].includes(parsed.mimeType)) throw new Error("Image reference is unavailable or unsupported");
++    const encoded = parsed.base64.replace(/\s/g, "");
++    if (!encoded || encoded.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error("Invalid image reference encoding");
++    const bytes = Buffer.from(encoded, "base64");
++    if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) throw new Error("Image reference exceeds size limit");
++    const ext = parsed.mimeType === "image/jpeg" ? "jpg" : parsed.mimeType.split("/")[1];
++    form.append("image[]", new Blob([bytes], { type: parsed.mimeType }), `input-${index}.${ext}`);
++  }
++  return form;
++}
++
+ export default function createOpenAIAdapter(providerId) {
+   const cfg = imageCfg(providerId);
+   return {
+-    buildUrl: () => imageUrl(providerId),
+-    buildHeaders: (creds) => {
++    buildUrl: (_model, _creds, body = {}) => providerId === "openai" && references(body).length
++      ? imageUrl(providerId).replace(/\/generations$/, "/edits") : imageUrl(providerId),
++    buildHeaders: (creds, requestBody) => {
+       const headers = { "Content-Type": "application/json", ...(cfg.headers || {}) };
++      if (requestBody instanceof FormData) delete headers["Content-Type"];
+       const key = creds?.apiKey || creds?.accessToken;
+       if (key) headers["Authorization"] = `Bearer ${key}`;
+       return headers;
+@@ -20,6 +47,12 @@
+       if (quality) full.quality = quality;
+       if (style) full.style = style;
+       if (response_format) full.response_format = response_format;
++      if (providerId === "openai" && references(body).length) {
++        if (!/^(gpt-image-|chatgpt-image-)/.test(model)) throw new Error("This model does not support GPT Image reference edits");
++        delete full.response_format;
++        for (const key of ["output_format", "output_compression", "background", "input_fidelity"]) if (body[key] !== undefined) full[key] = body[key];
++        return editBody(full, references(body));
++      }
+       // bodyFields whitelist (e.g. xAI accepts only model/prompt/n/response_format)
+       if (Array.isArray(cfg.bodyFields)) {
+         const req = {};
+--- a/open-sse/handlers/imageGenerationCore.js
++++ b/open-sse/handlers/imageGenerationCore.js
+@@ -145,7 +145,7 @@
+   let requestBody;
+ 
+   try {
+-    url = adapter.buildUrl(model, credentials);
++    url = adapter.buildUrl(model, credentials, body);
+     requestBody = await adapter.buildBody(model, body);
+     headers = adapter.buildHeaders(credentials, requestBody, model, body);
+   } catch (error) {
+@@ -195,7 +195,7 @@
+       try {
+         const retryBody = await adapter.buildBody(model, body);
+         const retryHeaders = adapter.buildHeaders(credentials, retryBody, model, body);
+-        const retryUrl = adapter.buildUrl(model, credentials);
++        const retryUrl = adapter.buildUrl(model, credentials, body);
+         providerResponse = await fetchUpstream(retryUrl, {
+           method: "POST",
+           headers: retryHeaders,
+--- /dev/null
++++ b/tests/unit/openai-reference-edits.test.js
+@@ -0,0 +1,47 @@
++import { describe, it, expect, vi, afterEach } from "vitest";
++const fetchReference = vi.hoisted(() => vi.fn());
++vi.mock("../../open-sse/translator/concerns/image.js", async importOriginal => ({ ...(await importOriginal()), fetchImageAsBase64: fetchReference }));
++import { handleImageGenerationCore } from "../../open-sse/handlers/imageGenerationCore.js";
++import createAdapter from "../../open-sse/handlers/imageProviders/openai.js";
++const a = createAdapter("openai"), image = "data:image/png;base64,iVBORw0KGgo=";
++afterEach(() => { fetchReference.mockReset(); vi.restoreAllMocks(); });
++describe("OpenAI reference editing", () => {
++  it("routes reference images to edits, preserves both files and Low", async () => {
++    const body = { prompt: "same prompt", images: [image, image], quality: "low", size: "1024x1536", response_format: "b64_json" };
++    expect(a.buildUrl("gpt-image-2.5-flare", {}, body)).toBe("https://api.openai.com/v1/images/edits");
++    const form = await a.buildBody("gpt-image-2.5-flare", body);
++    expect(form).toBeInstanceOf(FormData); expect(form.get("quality")).toBe("low");
++    expect(form.get("prompt")).toBe("same prompt"); expect(form.get("response_format")).toBeNull();
++    expect(form.getAll("image[]")).toHaveLength(2);
++    expect(a.buildHeaders({ apiKey: "synthetic" }, form)).toEqual({ Authorization: "Bearer synthetic" });
++    expect(Buffer.from(await form.getAll("image[]")[0].arrayBuffer()).toString("base64")).toBe("iVBORw0KGgo=");
++  });
++  it("orchestrator forwards multipart reference edits", async () => {
++    const upstream = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ created: 1, data: [{ b64_json: "iVBORw0KGgo=" }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
++    const result = await handleImageGenerationCore({ body: { prompt: "x", images: [image, image], quality: "low", size: "1024x1536" }, modelInfo: { provider: "openai", model: "gpt-image-2.5-flare" }, credentials: { apiKey: "synthetic" } });
++    expect(result.success).toBe(true); expect(upstream).toHaveBeenCalledTimes(1);
++    const [url, init] = upstream.mock.calls[0];
++    expect(url).toBe("https://api.openai.com/v1/images/edits");
++    expect(init.body).toBeInstanceOf(FormData); expect(init.body.getAll("image[]")).toHaveLength(2);
++    expect(init.headers["Content-Type"]).toBeUndefined();
++  });
++  it("accepts image URL through the existing protected fetch helper", async () => {
++    fetchReference.mockResolvedValue({ url: image });
++    const form = await a.buildBody("gpt-image-2.5-sunburst", { prompt: "x", image: "https://example.com/reference.png", quality: "low" });
++    expect(fetchReference).toHaveBeenCalledWith("https://example.com/reference.png"); expect(form.getAll("image[]")).toHaveLength(1);
++  });
++  it("fails if a reference cannot be retrieved rather than silently generating without it", async () => {
++    fetchReference.mockResolvedValue(null);
++    await expect(a.buildBody("gpt-image-2.5-flare", { image: "https://example.com/missing.png" })).rejects.toThrow("reference");
++    await expect(a.buildBody("gpt-image-2.5-flare", { images: ["data:image/png;base64,!!"] })).rejects.toThrow("encoding");
++  });
++  it("keeps text-only generation on its original endpoint and JSON transport", () => {
++    const body = { prompt: "x", quality: "low" };
++    expect(a.buildUrl("gpt-image-2.5-flare", {}, body)).toBe("https://api.openai.com/v1/images/generations");
++    expect(a.buildBody("gpt-image-2.5-flare", body)).toEqual({ model: "gpt-image-2.5-flare", prompt: "x", n: 1, size: "1024x1024", quality: "low" });
++  });
++  it("keeps other providers unchanged", () => {
++    const adapter = createAdapter("openrouter");
++    expect(adapter.buildBody("model", { prompt: "x", images: [image] })).not.toBeInstanceOf(FormData);
++  });
++});

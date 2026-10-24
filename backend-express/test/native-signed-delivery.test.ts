@@ -37,7 +37,7 @@ test('photo/result delivery checks ownership and uses API fallback for legacy st
   const identity = { guest: { id: 'owner' },account: null } as never;
   assert.equal((await uploads.delivery(id,identity,new Date(Date.now()+30000),'/api/v1/photos')).delivery,'minio');
   await assert.rejects(uploads.delivery(id,{ guest: null } as never)); assert.equal(signedCalls,1);
-  const results = new CustomerResultService({} as never,{ resultsDir: '/unused',claimHours: 24,publicOrigin: '',production: false },signer as never);
+  const results = new CustomerResultService({ expiresAt: async (result: { created_at: Date }) => new Date(result.created_at.getTime() + 14 * 86400000) } as never,{ resultsDir: '/unused',claimHours: 24,publicOrigin: '',production: false },signer as never);
   results.owned = async () => ({ result: { id,storage_path: 'legacy-file',created_at:new Date() } }) as never;
   assert.deepEqual(await results.delivery(id,identity),{ url: `/api/results/${id}/image`,expires_at: null,delivery: 'api' });
 });

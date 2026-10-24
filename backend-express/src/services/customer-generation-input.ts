@@ -4,6 +4,8 @@ import { AppError } from '../lib/errors.js';
 
 const id = z.string().min(1);
 export const generationInput = z.object({
+  folder_id: z.string().regex(/^[a-f0-9]{32}$/).nullable().optional(),
+  lane: z.enum(['standard', 'fast']).optional(),
   upload_id: id, mode: z.enum(['CLASSIC', 'BASIC', 'ADVANCED']),
   template_id: id.nullish(), experience_id: id.nullish(), layout_id: id.nullish(), frame_style_id: id.nullish(),
   capture_upload_ids: z.array(z.string()).default([]), ornament_ids: z.array(z.string()).default([]),
@@ -12,14 +14,13 @@ export const generationInput = z.object({
 }).strict().superRefine((value, context) => {
   const invalid = (message: string) => context.addIssue({ code: 'custom', message });
   if (value.mode === 'CLASSIC') {
+    if (value.lane && value.lane !== 'standard') invalid('Classic does not use an AI lane');
     if (!value.layout_id || !value.capture_upload_ids.length || value.upload_id !== value.capture_upload_ids[0]) invalid('Classic layout and ordered captures are required');
     if (value.template_id || value.experience_id || value.frame_style_id || value.ornament_ids.length) invalid('AI selections are not accepted for Classic');
   }
   if (value.mode === 'BASIC' && (!value.template_id || value.experience_id)) invalid('Basic requires only a template');
   if (value.mode === 'ADVANCED' && (!value.experience_id || value.template_id)) invalid('Advanced requires only an experience');
   if (value.mode !== 'CLASSIC' && (value.layout_id || value.capture_upload_ids.length)) invalid('Captures are only accepted for Classic');
-  if (value.event_name && (value.mode !== 'CLASSIC' || value.layout_id !== 'classic-floral-event-001')) invalid('Event name is only accepted for the event strip');
-  if (value.captured_at && (value.mode !== 'CLASSIC' || value.layout_id !== 'classic-floral-event-001')) invalid('Capture time is only accepted for the event strip');
   if (value.mode !== 'ADVANCED' && (value.frame_style_id || value.ornament_ids.length)) invalid('Frame styles and ornaments are only accepted for Advanced');
 });
 export type GenerationInput = z.infer<typeof generationInput>;

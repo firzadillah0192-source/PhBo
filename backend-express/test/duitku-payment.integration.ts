@@ -1,0 +1,64 @@
+// Explicit disposable database only; never run against production.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import pg from 'pg';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PaymentModel } from '../src/models/payment.model.js';
+import { PaymentService } from '../src/services/payment.service.js';
+import type { SandboxGateway } from '../src/services/duitku-sandbox.service.js';
+
+test('real PostgreSQL migration, concurrent checkout and settlement, sandbox isolation and audit',async()=>{
+  const connectionString=process.env.TEST_DATABASE_URL;
+  assert.ok(connectionString,'TEST_DATABASE_URL required');
+  const parsed=new URL(connectionString);
+  assert.equal(parsed.pathname,'/nxbooth_express_duitku_test');
+  assert.equal(parsed.searchParams.get('host'),'/tmp/nxbooth-duitku-postgres-test-socket');
+  const sql=new pg.Client({connectionString});await sql.connect();
+  const db=new PrismaClient({adapter:new PrismaPg({connectionString})});
+  try {
+    await sql.query('DROP TABLE IF EXISTS payment_transactions,admin_audit_log,credit_wallets,credit_ledger,accounts');
+    await sql.query(`CREATE TABLE accounts(id varchar(32) PRIMARY KEY,email text,ai_quota_total int DEFAULT 50,ai_quota_used int DEFAULT 0,ai_quota_reserved int DEFAULT 0);
+      CREATE TABLE credit_wallets(account_id varchar(32),free_remaining int,top_up_remaining int);
+      CREATE TABLE credit_ledger(id text,amount int);
+      CREATE TABLE admin_audit_log(id varchar(32) PRIMARY KEY,admin_actor_id varchar(64),action varchar(96),target_type varchar(64),target_id varchar(128),reason text,metadata_json text,created_at timestamptz DEFAULT now());
+      INSERT INTO accounts(id,email) VALUES('owner','synthetic@example.invalid'),('other','other@example.invalid');
+      INSERT INTO credit_wallets VALUES('owner',50,0);`);
+    const migration=await readFile(new URL('../../backend/migrations/023_duitku_sandbox_payments.sql',import.meta.url),'utf8');
+    await sql.query(migration);await sql.query(migration);
+    const store=new PaymentModel(db),expiry=new Date(Date.now()+3600000);
+    const rows=await Promise.all(Array.from({length:12},()=>store.create('owner','repeatable-test-key',100,expiry)));
+    assert.equal(new Set(rows.map(r=>r.id)).size,1);
+    const first=rows[0];
+    await assert.rejects(store.create('owner','repeatable-test-key',200,expiry),{code:'IDEMPOTENCY_CONFLICT'});
+    const claims=await Promise.all(Array.from({length:12},()=>store.claimInvoice(first.id)));assert.equal(claims.filter(Boolean).length,1);
+    await store.invoice(first.id,'DTESTREF','https://app-sandbox.duitku.com/redirect_checkout?reference=DTESTREF');
+    const checks=await Promise.all(Array.from({length:12},()=>store.claimVerification(first.id)));assert.equal(checks.filter(Boolean).length,1);
+    const paid=await Promise.all(Array.from({length:12},()=>store.settle(first.id,'DTESTREF','PAID',true)));
+    assert.equal(new Set(paid.map(r=>r.sandbox_credited_at!.getTime())).size,1);
+    assert.equal(await store.sandboxBalance('owner'),100);assert.equal(await store.sandboxBalance('other'),0);
+    await store.settle(first.id,'DTESTREF','FAILED',false);assert.equal((await store.find(first.id))!.status,'PAID');assert.equal(await store.sandboxBalance('owner'),100);
+    await assert.rejects(store.settle(first.id,'WRONG','PAID',true),{code:'PAYMENT_REFERENCE_MISMATCH'});
+    await store.invoiceError(first.id);assert.equal((await store.find(first.id))!.error_code,null);
+    await store.auditCheck(first.id,'admin-test');assert.equal((await sql.query('SELECT action FROM admin_audit_log')).rows[0].action,'payment.sandbox.check');
+    const list=await store.list({page:1,page_size:25,status:'PAID',search:'synthetic'});assert.equal(list.total,1);assert.equal(list.transactions[0].user_email,'synthetic@example.invalid');
+    assert.equal((await store.list({page:1,page_size:25,account_id:'other'})).total,0);
+    assert.equal((await store.list({page:1,page_size:25,search:"' OR 1=1 --"})).total,0);
+    const old=await store.create('owner','expired-request-key',200,new Date(Date.now()-3600000));assert.equal(await store.claimInvoice(old.id),false);
+    assert.equal((await store.settle(old.id,'EXPIREDREF','PENDING',false)).status,'EXPIRED');
+    assert.equal((await store.settle(old.id,'EXPIREDREF','PAID',true)).status,'PAID');assert.equal(await store.sandboxBalance('owner'),300);
+    let statusCalls=0;
+    const gateway:SandboxGateway={available:()=>true,verifyCallback:()=>true,invoice:async()=>{throw new Error('unused');},status:async(order)=>{statusCalls++;return {merchantOrderId:order,reference:'ENDTOENDREF',amount:30000,statusCode:'00'};}};
+    const service=new PaymentService(store,gateway,{enabled:true,publicOrigin:'https://nxbooth.example'});
+    const third=await store.create('owner','end-to-end-request',300,expiry);await store.invoice(third.id,'ENDTOENDREF','https://app-sandbox.duitku.com/redirect_checkout?reference=ENDTOENDREF');
+    const callback={merchantCode:'DTEST',merchantOrderId:third.merchant_order_id,reference:'ENDTOENDREF',amount:'30000',signature:'synthetic',resultCode:'00'};
+    const results=await Promise.allSettled(Array.from({length:10},()=>service.callback(callback)));assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(statusCalls,1);
+    await service.callback(callback);assert.equal(statusCalls,1);assert.equal(await store.sandboxBalance('owner'),600);
+    assert.deepEqual((await sql.query('SELECT free_remaining,top_up_remaining FROM credit_wallets')).rows,[{free_remaining:50,top_up_remaining:0}]);
+    assert.equal((await sql.query('SELECT count(*)::int AS n FROM credit_ledger')).rows[0].n,0);
+    assert.deepEqual((await sql.query("SELECT ai_quota_total,ai_quota_used,ai_quota_reserved FROM accounts WHERE id='owner'")).rows,[{ai_quota_total:50,ai_quota_used:0,ai_quota_reserved:0}]);
+    await assert.rejects(sql.query("UPDATE payment_transactions SET amount_rupiah=1 WHERE id=$1",[first.id]));
+    await assert.rejects(sql.query("UPDATE payment_transactions SET environment='production' WHERE id=$1",[first.id]));
+  } finally { await db.$disconnect();await sql.end(); }
+});

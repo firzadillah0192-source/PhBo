@@ -8,7 +8,7 @@ export type TemplateReference = { bytes: Buffer; width: number; height: number }
 export interface NativeAIProvider {
   readonly name: string;
   available(): boolean;
-  generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference): Promise<ProviderImage>;
+  generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference, quality?: 'low', options?: { transparentBackground?: boolean }): Promise<ProviderImage>;
 }
 export class ProviderFailure extends AppError {
   constructor(code: string, message: string, readonly meta: OperationalMeta = {}) { super(502, code, message); }
@@ -41,17 +41,37 @@ async function readBounded(response: Response, maximum: number) {
   return Buffer.concat(chunks, size);
 }
 
+// gpt-image models return base64 by default and reject the legacy `response_format` field with HTTP 400 ("Unknown parameter").
+const returnsBase64ByDefault = (model: string) => /(^|\/)(chatgpt-image|gpt-image)/i.test(model);
+
+// Short, secret-free excerpt of the provider's error body, kept only in the internal provider run record.
+async function upstreamDetail(response: Response): Promise<string | undefined> {
+  try {
+    const chunks: Buffer[] = []; let size = 0;
+    for await (const chunk of response.body ?? []) { chunks.push(Buffer.from(chunk)); size += chunk.length; if (size >= 4096) break; }
+    await response.body?.cancel().catch(() => undefined);
+    const raw = Buffer.concat(chunks).toString('utf8');
+    let text = raw;
+    try { const body = JSON.parse(raw) as { error?: unknown; message?: unknown }; const error = body.error;
+      text = typeof error === 'string' ? error : error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string' ? (error as { message: string }).message
+        : typeof body.message === 'string' ? body.message : raw; } catch { /* plain text */ }
+    const clean = text.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/Bearer\s+\S+/gi, 'Bearer [redacted]').replace(/\bsk-[A-Za-z0-9_-]{8,}/g, '[redacted]')
+      .replace(/[A-Za-z0-9+/=_-]{80,}/g, '[long value]').replace(/\s+/g, ' ').trim().slice(0, 300);
+    return clean || undefined;
+  } catch { return undefined; }
+}
+
 // Application adapter only. Routing, credentials, rotation and 9Router itself
 // are untouched. Input normalization remains the existing Python image function.
 export class NativeNineRouterProvider implements NativeAIProvider {
   readonly name = '9router';
   constructor(private readonly config: { baseUrl: string; key: string; timeoutMs: number; resultOrigins: string[] }, private readonly fetcher: typeof fetch = fetch) {}
   available() { return Boolean(this.config.baseUrl.trim() && this.config.key.trim()); }
-  async generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference): Promise<ProviderImage> {
+  async generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference, quality?: 'low', options?: { transparentBackground?: boolean }): Promise<ProviderImage> {
     if (!this.available()) throw new ProviderFailure('AI_PROVIDER_NOT_CONNECTED', 'The AI provider is not connected.', { upstream_status: 'NOT_CONNECTED', retry_count: 0 });
     const signal = AbortSignal.timeout(this.config.timeoutMs);
     if (template && !image) throw new ProviderFailure('BASIC_INPUT_INVALID', 'An identity photo is required.');
-    const payload = { model, prompt, size: template ? `${template.width}x${template.height}` : '1024x1024', n: 1, response_format: 'b64_json',
+    const payload = { model, prompt, size: template ? `${template.width}x${template.height}` : '1024x1024', n: 1, ...(quality ? { quality } : {}), ...(options?.transparentBackground ? { background: 'transparent', output_format: 'png' } : {}), ...(returnsBase64ByDefault(model) ? {} : { response_format: 'b64_json' }),
       ...(template ? { images: [`data:image/png;base64,${template.bytes.toString('base64')}`, `data:image/jpeg;base64,${image!.toString('base64')}`] }
         : image ? { image: `data:image/jpeg;base64,${image.toString('base64')}` } : {}) };
     let response: Response;
@@ -59,7 +79,7 @@ export class NativeNineRouterProvider implements NativeAIProvider {
       headers: { Authorization: `Bearer ${this.config.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); }
     catch { throw new ProviderFailure('AI_PROVIDER_ERROR', 'The AI provider could not be reached.', { upstream_status: signal.aborted ? 'TIMEOUT' : 'CONNECTION_ERROR', retry_count: 0 }); }
     const meta: OperationalMeta = { ...responseOperationalMeta(response.headers), requested_model: model };
-    if (response.status !== 200) { await response.body?.cancel(); throw new ProviderFailure('AI_PROVIDER_ERROR', `The AI provider returned HTTP ${response.status}.`, { ...meta, upstream_status: 'FAILED', http_status: response.status }); }
+    if (response.status !== 200) { const detail = await upstreamDetail(response); throw new ProviderFailure('AI_PROVIDER_ERROR', `The AI provider returned HTTP ${response.status}.`, { ...meta, upstream_status: 'FAILED', http_status: response.status, ...(detail ? { upstream_detail: detail } : {}) }); }
     try {
       const text = (await readBounded(response, 36 * 1024 * 1024)).toString('utf8');
       let body: unknown;

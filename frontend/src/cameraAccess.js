@@ -1,21 +1,23 @@
-export function cameraFailureMessage(error) {
+import { tr } from './i18n.js'
+
+export function cameraFailureMessage(error, language = 'en') {
   switch (error?.name) {
     case 'NotAllowedError':
     case 'SecurityError':
-      return 'Camera permission is blocked. Allow camera access in your browser’s site settings, then try again. You can also upload a photo.'
+      return tr('Izin kamera diblokir. Izinkan akses kamera di pengaturan situs browser Anda, lalu coba lagi. Anda juga bisa mengunggah foto.', 'Camera permission is blocked. Allow camera access in your browser’s site settings, then try again. You can also upload a photo.', language)
     case 'NotFoundError':
-      return 'No camera was found. Connect a camera or upload a photo.'
+      return tr('Kamera tidak ditemukan. Sambungkan kamera atau unggah foto.', 'No camera was found. Connect a camera or upload a photo.', language)
     case 'NotReadableError':
     case 'TrackStartError':
-      return 'The camera could not start. Close other apps using the camera, then try again or upload a photo.'
+      return tr('Kamera tidak bisa dimulai. Tutup aplikasi lain yang memakai kamera, lalu coba lagi atau unggah foto.', 'The camera could not start. Close other apps using the camera, then try again or upload a photo.', language)
     case 'OverconstrainedError':
-      return 'This camera cannot use the requested settings. Try again or upload a photo.'
+      return tr('Kamera ini tidak mendukung pengaturan yang diminta. Coba lagi atau unggah foto.', 'This camera cannot use the requested settings. Try again or upload a photo.', language)
     case 'CameraUnsupported':
-      return 'Live camera preview is unavailable in this browser. Open NXBooth in Safari or Chrome, or take or choose a photo below.'
+      return tr('Pratinjau kamera langsung tidak tersedia di browser ini. Buka NXBooth di Safari atau Chrome, atau ambil/pilih foto di bawah.', 'Live camera preview is unavailable in this browser. Open NXBooth in Safari or Chrome, or take or choose a photo below.', language)
     case 'CameraInsecure':
-      return 'Camera access requires HTTPS. Open NXBooth using its secure address, or upload a photo.'
+      return tr('Akses kamera memerlukan HTTPS. Buka NXBooth lewat alamat amannya, atau unggah foto.', 'Camera access requires HTTPS. Open NXBooth using its secure address, or upload a photo.', language)
     default:
-      return 'The camera could not start. Try again or upload a photo.'
+      return tr('Kamera tidak bisa dimulai. Coba lagi atau unggah foto.', 'The camera could not start. Try again or upload a photo.', language)
   }
 }
 

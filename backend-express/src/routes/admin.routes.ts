@@ -3,6 +3,9 @@ import multer from 'multer';
 import { rateLimit } from 'express-rate-limit';
 import type { NativeAdminServices } from '../controllers/admin.controller.js';
 import { adminController } from '../controllers/admin.controller.js';
+import { labRoutes } from '../lab/routes.js';
+import { generationApiRoutes } from './generation-api.routes.js';
+import { paymentAdminRoutes } from './payment.routes.js';
 export function nativeAdminRoutes(services:NativeAdminServices,maximum:number){
   const router=Router(),c=adminController(services);
   // Authenticate before allocating upload memory.
@@ -26,5 +29,9 @@ export function nativeAdminRoutes(services:NativeAdminServices,maximum:number){
   router.get('/credits/ledger',c.ledger);router.get('/plans',c.plans);router.post('/plans',c.createPlan);router.patch('/plans/:id',c.patchPlan);router.get('/subscriptions',c.subscriptions);
   router.get('/generations',c.generations);router.get('/generations/:id',c.generation);router.post('/result-claims/:id/revoke',c.revokeClaim);router.get('/audit',c.audit);router.get('/admin-users',c.adminUsers);router.post('/admin-users',c.createAdmin);router.patch('/admin-users/:id',c.patchAdmin);router.get('/settings',c.settings);
   router.get('/usage/overview',c.usageOverview);router.get('/usage/users',c.usageUsers);router.get('/usage/users/:id',c.usageUser);router.get('/usage/users/:id/credits',c.usageCredits);router.get('/usage/users/:id/generations',c.usageUserGenerations);router.get('/usage/generations',c.usageGenerations);router.get('/usage/generations/:id',c.usageGeneration);router.get('/usage/generations/:id/result/image',c.photo());router.get('/usage/generations/:id/result/download',c.photo(true));router.delete('/usage/generations/:id/result',c.deletePhoto);router.get('/usage/providers/overview',c.providerOverview);router.get('/usage/providers/accounts',c.providerAccounts);
+  // AI Provider Lab: isolated, superadmin-only; mounted only when the Lab service is configured.
+  if(services.lab)router.use('/lab',labRoutes(services.auth,services.lab,maximum));
+  if(services.apiRoutes)router.use('/generation-api-routes',generationApiRoutes(services.auth,services.apiRoutes));
+  if(services.payments)router.use('/payments',paymentAdminRoutes(services.auth,services.payments));
   return router;
 }

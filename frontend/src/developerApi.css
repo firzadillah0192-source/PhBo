@@ -1,0 +1,25 @@
+.developer-api {color:var(--ink,#211d19);overflow-wrap:anywhere;min-width:0}
+.developer-api h1 {font-size:clamp(1.7rem,4vw,3rem);line-height:1.15}
+.developer-api a {color:inherit;text-decoration:underline;text-underline-offset:3px}
+.developer-api .account-panel {margin-block:20px;padding:24px;background:var(--paper,#fff9ed);color:var(--ink,#211d19)}
+.developer-api label {display:grid;gap:8px;font-weight:650}
+.developer-api input,.developer-api select,.developer-api textarea {font:inherit;min-width:0;width:100%;padding:12px;border:2px solid currentColor;border-radius:8px;background:var(--white,#fff);color:var(--ink,#211d19);box-sizing:border-box}
+.developer-api input:focus-visible,.developer-api select:focus-visible,.developer-api textarea:focus-visible,.developer-api button:focus-visible,.developer-api a:focus-visible {outline:3px solid #be6414;outline-offset:3px}
+.developer-api textarea {min-height:110px;resize:vertical;word-break:break-all}
+.api-key-form {display:grid;gap:16px}.developer-api .api-checkbox {display:flex;align-items:center}.developer-api input[type=checkbox] {width:20px;height:20px;flex-shrink:0}
+.api-key-row {display:grid;gap:10px;border-top:1px solid currentColor;padding-block:20px}.api-actions {display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+.developer-api pre {max-width:100%;white-space:pre-wrap;word-break:break-word;background:#211d19;color:#fff9ed;border-radius:8px;padding:16px;font-size:.85rem}
+.api-docs {min-height:100vh;padding:24px max(16px,calc((100vw - 960px)/2));background:var(--paper,#fff9ed)}
+.api-docs nav {display:flex;gap:20px;justify-content:space-between;flex-wrap:wrap;margin-bottom:40px}.api-endpoints article {padding-block:15px;border-bottom:1px solid currentColor}
+@media(max-width:480px){.developer-api .account-panel {padding:16px}.api-actions button {flex:1}.api-docs {padding-inline:16px}}
+.api-input-preview {display:block;max-width:220px;width:100%;max-height:220px;object-fit:contain;border-radius:8px}
+.developer-dashboard {border-block:2px solid currentColor;padding-block:24px;margin-block:24px}
+.api-dashboard-heading {display:flex;align-items:start;justify-content:space-between;gap:16px;flex-wrap:wrap}.api-dashboard-heading p{max-width:620px}
+.api-dashboard-filters {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-block:20px}
+.api-dashboard-cards {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.developer-api .api-dashboard-card {margin:0;padding:18px;display:grid;gap:10px}.api-dashboard-card strong{font-size:1.4rem}
+.api-dashboard-table {overflow-x:auto;max-width:100%;margin-top:16px}.api-dashboard-table table{border-collapse:collapse;min-width:500px;width:100%;text-align:left}.api-dashboard-table th,.api-dashboard-table td{padding:12px;border-bottom:1px solid currentColor;vertical-align:top}.api-dashboard-table small{display:block;max-width:200px;overflow-wrap:anywhere}
+.api-history-list {display:grid;gap:12px}.developer-api .api-history-job{margin:0;padding:18px;display:grid;gap:10px}.api-history-job>div{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}.api-history-job code{overflow-wrap:anywhere}.developer-dashboard details>summary{cursor:pointer;padding-block:16px;font-weight:700}
+@media(max-width:700px){.api-dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.api-dashboard-cards,.api-dashboard-filters{grid-template-columns:minmax(0,1fr)}}
+
+.developer-webhooks{display:grid;gap:14px}.developer-webhooks form,.developer-webhooks label{display:grid;gap:8px}.developer-webhooks input,.developer-webhooks select{max-width:100%;min-width:0}.developer-webhooks code{overflow-wrap:anywhere}.developer-webhooks .api-checkbox{display:flex;align-items:center}

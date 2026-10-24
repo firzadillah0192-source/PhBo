@@ -1,0 +1,67 @@
+{
+  "id": "classic-floral-event-001",
+  "name": "Blue Floral Event",
+  "print_profile": "classic-strip-2x6-v1",
+  "canvas_width": 1200,
+  "canvas_height": 3600,
+  "shot_count": 3,
+  "slots": [
+    {
+      "x": 60,
+      "y": 106,
+      "width": 1080,
+      "height": 844,
+      "fit": "cover"
+    },
+    {
+      "x": 60,
+      "y": 950,
+      "width": 1080,
+      "height": 844,
+      "fit": "cover"
+    },
+    {
+      "x": 60,
+      "y": 1794,
+      "width": 1080,
+      "height": 844,
+      "fit": "cover"
+    }
+  ],
+  "blank_asset": "blank.png",
+  "preview_asset": "preview.png",
+  "event_name_font": "fonts/GreatVibes-Regular.ttf",
+  "date_font": "fonts/CormorantGaramond.ttf",
+  "timezone": "Asia/Jakarta",
+  "preview_sample": {
+    "event_name": "Sarah & Arif",
+    "date": "10 Oktober 2026",
+    "qr_destination": "https://nxbooth.gennexbyte.com/",
+    "qr_is_example": true
+  },
+  "footer_bounds": {
+    "x": 160,
+    "y": 2710,
+    "width": 880,
+    "height": 800
+  },
+  "artwork_source": "artwork-source-v2.png",
+  "branding": {
+    "text": "NXBooth",
+    "font": "fonts/CormorantGaramond.ttf",
+    "variant": "SemiBold",
+    "size": 70,
+    "center": [
+      600,
+      53
+    ]
+  },
+  "photo_window": {
+    "x": 60,
+    "y": 106,
+    "width": 1080,
+    "height": 2532
+  },
+  "event_personalization": true,
+  "frame_geometry": "single-window-v4"
+}

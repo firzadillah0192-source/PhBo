@@ -1,0 +1,403 @@
+/* Customer screens size previews from the available viewport, keeping controls
+   in normal flow so small screens, keyboards and larger text remain usable. */
+@media screen {
+  .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account']) { display: flex; flex-direction: column; height: 100svh; overflow: visible; }
+  .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-nav,
+  .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-progress { flex-shrink: 0; }
+  .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-main { flex: 1; min-height: 0; width: 100%; }
+  .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-main>:is(.photo-stage, .review-stage, .result-stage) { height: 100%; }
+  .customer-app.retro-app>.creation-chooser { flex: 1; min-height: 0; }
+  .retro-app { --studio-header-height: 84px; }
+  .retro-app .landing-hero {
+    min-height: calc(100svh - var(--studio-header-height));
+    padding-block: 24px;
+    gap: 28px;
+  }
+  .retro-app .landing-hero-art {
+    width: min(100%, calc(100svh - var(--studio-header-height) - 64px));
+    justify-self: end;
+    margin: 0;
+  }
+  .retro-app .creation-chooser { padding-block: 16px; }
+  .retro-app .creation-chooser>header { margin: 16px auto; }
+  .retro-app .creation-chooser h1 { font-size: clamp(26px, 3.4vw, 42px); }
+  .retro-app .creation-chooser>header>p { margin-top: 8px; }
+  .retro-app .creation-chooser .landing-mode-image {
+    aspect-ratio: auto;
+    height: clamp(60px, calc(100svh - 610px), 120px);
+    min-height: 0;
+  }
+  .retro-app .creation-chooser .landing-mode-copy { padding-top: 12px; }
+  .retro-app .creation-chooser .landing-image-fallback { min-height: 0; padding: 4px; font-size: 12px; overflow-wrap: anywhere; }
+  .retro-app .creation-chooser .landing-mode-copy>p:not(.landing-eyebrow) { margin-block: 8px; line-height: 1.4; }
+  .retro-app .creation-chooser .landing-mode-copy ul { margin-bottom: 10px; padding-block: 0; }
+  .retro-app .creation-footnote { margin-top: 16px; }
+  .retro-app .creation-resume { padding: 4px 12px; margin-bottom: 12px; }
+  .retro-app .customer-progress {
+    padding-top: 10px;
+    grid-template-columns: auto 1fr;
+    gap: 6px 16px;
+  }
+  .retro-app .customer-progress>span { grid-row: 1; align-self: center; }
+  .retro-app .customer-progress>i { grid-column: 1/-1; }
+  .retro-app .customer-main { min-height: 0; padding: 12px 24px 20px; }
+  .retro-app .capture-navigation, .retro-app .result-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+  .retro-app .classic-capture {
+    display: grid;
+    grid-template-columns: minmax(150px, .32fr) minmax(0, 1fr);
+    gap: 12px 24px;
+    margin: 0 auto;
+    height: calc(100svh - 178px);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  .retro-app .classic-capture>.capture-navigation,
+  .retro-app .classic-capture>.stage-heading { grid-column: 1/-1; }
+  .retro-app .classic-capture>.stage-heading { margin: 0; max-width: none; }
+  .retro-app .classic-capture .stage-heading h1 { font-size: clamp(24px, 3vw, 38px); margin: 4px 0; }
+  .retro-app .classic-capture .stage-heading p { margin: 4px auto; font-size: 12px; line-height: 1.4; }
+  .retro-app .classic-capture>.classic-capture-heading { display: grid; gap: 4px; }
+  .retro-app .classic-capture .classic-capture-heading h1 { font-size: clamp(20px, 2vw, 26px); margin: 0; }
+  .retro-app .classic-capture-status { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 16px; }
+  .retro-app .classic-capture .classic-capture-heading p { margin: 0; font-size: 11px; line-height: 1.3; }
+  .retro-app .classic-capture-heading>.classic-review-guidance { justify-self: center; }
+  .retro-app .classic-capture .classic-camera-stage video { object-fit: contain; }
+  .retro-app .classic-selected-frame {
+    grid-column: 1;
+    grid-row: 3/6;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 10px;
+    align-self: stretch;
+    align-content: center;
+    gap: 8px;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .retro-app .classic-selected-frame img { height: 100%; min-height: 0; }
+  .retro-app .classic-selected-frame figcaption { font-size: 12px; overflow-wrap: anywhere; }
+  .retro-app .classic-capture .camera-stage {
+    grid-column: 2;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+  .retro-app .classic-capture>.camera-actions,
+  .retro-app .classic-capture>.classic-shot-review,
+  .retro-app .classic-capture>.camera-message { grid-column: 2; margin: 0; }
+  .retro-app .classic-shot-review h2 { margin: 0; font-size: 18px; }
+  .retro-app .classic-shot-review p { margin: 4px 0; }
+  .retro-app .classic-shot-review .camera-actions { margin-top: 8px; }
+  .retro-app .classic-event-stage>.classic-event-details { grid-column: 2; grid-row: 3; width: 100%; margin: 0; align-self: center; }
+  .retro-app .classic-event-stage>.camera-actions { grid-row: 4; align-self: start; }
+  .retro-app .classic-event-stage .classic-selected-frame { grid-row: 3/5; }
+  .retro-app .stage-back { display: flex; width: fit-content; margin: 0 0 12px; }
+  .retro-app .photo-stage:not(.classic-capture), .retro-app .review-stage {
+    display: grid;
+    height: calc(100svh - 182px);
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    gap: 10px;
+    margin: 0 auto;
+  }
+  .retro-app .photo-stage:not(.classic-capture) .stage-heading,
+  .retro-app .review-stage .stage-heading { margin: 0; max-width: none; }
+  .retro-app :is(.photo-stage:not(.classic-capture), .review-stage) .stage-heading h1 { font-size: clamp(24px, 3vw, 36px); margin: 4px 0; }
+  .retro-app :is(.photo-stage:not(.classic-capture), .review-stage) .stage-heading p { margin: 4px auto; font-size: 12px; }
+  .retro-app .photo-stage:not(.classic-capture) .camera-stage { height: 100%; min-height: 0; aspect-ratio: auto; }
+  .retro-app .photo-stage:not(.classic-capture) :is(.camera-actions, .photo-guidance, .photo-file-note, .camera-message) { margin: 0; font-size: 11px; }
+  .retro-app .review-composition { width: 100%; height: 100%; min-height: 0; margin: 0; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); }
+  .retro-app .review-composition figure { height: 100%; min-height: 0; transform: none; }
+  .retro-app .review-composition img { height: calc(100% - 38px); min-height: 0; aspect-ratio: auto; object-fit: contain; }
+  .retro-app .review-actions { margin: 0; padding: 0; }
+  .retro-app .review-create { width: 100%; }
+  .retro-app .review-create>span { font-size: 11px; line-height: 1.4; }
+  .retro-app .advanced-review-summary { margin: 0; padding: 6px; gap: 8px; }
+  .retro-app .advanced-options { margin: 0 auto; }
+  .retro-app .advanced-options .gallery-heading { margin: 8px 0; }
+  .retro-app .advanced-options .gallery-heading h1 { font-size: 26px; }
+  .retro-app .advanced-options .gallery-heading p { margin: 4px 0; font-size: 11px; }
+  .retro-app .advanced-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 8px 0; padding: 0; gap: 10px; }
+  .retro-app .advanced-option-tabs { display: flex; gap: 8px; margin: 8px 0; }
+  .retro-app .advanced-option-tabs button { min-height: 44px; padding: 6px 12px; border: var(--retro-border); border-radius: 7px; background: var(--white); color: var(--ink); font-size: 12px; }
+  .retro-app .advanced-option-tabs button[aria-pressed='true'] { background: var(--sun); }
+  .retro-app .advanced-style-card { min-height: 0; padding: 8px; gap: 6px; }
+  .retro-app .advanced-style-card strong { font-size: 14px; }
+  .retro-app .advanced-style-card small { font-size: 11px; }
+  .retro-app .frame-style-preview { height: clamp(45px, calc(100svh - 550px), 180px); aspect-ratio: auto; }
+  .retro-app .advanced-ornaments { margin: 10px 0; padding: 0; }
+  .retro-app .advanced-ornaments h2 { font-size: 16px; margin: 0; }
+  .retro-app .advanced-ornaments p { font-size: 11px; margin: 4px 0; }
+  .retro-app .advanced-ornaments>div { gap: 6px; }
+  .retro-app .advanced-ornaments button { padding: 6px 8px; font-size: 11px; }
+  .retro-app .advanced-options .selection-dock { position: static; inset: auto; transform: none; width: 100%; margin: 8px 0 0; padding: 8px; flex-direction: row; gap: 8px; }
+  .retro-app .advanced-options .selection-dock>span { max-width: 35%; }
+  .retro-app .advanced-options .selection-dock strong { font-size: 14px; }
+  .retro-app .advanced-options .selection-dock .customer-solid-button { width: auto; min-height: 44px; font-size: 12px; padding: 8px; }
+  .studio-popup.is-wide { max-height: calc(100dvh - 32px); }
+  .studio-popup.is-wide .studio-popup-body { padding: 16px; }
+  .studio-picker-image { aspect-ratio: auto; height: clamp(50px, calc((100dvh - 460px) / 2), 120px); }
+  .studio-picker-pages { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+  .studio-picker-pages button { min-height: 44px; border: 2px solid #263449; border-radius: 7px; padding: 6px 10px; background: #fffdf7; color: #18283e; font-size: 12px; }
+  .studio-picker-pages button:disabled { opacity: .5; cursor: default; }
+  .studio-picker-pages span { white-space: nowrap; font-size: 12px; }
+  .studio-picker-card { gap: 6px; }
+  .studio-picker-card small { font-size: 12px; }
+  .studio-picker-card strong, .studio-picker-card small { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; -webkit-line-clamp: 2; }
+  .studio-popup.is-wide { height: calc(100dvh - 32px); }
+  .studio-popup.is-wide .studio-popup-body:has(.studio-picker-grid) { flex: 1; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 8px; }
+  .studio-popup.is-wide .studio-picker-count { margin: 0; }
+  .studio-popup.is-wide .studio-picker-grid { min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); padding: 0 0 6px; }
+  .studio-popup.is-wide .studio-picker-card { display: grid; grid-template-rows: minmax(0, 1fr) auto auto; min-height: 0; gap: 4px; }
+  .studio-popup.is-wide .studio-picker-image { height: 100%; min-height: 0; }
+  .studio-popup.is-wide .studio-picker-card strong { font-size: 14px; line-height: 1.3; -webkit-line-clamp: 3; }
+  .studio-popup.is-wide .studio-picker-card small { font-size: 11px; line-height: 1.3; }
+  .studio-popup.is-wide .studio-picker-pages { margin: 0; }
+  .studio-popup.is-wide .landing-image-fallback { min-height: 0; padding: 4px; font-size: 12px; }
+  @media (max-width: 650px) {
+    .studio-popup.is-wide .studio-picker-grid { grid-template-columns: 1fr; }
+    .studio-popup.is-wide .studio-picker-card { grid-template-columns: 70px minmax(0, 1fr); grid-template-rows: auto auto; align-content: center; }
+    .studio-popup.is-wide .studio-picker-image { grid-column: 1; grid-row: 1/3; min-height: 70px; }
+    .studio-popup.is-wide .studio-picker-card strong { grid-column: 2; grid-row: 1; }
+    .studio-popup.is-wide .studio-picker-card small { grid-column: 2; grid-row: 2; }
+  }
+  .retro-app .result-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, .65fr);
+    gap: 12px 24px;
+    margin: 0 auto;
+    height: calc(100svh - 178px);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  .retro-app .result-navigation, .retro-app .result-stage>header { grid-column: 1/-1; }
+  .retro-app .result-stage>header { margin: 0; }
+  .retro-app .result-stage h1 { font-size: clamp(26px, 3vw, 38px); }
+  .retro-app .result-stage header p { margin: 4px 0; }
+  .retro-app .result-frame {
+    grid-column: 1;
+    grid-row: 3/5;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+    margin: 0;
+  }
+  .retro-app .result-phone-panel { grid-column: 2; grid-row: 3; flex-direction: column; gap: 8px; width: 100%; margin: 0; padding: 12px; text-align: center; }
+  .retro-app .result-phone-panel svg { width: min(160px, 100%); height: auto; flex-shrink: 0; }
+  .retro-app .result-phone-panel p { margin: 4px 0; font-size: 12px; }
+  .retro-app .result-phone-panel small { font-size: 11px; }
+  .retro-app .result-phone-panel strong { font-size: 14px; line-height: 1.3; }
+  .retro-app .result-stage footer { grid-column: 2; grid-row: 4; flex-direction: column-reverse; gap: 12px; margin: 0; align-self: start; }
+  .retro-app .result-stage footer>div { justify-content: center; gap: 8px; }
+  .retro-app .result-stage footer>.customer-solid-button { width: 100%; }
+  @media (max-width: 980px) {
+    .retro-app { --studio-header-height: 74px; }
+    .retro-app .landing-hero { grid-template-columns: 1.05fr 1fr; gap: 20px; }
+    .retro-app .landing-hero h1 { font-size: clamp(28px, 4.8vw, 48px); }
+    .retro-app .landing-intro { margin-block: 16px; font-size: 14px; }
+  }
+  @media (max-width: 800px) {
+    .retro-app .customer-nav:not(.landing-nav) { min-height: 104px; padding-block: 8px; gap: 4px; }
+    .retro-app .customer-mode-nav { padding: 2px; }
+    .retro-app .customer-mode-nav button { min-height: 30px; padding: 4px 8px; font-size: 11px; }
+    .retro-app .customer-progress li { flex-direction: row; gap: 4px; font-size: 11px; }
+    .retro-app .customer-progress li b { width: 22px; height: 22px; }
+    .retro-app .customer-progress { grid-template-columns: 1fr; }
+    .retro-app .customer-progress>span { display: none; }
+    .retro-app .capture-navigation { gap: 6px; }
+    .retro-app .capture-navigation .customer-inline-button { font-size: 11px !important; padding: 8px !important; }
+    .retro-app .classic-capture, .retro-app .result-stage { height: calc(100svh - 182px); }
+    .retro-app .advanced-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .retro-app .frame-style-preview { height: clamp(40px, calc((100svh - 550px) / 2), 110px); }
+    .retro-app .classic-selected-frame figcaption { font-size: 11px; line-height: 1.3; }
+    .retro-app .landing-hero { grid-template-columns: 1fr; gap: 18px; padding-block: 16px; align-content: center; }
+    .retro-app .landing-hero .landing-eyebrow { margin-bottom: 12px; }
+    .retro-app .landing-hero h1 { font-size: clamp(28px, 7vw, 40px); }
+    .retro-app .landing-intro { margin-block: 12px; line-height: 1.4; }
+    .retro-app .landing-hero-note { margin-block: 12px 0; }
+    .retro-app .landing-hero-art { width: min(100%, calc(100svh - 420px)); justify-self: center; }
+    .retro-app .landing-actions { gap: 10px; }
+    .retro-app :is(.landing-primary, .landing-secondary) { min-height: 44px; padding: 10px 12px; font-size: 12px; }
+    .retro-app .creation-chooser .landing-mode-grid { grid-template-columns: 1fr; gap: 12px; }
+    .retro-app .creation-chooser .landing-mode-card { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 12px; padding: 10px; }
+    .retro-app .creation-chooser .landing-mode-image { height: 100%; min-height: 88px; }
+    .retro-app .creation-chooser .landing-mode-copy { padding: 0; }
+    .retro-app .creation-chooser .landing-mode-copy .landing-eyebrow,
+    .retro-app .creation-chooser .landing-mode-copy ul { display: none; }
+    .retro-app .creation-chooser .landing-mode-copy h3 { font-size: 20px; }
+    .retro-app .creation-chooser .landing-mode-copy>p:not(.landing-eyebrow) { font-size: 12px; line-height: 1.35; margin-block: 5px; }
+    .retro-app .creation-chooser .landing-mode-copy>a { min-height: 44px; font-size: 12px; padding-block: 4px; }
+    .retro-app .studio-breadcrumb>span { display: none; }
+    .retro-app .customer-main { padding: 10px 16px 16px; }
+    .retro-app .classic-capture { grid-template-columns: minmax(70px, .28fr) minmax(0, 1fr); gap: 10px; }
+    .retro-app .classic-selected-frame { padding: 6px; }
+    .retro-app .classic-selected-frame img { height: 100%; }
+    .retro-app .classic-capture .camera-stage { height: 100%; }
+    .retro-app .classic-capture .camera-actions { flex-direction: column; gap: 8px; }
+    .retro-app .classic-event-stage { grid-template-columns: minmax(80px, .35fr) minmax(0, 1fr); }
+    .retro-app .classic-event-details { padding: 10px; }
+    .retro-app .classic-event-details input { font-size: 16px; }
+    .retro-app .classic-event-details p { font-size: 12px; }
+    .retro-app .camera-lens { width: 64px; height: 64px; margin-bottom: 10px; }
+    .retro-app .camera-idle strong { font-size: 18px; }
+    .retro-app .result-stage { grid-template-columns: minmax(0, 1fr) minmax(130px, .65fr); gap: 12px; }
+    .retro-app .result-frame { grid-row: 3; height: 100%; }
+    .retro-app .result-phone-panel { padding: 8px; }
+    .retro-app .result-phone-panel svg { width: min(120px, 100%); }
+    .retro-app .result-stage footer { grid-column: 1/-1; }
+    .retro-app .result-stage footer>div { width: 100%; }
+    .retro-app .result-stage footer>div>:is(button, a) { flex: 1 1 auto; }
+  }
+  @media (max-width: 400px) {
+    .retro-app .creation-chooser { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 8px; padding-block: 12px; }
+    .retro-app .creation-chooser .studio-breadcrumb { margin: 0; }
+    .retro-app .creation-chooser>header { margin: 4px 0; }
+    .retro-app .creation-chooser .landing-mode-grid { min-height: 0; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .retro-app .creation-chooser .landing-mode-image { min-height: 0; }
+    .retro-app .creation-chooser .landing-mode-copy h3 { font-size: 18px; margin: 0 0 4px; }
+    .retro-app .creation-footnote { font-size: 11px; margin: 4px 0; }
+    .retro-app .creation-chooser>header .landing-eyebrow { display: none; }
+    .retro-app .creation-chooser h1 { font-size: 26px; }
+    .retro-app .creation-chooser>header>p:not(.landing-eyebrow) { font-size: 12px; line-height: 1.4; }
+    .retro-app .creation-chooser .landing-mode-copy>p:not(.landing-eyebrow) { display: none; }
+    .retro-app .creation-chooser .landing-mode-card { grid-template-columns: 60px minmax(0, 1fr); }
+  }
+  @media (max-height: 500px) and (min-width: 701px) {
+    .studio-popup.is-wide .studio-picker-grid { grid-template-rows: minmax(0, 1fr); }
+    .studio-popup.is-wide .studio-picker-card strong { font-size: 12px; -webkit-line-clamp: 2; }
+    .studio-popup.is-wide .studio-picker-card small { display: none; }
+    .retro-app .creation-chooser { padding-block: 4px; }
+    .retro-app .customer-progress { display: none; }
+    .retro-app .landing-hero { padding-block: 12px; min-height: 0; }
+    .retro-app .landing-hero-art { width: calc(100svh - 140px); }
+    .retro-app .creation-chooser h1 { font-size: 24px; }
+    .retro-app .creation-chooser .studio-breadcrumb { margin-bottom: 8px; }
+    .retro-app .landing-hero h1 { font-size: 28px; }
+    .retro-app .landing-hero .landing-eyebrow { margin-bottom: 8px; }
+    .retro-app .landing-intro { margin-block: 8px; line-height: 1.4; }
+    .retro-app .landing-hero-note { margin-top: 8px; }
+    .retro-app .creation-chooser>header { margin: 8px auto; }
+    .retro-app .creation-chooser>header .landing-eyebrow,
+    .retro-app .creation-chooser>header>p:not(.landing-eyebrow),
+    .retro-app .creation-chooser .landing-mode-copy .landing-eyebrow,
+    .retro-app .creation-chooser .landing-mode-copy ul { display: none; }
+    .retro-app .creation-chooser .landing-mode-image { height: 30px; }
+    .retro-app .creation-footnote { font-size: 11px; margin-top: 8px; }
+    .retro-app .creation-chooser .landing-mode-card { padding: 8px; }
+    .retro-app .creation-chooser .landing-mode-copy { padding-top: 6px; }
+    .retro-app .creation-chooser .landing-mode-copy h3 { font-size: 18px; }
+    .retro-app .creation-chooser .landing-mode-copy>p:not(.landing-eyebrow) { font-size: 11px; margin-block: 4px; }
+    .retro-app .creation-chooser .landing-mode-copy>a { padding: 4px 8px; min-height: 44px; font-size: 12px; }
+    .studio-popup.is-wide .studio-popup-nav { padding-block: 8px; }
+    .studio-popup.is-wide .studio-popup-body { padding-block: 8px; }
+    .studio-picker-image { height: 40px; }
+    .studio-picker-search { gap: 4px; font-size: 12px; }
+    .studio-picker-search input { padding-block: 8px; }
+    .studio-picker-count { margin-block: 8px; }
+    .retro-app .classic-capture, .retro-app .result-stage { height: calc(100svh - 114px); grid-template-rows: auto auto minmax(0, 1fr) auto; }
+    .retro-app .classic-capture>.capture-navigation { grid-column: 1; grid-row: 1; }
+    .retro-app .classic-capture>.stage-heading { grid-column: 1; grid-row: 2; }
+    .retro-app .classic-capture .stage-heading h1,
+    .retro-app .classic-capture .stage-heading .customer-kicker,
+    .retro-app .classic-review-guidance { display: none; }
+    .retro-app .classic-capture .classic-selected-frame { grid-column: 1; grid-row: 3/5; }
+    .retro-app .classic-capture .camera-stage { grid-column: 2; grid-row: 1/4; }
+    .retro-app .classic-capture>.camera-actions { grid-column: 2; grid-row: 4; }
+    .retro-app .classic-event-stage>.classic-event-details { grid-row: 1/4; }
+    .retro-app .result-navigation { grid-column: 1; grid-row: 1; }
+    .retro-app .result-stage>header { grid-column: 1; grid-row: 2; }
+    .retro-app .result-frame { grid-column: 1; grid-row: 3/5; }
+    .retro-app .result-phone-panel { grid-column: 2; grid-row: 1/4; flex-direction: row; text-align: left; }
+    .retro-app .result-phone-panel svg { width: 100px; }
+    .retro-app .result-stage footer { grid-column: 2; grid-row: 4; gap: 8px; }
+    .retro-app .result-stage footer>div { gap: 4px; }
+    .retro-app .photo-stage:not(.classic-capture), .retro-app .review-stage { height: calc(100svh - 114px); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; }
+    .retro-app .photo-stage:not(.classic-capture) .camera-stage { grid-column: 2; grid-row: 1/4; }
+    .retro-app .photo-stage:not(.classic-capture) .camera-actions { grid-column: 2; grid-row: 4; }
+    .retro-app .photo-stage:not(.classic-capture) .photo-guidance { grid-column: 1; grid-row: 3; align-self: end; gap: 8px; }
+    .retro-app .photo-stage:not(.classic-capture) .photo-file-note { grid-column: 1; grid-row: 4; }
+    .retro-app .review-stage .capture-navigation { grid-column: 1; grid-row: 1; }
+    .retro-app .review-stage .stage-heading { grid-column: 1; grid-row: 2; }
+    .retro-app .review-stage .review-composition { grid-column: 1; grid-row: 3/5; }
+    .retro-app .review-stage .review-actions { grid-column: 2; grid-row: 2/5; }
+    .retro-app .review-stage .advanced-review-summary { grid-column: 2; grid-row: 1; }
+    .retro-app .review-stage .advanced-review-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; gap: 4px; }
+    .retro-app .review-stage .advanced-review-summary span { min-width: 0; padding: 4px; font-size: 11px; overflow-wrap: anywhere; gap: 2px; }
+    .retro-app .review-stage .advanced-review-summary small { font-size: 8px; }
+    .retro-app .review-stage .capture-navigation { align-self: start; }
+    .retro-app .advanced-options { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 16px; }
+    .retro-app .advanced-options .capture-navigation { grid-column: 1; grid-row: 1; }
+    .retro-app .advanced-options .gallery-heading { grid-column: 2; grid-row: 1; margin: 0; }
+    .retro-app .advanced-options .gallery-heading p { display: none; }
+    .retro-app .advanced-options .gallery-heading h1 { font-size: 20px; }
+    .retro-app .advanced-option-tabs { grid-column: 1; grid-row: 2; margin: 0; }
+    .retro-app .advanced-style-grid { grid-column: 1; grid-row: 3; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+    .retro-app .advanced-style-card small { display: none; }
+    .retro-app .frame-style-preview { height: 50px; }
+    .retro-app .advanced-options>.studio-picker-pages { grid-column: 2; grid-row: 2; margin: 0; }
+    .retro-app .advanced-ornaments { grid-column: 1; grid-row: 3; }
+    .retro-app .advanced-options .selection-dock { grid-column: 2; grid-row: 3; margin: 0; align-self: end; }
+  }
+  /* Small or short screens: readable sizes win over a strict no-scroll fit.
+     Stages stack in one column, content is never hidden or clipped to a few
+     pixels, and the page scrolls vertically when it has to. */
+  @media (max-width: 800px), (max-height: 600px) {
+    .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account']) { height: auto; min-height: 100svh; }
+    .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-main { flex: none; }
+    .customer-app.retro-app[data-mood]:not(.is-home):not([data-mood='account'])>.customer-main>:is(.photo-stage, .review-stage, .result-stage) { height: auto; }
+    .customer-app.retro-app>.creation-chooser { flex: none; }
+    .customer-app.retro-app .customer-nav:not(.landing-nav) { min-height: 0; }
+    .customer-app.retro-app :is(.classic-capture, .photo-stage, .review-stage, .result-stage, .advanced-options) {
+      display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: auto; height: auto; gap: 12px;
+    }
+    .customer-app.retro-app :is(.classic-capture, .photo-stage, .review-stage, .result-stage, .advanced-options)>* { grid-column: 1/-1; grid-row: auto; margin: 0; }
+    .customer-app.retro-app .customer-progress { display: grid; }
+    .customer-app.retro-app .customer-progress>span { display: block; }
+    .customer-app.retro-app .customer-progress li { font-size: 13px; }
+    .customer-app.retro-app .capture-navigation .customer-inline-button { font-size: 13px !important; padding: 10px 12px !important; }
+    .customer-app.retro-app :is(.stage-heading p, .photo-guidance, .photo-file-note, .camera-message, .review-create>span, .classic-capture-heading p, .advanced-ornaments p, .advanced-style-card small, .classic-selected-frame figcaption, .result-phone-panel p, .result-phone-panel small, .advanced-options .gallery-heading p, .classic-event-details p) { display: block; font-size: 13px; line-height: 1.4; }
+    .customer-app.retro-app :is(.advanced-ornaments button, .advanced-option-tabs button, .studio-picker-pages button) { font-size: 13px; }
+    .customer-app.retro-app .classic-capture .stage-heading h1, .customer-app.retro-app .classic-review-guidance, .customer-app.retro-app .classic-capture .stage-heading .customer-kicker { display: block; }
+    .customer-app.retro-app .classic-capture .camera-stage, .customer-app.retro-app .photo-stage .camera-stage { height: auto; min-height: clamp(260px, 52svh, 520px); aspect-ratio: auto; }
+    .customer-app.retro-app .classic-capture .camera-actions { flex-direction: row; flex-wrap: wrap; }
+    .customer-app.retro-app .classic-selected-frame { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px; padding: 8px; }
+    .customer-app.retro-app .classic-selected-frame img { width: auto; height: 130px; max-width: 40%; object-fit: contain; }
+    .customer-app.retro-app .classic-selected-frame figcaption { text-align: left; }
+    .customer-app.retro-app .review-composition { height: auto; }
+    .customer-app.retro-app .review-composition img { height: auto; max-height: 45svh; }
+    .customer-app.retro-app .result-frame { height: auto; min-height: 260px; max-height: none; }
+    .customer-app.retro-app .result-frame img { max-height: 60svh; object-fit: contain; }
+    .customer-app.retro-app .result-phone-panel { flex-direction: row; text-align: left; align-items: center; }
+    .customer-app.retro-app .review-stage .advanced-review-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .customer-app.retro-app .review-stage .advanced-review-summary span { font-size: 13px; }
+    .customer-app.retro-app .review-stage .advanced-review-summary small { font-size: 11px; }
+    .customer-app.retro-app .advanced-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .customer-app.retro-app .frame-style-preview { height: 90px; }
+    .customer-app.retro-app .advanced-options .selection-dock { position: static; }
+    .retro-app .creation-chooser { display: block; }
+    .retro-app .creation-chooser .landing-mode-grid { grid-template-rows: none; }
+    .retro-app .creation-chooser .landing-mode-card { grid-template-columns: 96px minmax(0, 1fr); align-items: start; }
+    .retro-app .creation-chooser .landing-mode-image { height: auto; min-height: 96px; align-self: stretch; }
+    .retro-app .creation-chooser .landing-image-fallback { font-size: 0; padding: 0; }
+    .retro-app .creation-chooser .landing-mode-number { top: 8px; left: 8px; }
+    .retro-app .creation-chooser .landing-mode-copy>p:not(.landing-eyebrow) { display: block; font-size: 13px; }
+    .retro-app .creation-chooser .landing-mode-copy ul { display: flex; flex-wrap: wrap; gap: 6px; }
+    .retro-app .creation-chooser .landing-mode-copy li { font-size: 12px; }
+    .retro-app .creation-footnote { font-size: 12px; }
+    .studio-popup.is-wide .studio-popup-body:has(.studio-picker-grid) { display: flex; flex-direction: column; overflow-y: auto; gap: 10px; }
+    .studio-popup.is-wide .studio-picker-grid { flex: none; grid-template-rows: none; grid-auto-rows: auto; overflow: visible; }
+    .studio-popup.is-wide .studio-picker-card { grid-template-rows: auto auto auto; }
+    .studio-popup.is-wide .studio-picker-image { height: 120px; min-height: 84px; }
+    .studio-popup.is-wide .studio-picker-card :is(strong, small) { display: block; overflow: visible; -webkit-line-clamp: unset; }
+    .studio-popup.is-wide .studio-picker-card strong { font-size: 15px; }
+    .studio-popup.is-wide .studio-picker-card small { display: block; font-size: 13px; line-height: 1.4; }
+    .studio-popup.is-wide .studio-picker-pages { position: sticky; bottom: 0; padding-block: 8px; background: #f7f2e8; }
+    .studio-popup.is-wide .studio-picker-pages span { font-size: 13px; }
+  }
+}

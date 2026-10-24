@@ -1,6 +1,7 @@
+import type { GenerationApiRoutesService } from './generation-api-routes.service.js';
 import type { NxGenerationJob } from '@prisma/client';
 import { AppError } from '../lib/errors.js';
-import { CatalogAssetError, type CatalogAssetsService } from './catalog-assets.service.js';
+import { CatalogAssetError, requiresEventName, type CatalogAssetsService } from './catalog-assets.service.js';
 import type { CustomerUploadService } from './customer-upload.service.js';
 import type { CustomerGenerationModel } from '../models/customer-generation.model.js';
 import type { CustomerIdentity } from './customer-account.service.js';
@@ -8,27 +9,42 @@ import { generationInput, validateAdvancedSelection } from './customer-generatio
 import { legacyId } from './customer-credentials.service.js';
 import { generationRequest } from './generation-request.js';
 import type { KioskGenerationContext } from '../models/native-kiosk.model.js';
-import { composeAdvancedPrompt,composeBasicPrompt } from './advanced-prompt.service.js';
+import { composeAdvancedPrompt } from './advanced-prompt.service.js';
+import { composeFastBasicPrompt } from './fast-basic-prompt.service.js';
 import type { GenerationSnapshot } from './generation-snapshot.js';
 import { randomBytes } from 'node:crypto';
 
+// Footer for AI results: always carries a claim token for the printed QR; the event name is optional.
+function aiPersonalization(input: { event_name?: string; captured_at?: string }, uploadedAt: Date) {
+  const capturedAt = input.captured_at ? new Date(input.captured_at) : uploadedAt;
+  if (capturedAt.getTime() > uploadedAt.getTime() + 60000 || capturedAt.getTime() < uploadedAt.getTime() - 3600000) throw new AppError(422, 'CAPTURE_TIME_INVALID', 'Waktu pengambilan foto tidak valid. Ambil foto kembali.');
+  return { ...(input.event_name ? { event_name: input.event_name.normalize('NFC') } : {}), captured_at: capturedAt.toISOString(), claim_token: randomBytes(32).toString('base64url') };
+}
 export type GenerationQueue = { enqueue(id: string): Promise<void> };
 export class CustomerGenerationService {
   constructor(private readonly model: CustomerGenerationModel, private readonly uploads: CustomerUploadService,
     private readonly assets: CatalogAssetsService, private readonly queue: GenerationQueue,
-    private readonly basicModelExperienceId = 'mini-me') {}
+    private readonly basicModelExperienceId = 'mini-me', private readonly apiRoutes?: GenerationApiRoutesService) {}
   response(job: NxGenerationJob) {
     return { job_id: job.id, state: job.state, upload_id: job.upload_id, template_id: job.template_id || null,
       experience_id: job.experience_id, mode: job.mode, layout_id: job.layout_id, frame_style_id: job.frame_style_id,
       ornament_ids: JSON.parse(job.ornament_ids_json ?? '[]'), created_at: job.created_at };
   }
-  async create(body: unknown, identity: CustomerIdentity, requestKey?: unknown, kiosk?: KioskGenerationContext) {
+  async create(body: unknown, identity: CustomerIdentity, requestKey?: unknown, kiosk?: KioskGenerationContext, integration?: { keyId: string }) {
     const input = generationInput.parse(body);
     const request = generationRequest(requestKey, input, identity);
+    if(integration){
+      if(!request || !identity.account || kiosk || input.mode!=='BASIC' || !/^[a-f0-9]{16}$/.test(integration.keyId)) throw new AppError(403,'API_CONTEXT_INVALID','Invalid integration context');
+      request.integrationKeyId=integration.keyId;
+    }
     if (request) {
       const existing = await this.model.findRequest(request);
       if (existing) return this.response(existing);
     }
+    if (input.lane && !this.apiRoutes) throw new AppError(503, 'GENERATION_LANE_UNAVAILABLE', 'Pilihan jalur belum diaktifkan.');
+    if (kiosk && input.lane) throw new AppError(422, 'GENERATION_LANE_UNAVAILABLE', 'Pilihan jalur tidak berlaku untuk sesi kiosk.');
+    if (!kiosk && this.apiRoutes && input.mode !== 'CLASSIC') await this.apiRoutes.provider(input.lane ?? 'standard');
+    if(input.folder_id!==undefined && (!this.model.folders || kiosk || !identity.account)) throw new AppError(422,'PHOTO_FOLDER_UNAVAILABLE','Folder hanya tersedia untuk akun web yang masuk.');
     const source = await this.uploads.owned(input.upload_id, identity);
     let frame: string | null = null;
     let snapshot: GenerationSnapshot;
@@ -42,7 +58,8 @@ export class CustomerGenerationService {
       let frozen;
       try { frozen = await this.assets.freezeBasicTemplate(template); }
       catch (error) { if (error instanceof CatalogAssetError) throw new AppError(422, 'BASIC_TEMPLATE_INVALID', 'Basic template is invalid.'); throw error; }
-      snapshot = { version: 2,mode: 'BASIC',prompt: composeBasicPrompt(template.name,template.description),model: preset.model,template: frozen };
+      const personalization = aiPersonalization(input, source.upload.created_at);
+      snapshot = { version: 2,mode: 'BASIC',prompt: composeFastBasicPrompt(template.name,template.description,personalization,template.id),model: preset.model,template: frozen,...(personalization ? { personalization } : {}) };
     } else if (input.mode === 'CLASSIC') {
       const layout = await this.model.layout(input.layout_id!);
       if (!layout?.active) throw new AppError(404, 'CLASSIC_LAYOUT_NOT_FOUND', 'Classic layout unavailable');
@@ -54,12 +71,13 @@ export class CustomerGenerationService {
         catch (error) { if (error instanceof AppError) throw new AppError(422, 'CLASSIC_CAPTURE_UNAVAILABLE', 'A capture is unavailable'); throw error; }
       }
       snapshot = { version: 1,mode: 'CLASSIC',layout: await this.assets.freezeLayout(layout) };
-      if (layout.id === 'classic-floral-event-001') {
-        if (kiosk) throw new AppError(422, 'CLASSIC_LAYOUT_INVALID', 'Event personalization is available in the web studio.');
+      if (requiresEventName(layout)) {
         if (!input.event_name) throw new AppError(422, 'EVENT_NAME_REQUIRED', 'Isi nama event sebelum mengambil foto.');
         const capturedAt = input.captured_at ? new Date(input.captured_at) : source.upload.created_at;
         if (capturedAt.getTime() > source.upload.created_at.getTime() + 60000 || capturedAt.getTime() < source.upload.created_at.getTime() - 3600000) throw new AppError(422, 'CAPTURE_TIME_INVALID', 'Waktu pengambilan foto tidak valid. Ambil foto kembali.');
         snapshot.personalization = { event_name: input.event_name.normalize('NFC'), captured_at: capturedAt.toISOString(), claim_token: randomBytes(32).toString('base64url') };
+      } else if (input.event_name || input.captured_at) {
+        throw new AppError(422, 'CLASSIC_PERSONALIZATION_UNAVAILABLE', 'Frame ini belum mendukung nama event.');
       }
     } else {
       const experience = await this.model.experience(input.experience_id!);
@@ -67,7 +85,8 @@ export class CustomerGenerationService {
       frame = input.frame_style_id ?? 'natural';
       const style = await this.model.frame(frame);
       validateAdvancedSelection(experience, style, await this.model.ornaments(input.ornament_ids), input.ornament_ids);
-      snapshot = { version: 1,mode: 'ADVANCED',prompt: composeAdvancedPrompt(experience.internal_prompt,style!.prompt_fragment),model: experience.model };
+      const personalization = aiPersonalization(input, source.upload.created_at);
+      snapshot = { version: 1,mode: 'ADVANCED',prompt: composeAdvancedPrompt(experience.internal_prompt,style!.prompt_fragment,personalization),model: experience.model,...(personalization ? { personalization } : {}) };
     }
     const data = { id: legacyId(), upload_id: source.upload.id, account_id: identity.account?.id ?? null,
       guest_id: identity.guest?.id ?? null, mode: input.mode, template_id: input.template_id ?? '',
@@ -76,7 +95,7 @@ export class CustomerGenerationService {
       frame_style_id: frame, ornament_ids_json: frame ? JSON.stringify(input.ornament_ids) : null,
       engine_config_json: JSON.stringify(snapshot),state: 'QUEUED' };
     if (kiosk && !request) throw new AppError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Generation request key required');
-    const created = request ? await this.model.createOnce(data, request, kiosk) : { job: await this.model.create(data), reused: false };
+    const created = request ? await this.model.createOnce(data, request, kiosk, input.lane ?? 'standard', input.folder_id) : { job: await this.model.create(data, input.lane ?? 'standard', input.folder_id), reused: false };
     const job = created.job;
     if (created.reused) return this.response(job);
     try { await this.queue.enqueue(job.id); }
@@ -90,7 +109,7 @@ export class CustomerGenerationService {
     const billing = await this.model.billing(job.id, job.state === 'COMPLETED');
     const paid = !billing || billing.status === 'PAID';
     const result = paid ? await this.model.result(job.id) : null;
-    return { ...this.response(job), credit_charge: billing ? { status: billing.status, credits: billing.credits, calculation: billing.calculation_json ? JSON.parse(billing.calculation_json) : null } : null, provider: job.provider, model: job.model, error_code: job.error_code, error_message: job.error_message,
+    return { ...this.response(job), credit_charge: billing ? { status: billing.status, credits: billing.credits, calculation: billing.calculation_json ? JSON.parse(billing.calculation_json) : null } : null, ...(this.model.subscriptions ? {} : { provider: job.provider, model: job.model }), error_code: job.error_code, error_message: job.error_message,
       result_id: result?.id ?? null, result_url: result ? `/api/results/${result.id}` : null,
       download_url: result ? `/api/results/${result.id}/download` : null, updated_at: job.updated_at,
       started_at: job.started_at, finished_at: job.finished_at };

@@ -7,6 +7,7 @@ import './styles.css'
 import './retro.css'
 import './admin-retro.css'
 import './retro-decor.css'
+import './customerLayout.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

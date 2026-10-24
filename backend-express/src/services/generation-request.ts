@@ -4,7 +4,7 @@ import type { GenerationInput } from './customer-generation-input.js';
 import type { CustomerIdentity } from './customer-account.service.js';
 import { AppError } from '../lib/errors.js';
 
-export type GenerationRequest = { scope: string; key: string; hash: string };
+export type GenerationRequest = { scope: string; key: string; hash: string; integrationKeyId?: string };
 const keySchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/);
 
 export function generationRequest(key: unknown, input: GenerationInput, identity: CustomerIdentity): GenerationRequest | undefined {
@@ -19,6 +19,7 @@ export function generationRequest(key: unknown, input: GenerationInput, identity
     template_id: input.template_id ?? null, experience_id: input.experience_id ?? null,
     layout_id: input.layout_id ?? null,
     frame_style_id: input.mode === 'ADVANCED' ? input.frame_style_id ?? 'natural' : null,
+    ...(input.folder_id!==undefined?{folder_id:input.folder_id}:{}),
     ornament_ids: [...input.ornament_ids], capture_upload_ids: [...input.capture_upload_ids],
     ...(input.event_name ? { event_name: input.event_name, captured_at: input.captured_at ?? null } : {}) };
   return { scope, key: parsed.data, hash: createHash('sha256').update(JSON.stringify(normalized)).digest('hex') };

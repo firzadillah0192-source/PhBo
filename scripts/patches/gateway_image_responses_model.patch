@@ -1,0 +1,72 @@
+diff --git a/open-sse/config/imageConstants.js b/open-sse/config/imageConstants.js
+new file mode 100644
+index 0000000..145d7ca
+--- /dev/null
++++ b/open-sse/config/imageConstants.js
+@@ -0,0 +1,3 @@
++// Keep the Images API tool model separate from the Responses model that drives it.
++// Verified against the connected account catalog; older GPT-5.5 is no longer offered.
++export const CODEX_IMAGES_MAIN_MODEL = process.env.CODEX_IMAGES_MAIN_MODEL?.trim() || "gpt-5.6-sol";
+diff --git a/open-sse/handlers/imageProviders/codex.js b/open-sse/handlers/imageProviders/codex.js
+index afaf8e9..3a64106 100644
+--- a/open-sse/handlers/imageProviders/codex.js
++++ b/open-sse/handlers/imageProviders/codex.js
+@@ -3,13 +3,13 @@ import { randomUUID } from "node:crypto";
+ import { nowSec } from "./_base.js";
+ import { PROVIDERS } from "../../config/providers.js";
+ import { CODEX_CLI_VERSION } from "../../config/appConstants.js";
++import { CODEX_IMAGES_MAIN_MODEL } from "../../config/imageConstants.js";
+
+ const CODEX_RESPONSES_URL = PROVIDERS["codex"].baseUrl;
+ const CODEX_USER_AGENT = `codex_cli_rs/${CODEX_CLI_VERSION}`;
+ const CODEX_ORIGINATOR = "codex_cli_rs";
+ const CODEX_MODEL_SUFFIX = "-image";
+ const CODEX_REF_DETAIL = "high";
+-const CODEX_IMAGES_MAIN_MODEL = "gpt-5.5";
+ const CODEX_TOOL_IMAGE_MODELS = new Set([
+   "gpt-image-1.5",
+   "gpt-image-2",
+diff --git a/tests/unit/codex-image-main-model.test.js b/tests/unit/codex-image-main-model.test.js
+new file mode 100644
+index 0000000..27a6bf4
+--- /dev/null
++++ b/tests/unit/codex-image-main-model.test.js
+@@ -0,0 +1,25 @@
++import { afterEach, describe, expect, it, vi } from "vitest";
++
++afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
++
++describe("Codex Images API Responses model", () => {
++  it("uses an account-supported Responses model while preserving each requested image tool", async () => {
++    vi.stubEnv("CODEX_IMAGES_MAIN_MODEL", "");
++    const { default: provider } = await import("../../open-sse/handlers/imageProviders/codex.js");
++    for (const model of ["gpt-image-1.5", "gpt-image-2", "gpt-image-2.5", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst"]) {
++      const result = provider.buildBody(model, { prompt: "synthetic test", images: ["data:image/png;base64,c3ludGhldGlj"] });
++      expect(result.model).toBe("gpt-5.6-sol");
++      expect(result.tools[0]).toMatchObject({ type: "image_generation", model, action: "edit" });
++      expect(result.input[0].content).toContainEqual({ type: "input_image", image_url: "data:image/png;base64,c3ludGhldGlj", detail: "high" });
++    }
++    expect(provider.buildBody("gpt-5.6-terra-image", { prompt: "synthetic" }).model).toBe("gpt-5.6-terra");
++  });
++
++  it("honors an explicit Responses-model configuration without altering the image model", async () => {
++    vi.stubEnv("CODEX_IMAGES_MAIN_MODEL", " gpt-6-astra ");
++    const { default: provider } = await import("../../open-sse/handlers/imageProviders/codex.js");
++    const body = provider.buildBody("gpt-image-2.5", { prompt: "synthetic" });
++    expect(body.model).toBe("gpt-6-astra");
++    expect(body.tools[0]).toMatchObject({ model: "gpt-image-2.5", action: "generate" });
++  });
++});
+diff --git a/tests/unit/image-generation.test.js b/tests/unit/image-generation.test.js
+index 6a22cd4..93fbf12 100644
+--- a/tests/unit/image-generation.test.js
++++ b/tests/unit/image-generation.test.js
+@@ -397,7 +397,7 @@ describe("handleImageGenerationCore", () => {
+     expect(result.success).toBe(true);
+     const fetchCall = global.fetch.mock.calls[0];
+     const requestBody = JSON.parse(fetchCall[1].body);
+-    expect(requestBody.model).toBe("gpt-5.5");
++    expect(requestBody.model).toBe("gpt-5.6-sol");
+     expect(requestBody.tools).toEqual([
+       { type: "image_generation", output_format: "png", size: "1024x1024", action: "generate", model: "gpt-image-2.5" },
+     ]);
