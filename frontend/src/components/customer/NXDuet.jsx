@@ -21,13 +21,13 @@ export default function NXDuet(){
   },[])
   useEffect(()=>{mounted.current=true;Promise.all([getDuetCapabilities(),refreshAccount()]).then(([data])=>{if(mounted.current)setCapabilities(data)}).catch(e=>{if(mounted.current)setError(e.message)}).finally(()=>{if(mounted.current)setLoading(false)});return()=>{mounted.current=false}},[refreshAccount])
   useEffect(()=>{
-    setTemplates([]);setSelected(null);setCamera(false);pending.current=account?.id?readPending(account.id):null
+    setTemplates([]);setSelected(null);setCamera(false);pending.current=account?.analytics_id?readPending(account.analytics_id):null
     if(pending.current)setName(pending.current.body.name)
-    if(!account?.id||!capabilities?.enabled)return
+    if(!account?.analytics_id||!capabilities?.enabled)return
     let active=true;setLoading(true)
     getDuetTemplates(offset).then(data=>{if(active)setTemplates(data.templates)}).catch(e=>{if(active)setError(e.message)}).finally(()=>{if(active)setLoading(false)})
     return()=>{active=false}
-  },[account?.id,capabilities?.enabled,revision,offset])
+  },[account?.analytics_id,capabilities?.enabled,revision,offset])
   useEffect(()=>{if(!file){setPreview(null);return}const url=URL.createObjectURL(file);setPreview(url);return()=>URL.revokeObjectURL(url)},[file])
   useEffect(()=>{
     if(!selected||!['QUEUED','PROCESSING'].includes(selected.state))return
@@ -45,7 +45,7 @@ export default function NXDuet(){
     if(!file&&!pending.current){setError('Pilih foto terlebih dahulu.');return}
     submitLock.current=true;setBusy(true);setError('')
     try{
-      if(!pending.current){const upload=await uploadPhoto(file);pending.current={account:account.id,key:crypto.randomUUID(),body:{upload_id:upload.upload_id,name:name.trim(),rights_accepted:true}};sessionStorage.setItem('nxduet-preparation',JSON.stringify(pending.current))}
+      if(!pending.current){const upload=await uploadPhoto(file);pending.current={account:account.analytics_id,key:crypto.randomUUID(),body:{upload_id:upload.upload_id,name:name.trim(),rights_accepted:true}};sessionStorage.setItem('nxduet-preparation',JSON.stringify(pending.current))}
       const template=await createDuetTemplate(pending.current.body,pending.current.key)
       sessionStorage.removeItem('nxduet-preparation');pending.current=null
       if(mounted.current){setSelected(template);setCreating(false);setFile(null);setAccepted(false);getUsage().then(data=>{if(mounted.current)setUsage(data)}).catch(()=>{})}

@@ -25,7 +25,7 @@ async function session(viewport,denyCamera=false){
     const path=url.pathname.slice(4),method=req.method(),json=(body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)})
     if(path==='/nxduet/capabilities')return json({enabled:true,preparation_credits:100})
     if(path==='/account/usage')return json({authenticated:true,ai_remaining:credits,subscription:{plan:{premium:true},ai:{remaining:credits},classic:{remaining:500}}})
-    if(path==='/account/me')return json({id:'a'.repeat(32),email:'synthetic@example.invalid',display_name:'Synthetic test account'})
+    if(path==='/account/me')return json({authenticated:true,analytics_id:'phbo-account:'+'a'.repeat(32),email:'synthetic@example.invalid',display_name:'Synthetic test account',avatar_url:null,provider:'password',created_at:'2026-10-24T00:00:00Z'})
     if(path==='/uploads'&&method==='POST')return json({upload_id:'c'.repeat(32)},201)
     if(path==='/nxduet/templates'&&method==='GET')return json({templates:saved?[saved]:[],preparation_credits:100})
     if(path==='/nxduet/templates'&&method==='POST'){

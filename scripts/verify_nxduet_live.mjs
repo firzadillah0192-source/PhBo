@@ -16,7 +16,7 @@ assert.ok(release.startsWith('/srv/photobooth/releases/nxduet-'))
 const manifest=JSON.parse(await readFile(release+'/manifest.json','utf8'));assert.equal(manifest.deployed,true)
 const base='http://127.0.0.1:3000',cookies=new Map(),email=`nxduet-deploy-${randomUUID()}@example.invalid`,password=randomBytes(32).toString('hex')
 let accountId=null,templateId=null,granted=false
-const verification={status:'RUNNING',coverage:'real web-port account/upload/worker/provider/wallet/private-storage/compose flow with synthetic graphic; not a human portrait or physical camera'}
+const verification={status:'RUNNING',stage:'capabilities',coverage:'real web-port account/upload/worker/provider/wallet/private-storage/compose flow with synthetic graphic; not a human portrait or physical camera'}
 async function http(path,options={},anonymous=false){
   const response=await fetch(base+path,{...options,headers:{...(anonymous?{}:{Cookie:[...cookies].map(([k,v])=>`${k}=${v}`).join('; ')}),...options.headers}})
   if(!anonymous)for(const value of response.headers.getSetCookie()){const pair=value.split(';',1)[0],i=pair.indexOf('=');cookies.set(pair.slice(0,i),pair.slice(i+1))}
@@ -28,14 +28,14 @@ const post=body=>({method:'POST',headers:{'Content-Type':'application/json'},bod
 async function internal(code){const result=await exec('docker',['exec','photobooth-express','node','--input-type=module','-e',`import { PrismaClient } from '@prisma/client';import { PrismaPg } from '@prisma/adapter-pg';import { SubscriptionWalletModel } from './dist/models/subscription-wallet.model.js';const db=new PrismaClient({adapter:new PrismaPg({connectionString:process.env.DATABASE_URL})});try{const row=await db.nxAccount.findUnique({where:{id:${JSON.stringify(accountId)}}});if(!row||row.email!==${JSON.stringify(email)})throw new Error('Synthetic account mismatch');${code}}finally{await db.$disconnect()}`],{maxBuffer:1024*1024});return result.stdout?JSON.parse(result.stdout):null}
 try{
   assert.deepEqual(await json('/api/nxduet/capabilities'),{enabled:true,preparation_credits:100})
-  await json('/api/account/signup',post({email,password}));accountId=(await json('/api/account/me')).id;assert.match(accountId,/^[a-f0-9]{32}$/)
+  verification.stage='account';await json('/api/account/signup',post({email,password}));const me=await json('/api/account/me');assert.match(me.analytics_id,/^phbo-account:[a-f0-9]{32}$/);accountId=me.analytics_id.slice('phbo-account:'.length)
   assert.equal((await json('/api/account/usage')).subscription.ai.remaining,0)
-  await internal(`const wallets=new SubscriptionWalletModel(db,undefined,true);await db.$transaction(tx=>wallets.adjustIn(tx,row.id,'AI',100,${JSON.stringify('nxduet:acceptance:grant:'+manifest.release.split('/').at(-1))},'NXDuet deployment acceptance: non-purchased synthetic test allocation'));`);granted=true
+  verification.stage='wallet';await internal(`const wallets=new SubscriptionWalletModel(db,undefined,true);await db.$transaction(tx=>wallets.adjustIn(tx,row.id,'AI',100,${JSON.stringify('nxduet:acceptance:grant:'+manifest.release.split('/').at(-1))},'NXDuet deployment acceptance: non-purchased synthetic test allocation'));`);granted=true
   const source=await sharp(Buffer.from('<svg width="768" height="768"><rect width="768" height="768" fill="#4695b8"/><circle cx="384" cy="245" r="115" fill="#e8b58d"/><path d="M260 240Q230 70 384 70Q530 90 510 240L480 140L280 160Z" fill="#2d2530"/><rect x="200" y="360" width="368" height="408" rx="105" fill="#ef9834"/><circle cx="350" cy="245" r="10" fill="#28232a"/><circle cx="419" cy="245" r="10" fill="#28232a"/><path d="M350 290Q384 320 420 290" fill="none" stroke="#8b4549" stroke-width="8"/></svg>')).jpeg().toBuffer()
-  const upload=new FormData();upload.append('file',new Blob([source],{type:'image/jpeg'}),'synthetic-companion.jpg')
+  verification.stage='upload';const upload=new FormData();upload.append('file',new Blob([source],{type:'image/jpeg'}),'synthetic-companion.jpg')
   const input=await json('/api/uploads',{method:'POST',body:upload});verification.upload_id=input.upload_id
   const body={upload_id:input.upload_id,name:'NXDuet deployment acceptance (synthetic)',rights_accepted:true},key=randomUUID(),options={...post(body),headers:{'Content-Type':'application/json','Idempotency-Key':key}}
-  const created=await json('/api/nxduet/templates',options);templateId=created.id;verification.template_id=templateId
+  verification.stage='preparation';const created=await json('/api/nxduet/templates',options);templateId=created.id;verification.template_id=templateId
   const replay=await json('/api/nxduet/templates',options);assert.equal(replay.id,templateId)
   const deadline=Date.now()+600000;let current,lastState
   while(Date.now()<deadline){
@@ -50,11 +50,11 @@ try{
   assert.ok((await json('/api/nxduet/templates')).templates.some(item=>item.id===templateId))
   const bytes=Buffer.from(await (await http(`/api/nxduet/templates/${templateId}/image`)).arrayBuffer());verification.overlay=await validateOverlay(bytes)
   assert.equal((await fetch(base+`/api/nxduet/templates/${templateId}/image`)).status,401)
-  const form=new FormData();form.append('placement',JSON.stringify({side:'right',scale:.9}))
+  verification.stage='composition';const form=new FormData();form.append('placement',JSON.stringify({side:'right',scale:.9}))
   for(let i=0;i<3;i++)form.append('captures',new Blob([source],{type:'image/jpeg'}),`synthetic-${i}.jpg`)
   const strip=Buffer.from(await (await http(`/api/nxduet/templates/${templateId}/compose`,{method:'POST',body:form})).arrayBuffer()),metadata=await sharp(strip).metadata();assert.equal(metadata.width,1300);assert.equal(metadata.height,3000)
   assert.equal((await json('/api/account/usage')).subscription.ai.remaining,0)
-  await http('/api/nxduet/templates/'+templateId,{method:'DELETE'})
+  verification.stage='cleanup';await http('/api/nxduet/templates/'+templateId,{method:'DELETE'})
   for(let attempt=0;attempt<20;attempt++){const row=await internal(`const rows=await db.$queryRaw\`SELECT source_path,overlay_path FROM nxduet_templates WHERE id=\${${JSON.stringify(templateId)}}\`;process.stdout.write(JSON.stringify(rows[0]));`);if(row.source_path===''&&row.overlay_path===null){verification.asset_cleanup=true;break}await delay(500)}
   assert.equal(verification.asset_cleanup,true)
   verification.status='PASS';verification.preparation_credits=100;verification.replay_same_template=true;verification.private_image_check=true;verification.strip={width:metadata.width,height:metadata.height};verification.reuse_additional_credits=0
