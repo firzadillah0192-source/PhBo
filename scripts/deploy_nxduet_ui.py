@@ -1,4 +1,4 @@
-"""Stage/deploy the NXDuet UI refinement (file picker + styling) over the live web image.
+"""Stage/deploy the NXDuet UI refinement (file picker, retro theme, /create entry block) over the live web image.
 
 Only photobooth-web changes; API, worker, SQL, v2 and nginx are untouched.
 Owner approval is required for deploy. Compose definitions live in /srv/photobooth/releases.
@@ -19,7 +19,8 @@ REPO = Path('/opt/photobooth')
 RELEASES = Path('/srv/photobooth/releases')
 POINTER = RELEASES / '.nxduet-ui-current'
 WEB = 'photobooth-web'
-FILES = ['src/components/customer/NXDuet.jsx', 'src/components/customer/nxduet.css']
+FILES = ['src/components/customer/NXDuet.jsx', 'src/components/customer/nxduet.css',
+    'src/components/home/CreationChooser.jsx', 'src/components/home/landing.css']
 
 
 def run(args, **kwargs):
@@ -143,7 +144,7 @@ def verify(manifest, rollback=False):
     assert preserved_hash() == manifest['preserved_sha256'], 'v2 or nginx changed'
     expected = manifest['old_index_sha256'] if rollback else manifest['new_index_sha256']
     assert live_hash('/usr/share/nginx/html/index.html') == expected
-    for path in ['/', '/nxduet', '/api/health', '/api/nxduet/capabilities', '/v2/']:
+    for path in ['/', '/create', '/nxduet', '/api/health', '/api/nxduet/capabilities', '/v2/']:
         with urllib.request.urlopen('http://127.0.0.1:3000' + path, timeout=20) as response:
             assert response.status == 200, path
     now = containers()

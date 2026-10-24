@@ -2,13 +2,17 @@ import React,{useCallback,useEffect,useRef,useState} from 'react'
 import CustomerNav from './CustomerNav.jsx'
 import DuetCamera from './DuetCamera.jsx'
 import { createDuetTemplate,deleteDuetTemplate,getAccountMe,getDuetCapabilities,getDuetTemplate,getDuetTemplates,getUsage,updateDuetTemplate,uploadPhoto } from '../../api.js'
+import { useT } from '../../i18n.js'
 import './nxduet.css'
 
 function readPending(account){try{const data=JSON.parse(sessionStorage.getItem('nxduet-preparation'));return data?.account===account?data:null}catch{return null}}
 export function DuetEntryLink(){
-  const [enabled,setEnabled]=useState(false)
+  const t=useT(),[enabled,setEnabled]=useState(false)
   useEffect(()=>{let active=true;getDuetCapabilities().then(data=>{if(active)setEnabled(data.enabled)}).catch(()=>{});return()=>{active=false}},[])
-  return enabled?<a className="creation-resume" href="/nxduet"><strong>NXDuet</strong> · Foto bersama orang terkasih, meski terpisah jarak. →</a>:null
+  return enabled?<section className="duet-entry" aria-labelledby="duet-entry-title">
+    <div className="duet-entry-copy"><span className="duet-entry-tag">{t('Fitur terpisah · bukan mode kreasi','Separate feature · not a creation mode')}</span><h2 id="duet-entry-title">NXDuet</h2><p>{t('Foto bersama orang terkasih, meski terpisah jarak. Simpan teman foto di akunmu dan pakai kapan saja.','A photo with someone you love, even when you are apart. Save a companion to your account and reuse it anytime.')}</p></div>
+    <a className="duet-entry-cta" href="/nxduet">{t('Buka NXDuet','Open NXDuet')} <span aria-hidden="true">→</span></a>
+  </section>:null
 }
 export default function NXDuet(){
   const [account,setAccount]=useState(null),[usage,setUsage]=useState(null),[capabilities,setCapabilities]=useState(null),[templates,setTemplates]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loginRequest,setLoginRequest]=useState(0)
@@ -56,7 +60,7 @@ export default function NXDuet(){
   const rename=async event=>{event.preventDefault();setBusy(true);setError('');try{const current=await updateDuetTemplate(selected.id,{name:event.currentTarget.elements.templateName.value});setSelected(current);setTemplates(rows=>rows.map(item=>item.id===current.id?current:item))}catch(e){setError(e.message)}finally{setBusy(false)}}
   const remove=async item=>{if(!window.confirm(`Hapus template “${item.name}”? Penyiapan baru memakai 100 kredit.`))return;setBusy(true);setError('');try{await deleteDuetTemplate(item.id);setSelected(null);setRevision(v=>v+1)}catch(e){setError(e.message)}finally{setBusy(false)}}
   const balance=usage?.subscription?.ai?.remaining??usage?.ai_remaining??0
-  return <div className="customer-app duet-app">
+  return <div className="customer-app retro-app duet-app">
     <CustomerNav usage={usage} account={account} onHome={()=>{location.href='/'}} onMode={mode=>{location.href='/create?mode='+mode.toLowerCase()}} onUsageChanged={refreshAccount} onAccountNavigate={tab=>{location.href='/account?tab='+tab}} openRequest={loginRequest}/>
     <main className="duet-main" id="studio-main">
       <header className="duet-heading"><div><p className="customer-kicker">Beda dunia, satu frame.</p><h1>NXDuet</h1><p>Foto bersama orang terkasih, meski terpisah jarak.</p></div><button type="button" aria-label="Panduan NXDuet" onClick={()=>setHelp(true)}>?</button></header>

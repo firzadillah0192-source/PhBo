@@ -1,39 +1,74 @@
-.duet-app{min-height:100vh;background:#100e16;color:#f6f3ff}.duet-main{max-width:1120px;margin:auto;padding:44px 24px 80px}.duet-heading,.duet-library-heading,.duet-actions{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}.duet-heading{margin-bottom:40px}.duet-heading h1{font-size:clamp(44px,8vw,76px);margin:4px 0}.duet-heading>button{border-radius:50%;width:44px;height:44px}.duet-main button,.duet-main a.duet-primary{cursor:pointer;background:#2c253b;color:#fff;border:1px solid #554566;border-radius:12px;padding:12px 18px;font:inherit;text-decoration:none}.duet-main button:disabled{opacity:.5;cursor:not-allowed}.duet-main .duet-primary{background:#cbb4ff;color:#211331;border-color:#cbb4ff;font-weight:700}.duet-main a{color:#d7bdff}.duet-main button:focus-visible,.duet-main a:focus-visible,.duet-main input:focus-visible,.duet-main select:focus-visible{outline:3px solid #f2ca80;outline-offset:3px}.duet-main p{line-height:1.65;color:#ccc4d8}.duet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;margin-top:24px}.duet-card{background:#1b1723;border:1px solid #3d3349;border-radius:20px;padding:24px;margin-top:20px}.duet-card form{display:grid;gap:20px;max-width:620px}.duet-main label{display:grid;gap:8px}.duet-main input:not([type=checkbox]):not([type=range]),.duet-main select{min-width:0;width:100%;box-sizing:border-box;background:#120f19;color:#fff;border:1px solid #65536f;border-radius:8px;padding:12px;font:inherit}.duet-main .duet-check{display:flex;align-items:flex-start;line-height:1.6}.duet-check input{margin-top:6px}.duet-overlay-preview{height:270px;border-radius:12px;background:repeating-conic-gradient(#342d3e 0% 25%,#282231 0% 50%) 50%/24px 24px;overflow:hidden;display:flex;justify-content:center}.duet-overlay-preview img{height:100%;max-width:100%;object-fit:contain}.duet-upload-preview{max-width:100%;max-height:340px;object-fit:contain}.duet-actions{justify-content:flex-start;margin-top:20px}.duet-error{padding:16px;border:1px solid #b96572;border-radius:12px;background:#3a202d;display:flex;justify-content:space-between;gap:12px;margin:20px 0}.duet-main .duet-error p,.duet-main .duet-saved{color:#b9ebc8}.duet-camera-frame{position:relative;max-width:900px;aspect-ratio:4/3;background:#050407;border-radius:20px;overflow:hidden}.duet-camera-frame video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.duet-camera-frame canvas{display:block;width:100%;height:100%;object-fit:contain}.duet-camera-frame>p{position:absolute;inset:30px}.duet-countdown{position:absolute;inset:0;display:grid;place-items:center;font-size:100px;text-shadow:0 2px 24px #000}.duet-camera fieldset{display:flex;gap:20px;flex-wrap:wrap;border:1px solid #554566;border-radius:12px;padding:20px;margin-top:20px}.duet-captures{display:flex;gap:12px}.duet-captures img{width:calc((100% - 24px)/3);max-width:230px;border-radius:10px}.duet-result{display:block;width:100%;max-width:360px;margin:24px auto}.duet-help{max-width:620px;max-height:85vh;overflow:auto;background:#201a2b;color:#f6f3ff;border:1px solid #756285;border-radius:20px;padding:28px;box-sizing:border-box}.duet-help::backdrop{background:#000a}.duet-help li{margin:12px 0;line-height:1.6}@media(max-width:600px){.duet-main{padding:28px 16px 50px}.duet-card{padding:18px}.duet-library-heading{align-items:flex-start}.duet-grid{grid-template-columns:1fr}.duet-help{width:calc(100% - 24px)}.duet-main .duet-actions button{flex-grow:1}.duet-heading{margin-bottom:24px}}
-.customer-app.duet-app{background:#100e16;color:#f6f3ff}
-.customer-app.duet-app .duet-main h1,.customer-app.duet-app .duet-main h2,.customer-app.duet-app .duet-main h3{color:#f6f3ff}
-.customer-app.duet-app .duet-heading .customer-kicker{display:block;color:#d3b4ff;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
-.customer-app.duet-app{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.customer-app.duet-app>.customer-nav{position:relative;inset:auto;min-height:68px;box-sizing:border-box;background:#f7f6f3;color:#181422;border-color:#d4cde0}
-.customer-app.duet-app>.customer-nav .customer-logo{display:flex;align-items:center;gap:8px;font-family:inherit;font-size:18px}
-.customer-app.duet-app .customer-nav .language-toggle{display:flex;flex-shrink:0}
-.customer-app.duet-app .customer-nav .customer-credit{color:#33283f;background:#fff;border-color:#cfc8d8}
-@media(max-width:700px){.customer-app.duet-app>.customer-nav{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:12px 16px}.customer-app.duet-app .customer-nav .customer-account{grid-column:2;grid-row:1}.customer-app.duet-app .customer-nav .customer-mode-nav{grid-column:1/-1;grid-row:2;justify-content:center;gap:20px}.customer-app.duet-app .customer-nav .customer-credit{display:none}.customer-app.duet-app .customer-nav .customer-mode-nav button{min-height:36px}}
-/* Refinement: upload field, cards, hierarchy */
-.duet-app{background:radial-gradient(900px 480px at 85% -10%,#2a1f45 0,transparent 60%),#100e16}
-.duet-main{padding-top:56px}
-.duet-heading{border-bottom:1px solid #2e2638;padding-bottom:28px}
-.duet-heading p:last-child{margin:0;font-size:18px}
-.duet-heading h1{letter-spacing:-.03em;line-height:1}
+/* NXDuet follows the customer retro theme (tokens come from .customer-app.retro-app in retro.css). */
+.duet-app{min-height:100vh}
+.duet-main{max-width:1120px;margin:auto;padding:48px 24px 90px}
+.duet-heading,.duet-library-heading,.duet-actions{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.duet-heading{margin-bottom:36px;padding-bottom:24px;border-bottom:var(--retro-border)}
+.duet-heading h1{font-size:clamp(40px,7vw,68px);line-height:1;margin:6px 0 10px}
+.duet-heading p:last-child{margin:0;font-size:var(--fs-lg)}
+.duet-heading .customer-kicker{display:block;margin:0;color:var(--accent);font-size:var(--fs-xs);font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.duet-main p{color:var(--muted);line-height:1.6}
+.duet-main a{color:var(--accent);text-underline-offset:4px}
+
+/* Buttons: same language as customer-outline-button / customer-solid-button */
+.duet-main button,.duet-main a.duet-primary{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 20px;border:var(--retro-border);border-radius:8px;background:var(--white);color:var(--ink);font:inherit;font-weight:700;text-decoration:none;box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s}
+.duet-main button:hover:not(:disabled),.duet-main a.duet-primary:hover{transform:translate(-1px,-2px);box-shadow:4px 5px 0 var(--ink)}
+.duet-main button:active:not(:disabled),.duet-main a.duet-primary:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.duet-main button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.duet-main .duet-primary{background:var(--orange);color:var(--ink)}
+.duet-heading>button{width:44px;padding:0;border-radius:50%;font-size:var(--fs-lg)}
+.duet-card>button:first-child{background:none;border:0;box-shadow:none;padding:4px 0;min-height:0;justify-content:flex-start;color:var(--accent)}
+.duet-card>button:first-child:hover:not(:disabled){transform:none;box-shadow:none;text-decoration:underline}
+.duet-error button{min-height:0;padding:0 10px;font-size:var(--fs-xl);line-height:1.2;box-shadow:none;border-width:0;background:none}
+.duet-main :is(button,a,input,select):focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* Cards and library */
 .duet-library-heading{margin-bottom:8px}
-.duet-library-heading h2{margin:0 0 6px;font-size:28px}
+.duet-library-heading h2{margin:0 0 6px;font-size:var(--fs-2xl)}
 .duet-library-heading p{margin:0;max-width:52ch}
-.duet-card{background:#181420;border-color:#352d42;box-shadow:0 1px 0 #ffffff08 inset}
-.duet-card h2{margin-top:12px;font-size:26px}
-.duet-card h3{margin:14px 0 4px;font-size:18px}
-.duet-card>button:first-child{background:none;border:0;padding:4px 0;color:#d7bdff}
+.duet-card{background:var(--white);border:var(--retro-border);border-radius:10px;box-shadow:3px 3px 0 var(--ink);padding:24px;margin-top:20px}
+.duet-card h2{margin:12px 0 8px;font-size:var(--fs-2xl)}
+.duet-card h3{margin:14px 0 4px;font-size:var(--fs-lg)}
+.duet-card form{display:grid;gap:20px;max-width:620px}
+.duet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px;margin-top:24px}
 .duet-grid .duet-card{margin-top:0;display:flex;flex-direction:column;gap:2px}
-.duet-grid .duet-card p{margin:0 0 14px;font-size:14px}
+.duet-grid .duet-card p{margin:0 0 14px;font-size:var(--fs-sm)}
 .duet-grid .duet-card button{margin-top:auto}
-.duet-main button:not(.duet-primary):hover:not(:disabled){background:#38304a}
-.duet-main .duet-primary:hover:not(:disabled){background:#dcc9ff}
-.duet-field{display:grid;gap:8px}
-.duet-field>span{font-weight:600}
-.duet-main .duet-drop{display:grid;gap:6px;justify-items:center;text-align:center;width:100%;min-height:150px;align-content:center;padding:28px 18px;background:#120f19;border:2px dashed #65536f;border-radius:16px;color:#f6f3ff;overflow-wrap:anywhere}
-.duet-main .duet-drop strong{font-size:17px}
-.duet-main .duet-drop small{color:#b9afc9;font-size:13px}
-.duet-main .duet-drop:hover:not(:disabled),.duet-main .duet-drop.is-drag{background:#1d1729;border-color:#cbb4ff}
-.duet-main .duet-drop.has-file{border-style:solid;border-color:#7a62a8}
-.duet-upload-preview{border-radius:12px;justify-self:start;background:#120f19}
-.duet-overlay-preview{height:240px}
-.duet-error button{background:none;border:0;padding:0 6px;font-size:20px}
-@media(max-width:600px){.duet-library-heading .duet-primary{width:100%}.duet-main .duet-drop{min-height:130px}}
+.duet-overlay-preview{height:240px;border:var(--retro-border);border-radius:8px;background:repeating-conic-gradient(#efe2c6 0% 25%,#fffdf7 0% 50%) 50%/22px 22px;overflow:hidden;display:flex;justify-content:center}
+.duet-overlay-preview img{height:100%;max-width:100%;object-fit:contain}
+.duet-actions{justify-content:flex-start;margin-top:20px}
+.duet-main .duet-saved{color:#2f6b3a;font-weight:700}
+
+/* Forms */
+.duet-main label,.duet-field{display:grid;gap:8px;font-weight:700}
+.duet-field>span{font-weight:700}
+.duet-main input:not([type=checkbox]):not([type=range]),.duet-main select{min-width:0;width:100%;box-sizing:border-box;background:var(--white);color:var(--ink);border:var(--retro-border);border-radius:8px;padding:12px;font:inherit;font-weight:400}
+.duet-main .duet-check{display:flex;align-items:flex-start;gap:10px;font-weight:400;line-height:1.6}
+.duet-check input{margin-top:6px;accent-color:var(--accent)}
+.duet-main .duet-drop{display:grid;gap:6px;justify-items:center;text-align:center;width:100%;min-height:150px;align-content:center;padding:28px 18px;background:var(--paper);border:2px dashed var(--ink);border-radius:10px;box-shadow:none;overflow-wrap:anywhere}
+.duet-main .duet-drop strong{font-size:var(--fs-lg)}
+.duet-main .duet-drop small{color:var(--muted);font-size:var(--fs-sm);font-weight:400}
+.duet-main .duet-drop:hover:not(:disabled),.duet-main .duet-drop.is-drag{background:var(--sun);transform:none;box-shadow:none}
+.duet-main .duet-drop.has-file{border-style:solid;background:var(--mint)}
+.duet-upload-preview{max-width:100%;max-height:340px;object-fit:contain;border:var(--retro-border);border-radius:8px;justify-self:start;background:var(--white)}
+.duet-error{padding:14px 16px;border:var(--retro-border);border-radius:8px;background:var(--rose);color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0}
+.duet-main .duet-error p{color:var(--ink);margin:0}
+
+/* Camera: the viewfinder stays dark, controls follow the theme */
+.duet-camera-frame{position:relative;max-width:900px;aspect-ratio:4/3;background:#050407;border:var(--retro-border);border-radius:10px;box-shadow:var(--retro-shadow);overflow:hidden}
+.duet-camera-frame video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.duet-camera-frame canvas{display:block;width:100%;height:100%;object-fit:contain}
+.duet-camera-frame>p{position:absolute;inset:30px;color:#f6f3ff}
+.duet-countdown{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-display);font-size:110px;color:#fff;text-shadow:0 2px 24px #000}
+.duet-camera fieldset{display:flex;gap:20px;flex-wrap:wrap;border:var(--retro-border);border-radius:10px;background:var(--white);padding:18px 20px;margin-top:22px}
+.duet-camera legend{padding:0 8px;font-weight:800}
+.duet-captures{display:flex;gap:12px}
+.duet-captures img{width:calc((100% - 24px)/3);max-width:230px;border:var(--retro-border);border-radius:8px}
+.duet-result{display:block;width:100%;max-width:360px;margin:24px auto;border:var(--retro-border);box-shadow:var(--retro-shadow)}
+
+/* Help dialog */
+.duet-help{max-width:620px;max-height:85vh;overflow:auto;background:var(--white);color:var(--ink);border:var(--retro-border);border-radius:12px;box-shadow:var(--retro-shadow);padding:28px;box-sizing:border-box}
+.duet-help::backdrop{background:#26201a99}
+.duet-help li{margin:12px 0;line-height:1.6}
+.duet-help h2{margin:0 0 8px;font-size:var(--fs-2xl)}
+
+@media(max-width:600px){.duet-main{padding:28px 16px 56px}.duet-card{padding:18px}.duet-library-heading{align-items:flex-start}.duet-library-heading .duet-primary{width:100%}.duet-grid{grid-template-columns:1fr}.duet-help{width:calc(100% - 24px)}.duet-main .duet-actions button{flex-grow:1}.duet-heading{margin-bottom:24px}.duet-main .duet-drop{min-height:130px}}
