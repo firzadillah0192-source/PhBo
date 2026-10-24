@@ -25,3 +25,14 @@ Measured on the EOS 2000D with probe 1.1.4/1.1.5 (24 Oct 2026): FC.SDK exposes `
 - While the camera focuses and exposes, live view is stopped; the UI now shows "Mengambil foto… Kamera sedang fokus" over the last frame instead of looking frozen.
 
 Not verified without hardware: Aperture/shutter code labels outside whole stops, `Shrink` (System.Drawing is Windows-only), and the set/readback behaviour on the real camera. Check with Tes kamera Canon after saving.
+
+### Capture failures seen in the field (1.2.1)
+
+Diagnostics from 17 and 24 Oct 2026 (about 28 captures) show two failure kinds that predate 1.2.0: (a) the shutter answers in under 100 ms (no autofocus) and the photo never arrives, ending in the 45 s timeout; (b) the shutter is refused with `DeviceBusy` after the 4 to 6 s autofocus search. 1.2.1 changes:
+
+- `DeviceBusy` is reported as `CAMERA_FOCUS_FAILED` ("kamera belum berhasil fokus") and the camera session stays open, so the guest can press Ambil foto again.
+- After a fast shutter answer the transfer wait is 12 s instead of 45 s. On timeout the remaining-shot count (`GetAvailableShots`) before and after is compared (trace `camera.capture.lost`, `count` = shots used): if it did not drop, the camera did not expose and the shutter is tried once more (`camera.capture.retry`); if it dropped, or the count is unavailable, nothing is retried (no double shot) and the error is `CAMERA_PHOTO_NOT_RECEIVED`.
+- Aperture/shutter are only written when the dial mode allows them (Av/Manual, Tv/Manual); otherwise the probe reports `dilewati (mode X)` instead of a DeviceBusy refusal.
+- The probe also reads the allowed values for PTP codes `D101`/`D102` (guessed Av/Tv) to calibrate the label tables.
+
+The root cause of (a) is not established; the new trace shows whether the photo was exposed but lost, or never taken.

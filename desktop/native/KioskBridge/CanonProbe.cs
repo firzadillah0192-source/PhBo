@@ -43,7 +43,7 @@ static class CanonProbe {
         ("iso", new[] { "GetISOAsync", "SetISOAsync" }), ("av-tv", new[] { "GetApertureAsync", "SetApertureAsync", "GetShutterSpeedAsync", "SetShutterSpeedAsync" }),
         ("raw", new[] { "GetRawAllowedValuesAsync", "GetRawPropertyAsync" }), ("set", new[] { "SetPropertyAsync", "SetPropertyUInt32Async", "SetWhiteBalanceAsync" }) };
 
-    static readonly (string, ushort[])[] AllowedProps = { ("iso", new ushort[] { 0xD103 }), ("img", new ushort[] { 0xD120, 0xD121 }) };
+    static readonly (string, ushort[])[] AllowedProps = { ("iso", new ushort[] { 0xD103 }), ("img", new ushort[] { 0xD120 }), ("avtv", new ushort[] { 0xD101, 0xD102 }) };
 
     public static async Task<object> Run(string root, string probeId) {
         if (Interlocked.Exchange(ref running, 1) == 1) throw new Exception("CAMERA_BUSY");

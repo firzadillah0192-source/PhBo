@@ -20,8 +20,13 @@ sealed class CanonSession {
     // Sets each configured exposure value and reads it back. A refusal (for example Av/Tv while the dial is not on Av/Tv/M) is reported, never fatal.
     public static async Task<string> ApplyExposure(CanonCamera cam, Wanted want) {
         var parts = new List<string>();
+        string mode = "?";
+        try { var (_, found) = await cam.GetAEModeAsync().WaitAsync(TimeSpan.FromSeconds(10)); mode = found.ToString(); } catch { }
+        // Aperture and shutter can only be written when the dial gives the camera no say over them; elsewhere the camera answers DeviceBusy.
+        bool avAllowed = mode is "Av" or "Manual", tvAllowed = mode is "Tv" or "Manual";
         async Task Step<T>(string name, uint? code, Func<uint, Task<EdsError>> set, Func<Task<(EdsError, T)>> get) {
             if (code is null) return;
+            if ((name == "av" && !avAllowed) || (name == "tv" && !tvAllowed)) { parts.Add($"{name} dilewati (mode {mode})"); return; }
             try {
                 var err = await set(code.Value).WaitAsync(TimeSpan.FromSeconds(10));
                 if (Convert.ToUInt32(err) != 0) { parts.Add($"{name}={code:X} ditolak {err}"); CanonTrace.Emit("camera.setting." + name, "error", code: err.ToString()); return; }
@@ -34,7 +39,7 @@ sealed class CanonSession {
         await Step("iso", want.Iso, c => cam.SetISOAsync((EdsISOSpeed)c), () => cam.GetISOAsync());
         await Step("av", want.Av, c => cam.SetApertureAsync((EdsAv)c), () => cam.GetApertureAsync());
         await Step("tv", want.Tv, c => cam.SetShutterSpeedAsync((EdsTv)c), () => cam.GetShutterSpeedAsync());
-        try { var (_, mode) = await cam.GetAEModeAsync().WaitAsync(TimeSpan.FromSeconds(10)); parts.Add("mode=" + mode); } catch { }
+        parts.Add("mode=" + mode);
         return string.Join(" ", parts);
     }
     // Longest edge and JPEG quality for the file handed to the rest of the app. Orientation is baked in because re-encoding drops EXIF.
@@ -107,17 +112,36 @@ sealed class CanonSession {
             return new { url = Jpeg(jpeg) && jpeg!.Length <= 2 * 1024 * 1024 ? "data:image/jpeg;base64," + Convert.ToBase64String(jpeg) : null };
         } catch (Exception e) { CanonTrace.Error("camera.preview.frame", e); await Close(); throw new Exception("CAMERA_DISCONNECTED"); }
     }
+    static async Task<int?> ShotsLeft(CanonCamera cam) {
+        try { var (_, shots) = await cam.GetAvailableShotsAsync().WaitAsync(TimeSpan.FromSeconds(5)); return Convert.ToInt32(shots); } catch { return null; }
+    }
     public async Task<object> Capture(string root, string id) {
         if (camera is null) throw new Exception("CAMERA_NOT_CONNECTED");
         var target = Path.Combine(root, id + ".jpg");
         try {
             if (live) { await CanonTrace.Run("camera.liveview.stop", () => camera.StopLiveViewAsync().WaitAsync(TimeSpan.FromSeconds(10))); live = false; }
             await CanonTrace.Run("camera.save_to_host", () => camera.SetSaveToAsync(EdsSaveTo.Host).WaitAsync(TimeSpan.FromSeconds(10)));
-            var completion = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-            pending = completion;
-            var shutter = await CanonTrace.Run("camera.shutter", () => camera.TakePictureAsync().WaitAsync(TimeSpan.FromSeconds(15)));
-            if (Convert.ToUInt32(shutter) != 0) throw new Exception("CAMERA_SHUTTER_REFUSED");
-            var bytes = await CanonTrace.Run("camera.transfer.wait", () => completion.Task.WaitAsync(TimeSpan.FromSeconds(45)));
+            var before = await ShotsLeft(camera);
+            byte[]? bytes = null;
+            for (var attempt = 1; bytes is null; attempt++) {
+                var completion = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+                pending = completion;
+                var clock = Stopwatch.StartNew();
+                var shutter = await CanonTrace.Run("camera.shutter", () => camera.TakePictureAsync().WaitAsync(TimeSpan.FromSeconds(15)));
+                // DeviceBusy here is the camera failing to focus (it answers after the 4 to 6 s autofocus search): the camera itself is fine.
+                if (Convert.ToUInt32(shutter) != 0) throw new Exception("CAMERA_FOCUS_FAILED");
+                // A shutter answer in well under a second means no autofocus ran; a real photo then normally follows within seconds.
+                var wait = clock.ElapsedMilliseconds < 500 ? 12 : 45;
+                try { bytes = await CanonTrace.Run("camera.transfer.wait", () => completion.Task.WaitAsync(TimeSpan.FromSeconds(wait))); }
+                catch (TimeoutException) {
+                    // The card's remaining-shot count tells whether the camera really exposed. Only a count that did not drop allows one more shutter.
+                    var after = await ShotsLeft(camera);
+                    CanonTrace.Emit("camera.capture.lost", "error", count: before is null || after is null ? null : before - after);
+                    pending = null;
+                    if (before is null || after is null || after < before || attempt >= 2) throw new Exception("CAMERA_PHOTO_NOT_RECEIVED");
+                    CanonTrace.Emit("camera.capture.retry", "ok");
+                }
+            }
             using (var check = new MemoryStream(bytes))
             using (var image = System.Drawing.Image.FromStream(check, false, true)) {
                 if (image.Width < 1 || image.Height < 1 || (long)image.Width * image.Height > 25000000) throw new Exception("CAMERA_INVALID_JPEG");
@@ -130,9 +154,10 @@ sealed class CanonSession {
             return new { captureId = id, path = target, simulated = false, source = "canon-sdk" };
         } catch (Exception e) {
             CanonTrace.Error("camera.capture", e);
+            // Focus failure leaves the session usable (live view restarts on the next frame); anything else reopens the camera.
+            if (e.Message == "CAMERA_FOCUS_FAILED") throw;
             await Close();
-            // A timeout may follow a real shutter: never retry it automatically.
-            throw new Exception("CAMERA_CAPTURE_FAILED");
+            throw new Exception(e.Message == "CAMERA_PHOTO_NOT_RECEIVED" ? e.Message : "CAMERA_CAPTURE_FAILED");
         } finally { pending = null; }
     }
     public async Task<object> Close() {
