@@ -8,3 +8,32 @@
 .customer-app.duet-app .customer-nav .language-toggle{display:flex;flex-shrink:0}
 .customer-app.duet-app .customer-nav .customer-credit{color:#33283f;background:#fff;border-color:#cfc8d8}
 @media(max-width:700px){.customer-app.duet-app>.customer-nav{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:12px 16px}.customer-app.duet-app .customer-nav .customer-account{grid-column:2;grid-row:1}.customer-app.duet-app .customer-nav .customer-mode-nav{grid-column:1/-1;grid-row:2;justify-content:center;gap:20px}.customer-app.duet-app .customer-nav .customer-credit{display:none}.customer-app.duet-app .customer-nav .customer-mode-nav button{min-height:36px}}
+/* Refinement: upload field, cards, hierarchy */
+.duet-app{background:radial-gradient(900px 480px at 85% -10%,#2a1f45 0,transparent 60%),#100e16}
+.duet-main{padding-top:56px}
+.duet-heading{border-bottom:1px solid #2e2638;padding-bottom:28px}
+.duet-heading p:last-child{margin:0;font-size:18px}
+.duet-heading h1{letter-spacing:-.03em;line-height:1}
+.duet-library-heading{margin-bottom:8px}
+.duet-library-heading h2{margin:0 0 6px;font-size:28px}
+.duet-library-heading p{margin:0;max-width:52ch}
+.duet-card{background:#181420;border-color:#352d42;box-shadow:0 1px 0 #ffffff08 inset}
+.duet-card h2{margin-top:12px;font-size:26px}
+.duet-card h3{margin:14px 0 4px;font-size:18px}
+.duet-card>button:first-child{background:none;border:0;padding:4px 0;color:#d7bdff}
+.duet-grid .duet-card{margin-top:0;display:flex;flex-direction:column;gap:2px}
+.duet-grid .duet-card p{margin:0 0 14px;font-size:14px}
+.duet-grid .duet-card button{margin-top:auto}
+.duet-main button:not(.duet-primary):hover:not(:disabled){background:#38304a}
+.duet-main .duet-primary:hover:not(:disabled){background:#dcc9ff}
+.duet-field{display:grid;gap:8px}
+.duet-field>span{font-weight:600}
+.duet-main .duet-drop{display:grid;gap:6px;justify-items:center;text-align:center;width:100%;min-height:150px;align-content:center;padding:28px 18px;background:#120f19;border:2px dashed #65536f;border-radius:16px;color:#f6f3ff;overflow-wrap:anywhere}
+.duet-main .duet-drop strong{font-size:17px}
+.duet-main .duet-drop small{color:#b9afc9;font-size:13px}
+.duet-main .duet-drop:hover:not(:disabled),.duet-main .duet-drop.is-drag{background:#1d1729;border-color:#cbb4ff}
+.duet-main .duet-drop.has-file{border-style:solid;border-color:#7a62a8}
+.duet-upload-preview{border-radius:12px;justify-self:start;background:#120f19}
+.duet-overlay-preview{height:240px}
+.duet-error button{background:none;border:0;padding:0 6px;font-size:20px}
+@media(max-width:600px){.duet-library-heading .duet-primary{width:100%}.duet-main .duet-drop{min-height:130px}}

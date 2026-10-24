@@ -12,8 +12,8 @@ export function DuetEntryLink(){
 }
 export default function NXDuet(){
   const [account,setAccount]=useState(null),[usage,setUsage]=useState(null),[capabilities,setCapabilities]=useState(null),[templates,setTemplates]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loginRequest,setLoginRequest]=useState(0)
-  const [creating,setCreating]=useState(false),[file,setFile]=useState(null),[preview,setPreview]=useState(null),[name,setName]=useState('Teman fotoku'),[accepted,setAccepted]=useState(false),[selected,setSelected]=useState(null),[camera,setCamera]=useState(false),[help,setHelp]=useState(false),[revision,setRevision]=useState(0),[offset,setOffset]=useState(0)
-  const helpDialog=useRef(null),pending=useRef(null),submitLock=useRef(false),mounted=useRef(true)
+  const [drag,setDrag]=useState(false),[creating,setCreating]=useState(false),[file,setFile]=useState(null),[preview,setPreview]=useState(null),[name,setName]=useState('Teman fotoku'),[accepted,setAccepted]=useState(false),[selected,setSelected]=useState(null),[camera,setCamera]=useState(false),[help,setHelp]=useState(false),[revision,setRevision]=useState(0),[offset,setOffset]=useState(0)
+  const fileInput=useRef(null),helpDialog=useRef(null),pending=useRef(null),submitLock=useRef(false),mounted=useRef(true)
   const refreshAccount=useCallback(async()=>{
     const next=await getUsage();if(!mounted.current)return
     const who=next.authenticated?await getAccountMe():null;if(!mounted.current)return
@@ -37,7 +37,8 @@ export default function NXDuet(){
   },[selected?.id,selected?.state])
   useEffect(()=>{if(help&&!helpDialog.current?.open)helpDialog.current?.showModal();else if(!help)helpDialog.current?.close()},[help])
   const chooseFile=next=>{
-    if(next&&(!/\.(jpe?g|png|webp|heic|heif)$/i.test(next.name)||next.size>12*1024*1024)){setError('Pilih foto JPEG, PNG, WebP, HEIC, atau HEIF maksimal 12 MB.');return}
+    if(next&&!/\.(jpe?g|png|webp|heic|heif)$/i.test(next.name)&&!/^image\/(jpeg|png|webp|heic|heif)$/.test(next.type)){setError('Format foto tidak didukung. Pilih JPEG, PNG, WebP, HEIC, atau HEIF.');return}
+    if(next&&next.size>12*1024*1024){setError(`Foto ${(next.size/1048576).toFixed(1)} MB terlalu besar. Maksimal 12 MB.`);return}
     setFile(next);pending.current=null;sessionStorage.removeItem('nxduet-preparation');setError('')
   }
   const create=async event=>{
@@ -70,7 +71,11 @@ export default function NXDuet(){
           <div className="duet-actions"><button className="duet-primary" disabled={busy} onClick={()=>setCamera(true)}>Mulai foto</button><button disabled={busy} onClick={()=>remove(selected)}>Hapus template</button></div><p>Memakai template ini tidak membutuhkan penyiapan AI baru.</p>
         </>}
       </section>:creating?<section className="duet-card"><button disabled={busy} onClick={()=>setCreating(false)}>← Template Saya</button><h2>Buat teman foto</h2><p>Satu foto akan dijadikan potongan transparan dengan pose aslinya.</p>
-        <form onSubmit={create}><label>Nama template <input value={name} maxLength={80} required disabled={busy||Boolean(pending.current)} onChange={e=>setName(e.target.value)}/></label><label>Foto temanmu <input type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif" disabled={busy} onChange={e=>chooseFile(e.target.files?.[0]??null)}/></label>
+        <form onSubmit={create}><label>Nama template <input value={name} maxLength={80} required disabled={busy||Boolean(pending.current)} onChange={e=>setName(e.target.value)}/></label><div className="duet-field"><span>Foto temanmu</span>
+            <button type="button" className={'duet-drop'+(drag?' is-drag':'')+(file?' has-file':'')} disabled={busy} onClick={()=>fileInput.current?.click()} onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);if(!busy)chooseFile(e.dataTransfer.files?.[0]??null)}}>
+              <strong>{file?file.name:'Pilih atau tarik foto ke sini'}</strong><small>{file?`${(file.size/1048576).toFixed(1)} MB · ketuk untuk mengganti`:'JPEG, PNG, WebP, HEIC atau HEIF · maks. 12 MB'}</small>
+            </button>
+            <input ref={fileInput} type="file" accept="image/*,.heic,.heif" hidden onChange={e=>{const next=e.target.files?.[0]??null;e.target.value='';if(next)chooseFile(next)}}/></div>
           {preview&&<img className="duet-upload-preview" src={preview} alt="Foto yang dipilih untuk penyiapan" onError={()=>setError('Preview foto ini tidak dapat ditampilkan. HEIC akan diperiksa saat diunggah.')}/>}
           {pending.current&&<p>Permintaan sebelumnya dapat diperiksa ulang dengan tombol di bawah. Pemeriksaan ulang tidak menagih dua kali.</p>}
           <label className="duet-check"><input type="checkbox" checked={accepted} disabled={busy} onChange={e=>setAccepted(e.target.checked)}/>Saya memiliki hak atau izin untuk menggunakan dan mengolah gambar ini, serta persetujuan orang yang ditampilkan apabila diperlukan.</label>
