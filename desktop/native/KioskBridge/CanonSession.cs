@@ -119,27 +119,34 @@ sealed class CanonSession {
         if (camera is null) throw new Exception("CAMERA_NOT_CONNECTED");
         var target = Path.Combine(root, id + ".jpg");
         try {
-            if (live) { await CanonTrace.Run("camera.liveview.stop", () => camera.StopLiveViewAsync().WaitAsync(TimeSpan.FromSeconds(10))); live = false; }
-            await CanonTrace.Run("camera.save_to_host", () => camera.SetSaveToAsync(EdsSaveTo.Host).WaitAsync(TimeSpan.FromSeconds(10)));
-            var before = await ShotsLeft(camera);
             byte[]? bytes = null;
+            int? before = null;
             for (var attempt = 1; bytes is null; attempt++) {
+                var cam = camera ?? throw new Exception("CAMERA_NOT_CONNECTED");
+                if (live) { await CanonTrace.Run("camera.liveview.stop", () => cam.StopLiveViewAsync().WaitAsync(TimeSpan.FromSeconds(10))); live = false; }
+                // Field logs: a shutter command sent right after live view stops is sometimes acknowledged within 100 ms without any exposure. Give the camera a moment.
+                await Task.Delay(attempt == 1 ? 600 : 1000);
+                await CanonTrace.Run("camera.save_to_host", () => cam.SetSaveToAsync(EdsSaveTo.Host).WaitAsync(TimeSpan.FromSeconds(10)));
+                before ??= await ShotsLeft(cam);
                 var completion = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
                 pending = completion;
                 var clock = Stopwatch.StartNew();
-                var shutter = await CanonTrace.Run("camera.shutter", () => camera.TakePictureAsync().WaitAsync(TimeSpan.FromSeconds(15)));
+                var shutter = await CanonTrace.Run("camera.shutter", () => cam.TakePictureAsync().WaitAsync(TimeSpan.FromSeconds(15)));
                 // DeviceBusy here is the camera failing to focus (it answers after the 4 to 6 s autofocus search): the camera itself is fine.
                 if (Convert.ToUInt32(shutter) != 0) throw new Exception("CAMERA_FOCUS_FAILED");
-                // A shutter answer in well under a second means no autofocus ran; a real photo then normally follows within seconds.
-                var wait = clock.ElapsedMilliseconds < 500 ? 12 : 45;
+                // An answer in under 500 ms means autofocus never ran; in every logged case no photo followed. A real photo arrives about a second after the shutter.
+                var instant = clock.ElapsedMilliseconds < 500;
+                var wait = instant ? 3 : 45;
                 try { bytes = await CanonTrace.Run("camera.transfer.wait", () => completion.Task.WaitAsync(TimeSpan.FromSeconds(wait))); }
                 catch (TimeoutException) {
-                    // The card's remaining-shot count tells whether the camera really exposed. Only a count that did not drop allows one more shutter.
-                    var after = await ShotsLeft(camera);
-                    CanonTrace.Emit("camera.capture.lost", "error", count: before is null || after is null ? null : before - after);
+                    // The remaining-shot count tells whether the camera exposed; only a count that did not drop allows another shutter, after reopening the camera session.
+                    var after = await ShotsLeft(cam);
+                    CanonTrace.Emit("camera.capture.lost", "error", count: before is null || after is null ? null : before - after, code: instant ? "INSTANT_SHUTTER" : "NO_TRANSFER");
                     pending = null;
                     if (before is null || after is null || after < before || attempt >= 2) throw new Exception("CAMERA_PHOTO_NOT_RECEIVED");
-                    CanonTrace.Emit("camera.capture.retry", "ok");
+                    CanonTrace.Emit("camera.capture.reset", "ok");
+                    await Close();
+                    await Open();
                 }
             }
             using (var check = new MemoryStream(bytes))

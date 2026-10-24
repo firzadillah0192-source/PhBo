@@ -36,3 +36,13 @@ Diagnostics from 17 and 24 Oct 2026 (about 28 captures) show two failure kinds t
 - The probe also reads the allowed values for PTP codes `D101`/`D102` (guessed Av/Tv) to calibrate the label tables.
 
 The root cause of (a) is not established; the new trace shows whether the photo was exposed but lost, or never taken.
+
+### Instant-shutter failures (1.2.2)
+
+Logs of 24 Oct 2026 (13:00 to 13:08) confirmed the pattern: every shutter answer under 100 ms (5, 37, 38, 48, 67, 72 ms) was followed by no photo, while answers of 2 to 7 s (autofocus ran) produced a photo unless the answer was `DeviceBusy`. In 1.2.1 a retry on the same session also produced no photo, and the shot count did not change. 1.2.2 therefore:
+
+- waits 600 ms after live view stops, before `SetSaveTo` and the shutter;
+- after a shutter answer under 500 ms waits only 3 s for the transfer (a real photo arrives about 1 s after the shutter);
+- when no photo arrives and the remaining-shot count did not drop, closes and reopens the camera session (`camera.capture.reset`), re-applies the exposure settings, and shoots once more (1 s settle). If the count dropped, or is unknown, nothing is shot again (`CAMERA_PHOTO_NOT_RECEIVED`).
+
+The root cause is still unknown. Whether the shot count is meaningful while saving to the PC (not the card) has not been verified; the trace `camera.capture.lost` records the difference (`count`) and the kind (`INSTANT_SHUTTER` or `NO_TRANSFER`) for each loss. Capturing through the memory card was deliberately not implemented.
