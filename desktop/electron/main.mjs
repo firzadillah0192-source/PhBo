@@ -12,6 +12,7 @@ import { origins, UpdateClient, DeviceClient, DiagnosticsClient, observeNetwork 
 import { ActivityLog } from '../shared/activity-log.mjs';
 import { buildReport } from '../shared/diagnostics.mjs';
 import { EventStore, eventSchema, DEFAULT_TIMING } from '../shared/event.mjs';
+import { CameraSettingsStore, cameraSettingsSchema, bridgeSettings } from '../shared/camera-settings.mjs';
 import { release as osRelease } from 'node:os';
 import { DeviceLogin } from '../shared/login.mjs';
 import { PIN_ID, KEY_ID, validPin, hashPin, checkPin } from '../shared/operator.mjs';
@@ -42,6 +43,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   await activity.init();observeNetwork(event=>activity.record(event));activity.record({action:'app.start',status:'ok'});activity.start();
   const journal=await Journal.open(join(root,'journal.sqlite'));
   const eventStore=new EventStore(join(root,'event.json'));await eventStore.load();
+  const cameraStore=new CameraSettingsStore(join(root,'camera.json'));await cameraStore.load();
   const timing=test&&process.env.PHBO_TEST_EVENT_TIMING?{...DEFAULT_TIMING,...JSON.parse(process.env.PHBO_TEST_EVENT_TIMING)}:DEFAULT_TIMING;
   const encrypted=safeStorage.isEncryptionAvailable()&&(process.platform==='win32'||safeStorage.getSelectedStorageBackend()!=='basic_text');
   const secrets=new Secrets(join(root,'credentials'),encrypted?safeStorage:null);
@@ -91,7 +93,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
   };
   const view=async()=>({...await runtime.state(),cameraBackend,activity:activity.status(),version:app.getVersion(),keyFromEnvironment:runtime.keySource==='env'&&!!runtime.apiKey,
     loginRequired:!runtime.apiKey&&gate&&!loginSkipped,login:login.state,staff:runtime.keySource==='device'?staff:null,
-    event:eventStore.get()?{...eventStore.get(),timing}:null,pinSet:pinSet(),pinPrompt:!!runtime.apiKey&&!envPin&&!pinRecord&&gate});
+    event:eventStore.get()?{...eventStore.get(),timing}:null,cameraSettings:cameraStore.get(),pinSet:pinSet(),pinPrompt:!!runtime.apiKey&&!envPin&&!pinRecord&&gate});
   const dist=resolve(here,'../dist');
   protocol.handle('nxbooth',request=>{const url=new URL(request.url);const path=resolve(dist,'.'+decodeURIComponent(url.pathname==='/' ? '/index.html':url.pathname));const rel=relative(dist,path);
     if(url.host!=='app'||rel.startsWith('..')||isAbsolute(rel))return new Response('Forbidden',{status:403});return net.fetch(pathToFileURL(path).href);});
@@ -122,6 +124,7 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
     z.object({method:z.literal('pinCreate'),pin:z.string().min(4).max(128)}).strict(),
     z.object({method:z.literal('setApiKey'),key:z.string().min(32).max(512).regex(/^[\x21-\x7E]+$/)}).strict(),z.object({method:z.literal('clearApiKey')}).strict(),
     z.object({method:z.literal('eventSave'),...eventSchema.shape}).strict(),
+    z.object({method:z.literal('cameraSettingsSave'),...cameraSettingsSchema.shape}).strict(),
     ...['cameraOpen','cameraFrame','cameraClose','updateCheck','updateInstall','cameraProbe','diagnosticsSend','eventReset','resultClaim'].map(method=>z.object({method:z.literal(method)}).strict()),
     z.object({method:z.literal('thumbnail'),mode:z.enum(['CLASSIC','BASIC','ADVANCED']),id:z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/)}).strict(),
     ...['capture','retake','process','print','finish','fixture','lock','printerPairing','openWebKiosk'].map(method=>z.object({method:z.literal(method)}).strict()),
@@ -184,11 +187,13 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
       if(['cameraOpen','cameraFrame','cameraClose'].includes(p.method)){
         if(cameraBackend!=='canon-sdk'||simulated)throw new Error('CAMERA_MODE_INVALID');
         if(p.method!=='cameraClose'&&(runtime.session?.phase!=='CAPTURING'||runtime.busy))throw new Error('CAPTURE_NOT_ALLOWED');
+        if(p.method==='cameraOpen')await bridge.call('camera.configure',bridgeSettings(cameraStore.get()));
         return {ok:true,data:await bridge.call({'cameraOpen':'camera.open','cameraFrame':'camera.frame','cameraClose':'camera.close'}[p.method])};
       }
       if(p.method==='cameraProbe'){
         if(!operator)throw new Error('OPERATOR_REQUIRED');
         if(runtime.session&&runtime.session.phase!=='FINISHED')throw new Error('PROBE_SESSION_ACTIVE');
+        await bridge.call('camera.configure',bridgeSettings(cameraStore.get()));
         lastProbe=await bridge.call('camera.probe');return {ok:true,data:lastProbe};
       }
       if(p.method==='diagnosticsSend'){
@@ -206,6 +211,11 @@ if(!app.requestSingleInstanceLock()){app.whenReady().then(()=>{dialog.showErrorB
         if(runtime.catalogLoaded)for(const t of input.templates)if(!runtime.catalog[t.mode]?.some(x=>x.id===t.id))throw new Error('EVENT_TEMPLATE_UNKNOWN');
         if(input.active&&runtime.session&&runtime.session.phase!=='FINISHED')throw new Error('SESSION_ACTIVE');
         await eventStore.save(input);return {ok:true,data:await view()};
+      }
+      if(p.method==='cameraSettingsSave'){
+        if(!operator)throw new Error('OPERATOR_REQUIRED');
+        if(runtime.session&&runtime.session.phase!=='FINISHED')throw new Error('SESSION_ACTIVE');
+        const {method:_m,...input}=p;await cameraStore.save(input);return {ok:true,data:await view()};
       }
       if(p.method==='eventReset'){
         // Guests restart the event kiosk without the staff PIN; only while event mode is on.

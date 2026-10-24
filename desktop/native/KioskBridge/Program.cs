@@ -65,6 +65,10 @@ while (await Console.In.ReadLineAsync() is { } line) {
             case "camera.close":
                 if (simulated || !OperatingSystem.IsWindows()) throw new Exception("CAMERA_WINDOWS_ONLY");
                 result = method == "camera.open" ? await canon!.Open() : method == "camera.frame" ? await canon!.Frame() : await canon!.Close(); break;
+            case "camera.configure":
+                if (simulated || !OperatingSystem.IsWindows()) throw new Exception("CAMERA_WINDOWS_ONLY");
+                uint? Code(string key) => p.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetUInt32() : null;
+                result = CanonSession.Configure(Code("iso"), Code("av"), Code("tv"), p.GetProperty("maxEdge").GetInt32(), p.GetProperty("quality").GetInt32()); break;
             case "camera.probe":
                 if (simulated || !OperatingSystem.IsWindows()) throw new Exception("CAMERA_WINDOWS_ONLY");
                 await canon!.Close();

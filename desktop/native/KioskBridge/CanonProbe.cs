@@ -93,6 +93,9 @@ static class CanonProbe {
                     await Do("info-api-" + label, () => Task.FromResult(string.Join(" | ", typeof(CanonCamera).GetMethods().Where(m => names.Contains(m.Name)).Select(Signature))),
                         v => (v.Length > 0, v.Length > 0 ? null : "NO_METHOD", v.Length > 0 ? v : label, null));
                 // PTP property codes are guesses from the Canon EOS PTP map; each is read independently so a wrong code only shows as an error.
+                var wanted = CanonSession.Settings;
+                if (wanted.Iso is not null || wanted.Av is not null || wanted.Tv is not null)
+                    await Do("settings", () => CanonSession.ApplyExposure(canon, wanted), v => { var ok = !v.Contains("ditolak") && !v.Contains("beda:") && !v.Contains('!'); return (ok, ok ? null : "SETTING_REJECTED", v, null); });
                 foreach (var (label, codes) in AllowedProps)
                     await Do("info-allowed-" + label, async () => {
                         var parts = new List<string>();

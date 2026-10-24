@@ -13,3 +13,15 @@ Validation: .NET build, desktop unit tests, real Electron simulation/webcam regr
 Release scope: 1.0.2 is built from `origin/main` f999214 plus this camera fix. The shared workspace's unreleased 1.1.0 event/updater changes are excluded from this installer; the event source in the shared workspace also uses the new camera hook and stops on capture failure.
 
 Desktop 1.1.0 retains this Canon integration and adds event mode and updater progress. Combined manual/event SDK UI regression tests pass with mocked IPC. Physical Windows acceptance remains pending.
+
+## Camera settings and output size (1.2.0)
+
+Measured on the EOS 2000D with probe 1.1.4/1.1.5 (24 Oct 2026): FC.SDK exposes `GetISO/SetISO`, `GetAperture/SetAperture`, `GetShutterSpeed/SetShutterSpeed`, `SetWhiteBalance`, `GetAEMode`. ISO `D103` reported the allowed values `0, 48, 50, 58, 60, 68, 70, 78` (Auto, 100 to 6400, the `EdsISOSpeed` codes). The image format property `D120` is a structured value (two entries, both Large, fine/normal compression) and `SetProperty` takes a single `UInt32`, so the camera's own JPEG size is not changed.
+
+- Staff menu > **Pengaturan kamera**: ISO, aperture (f/), shutter speed and output size. Stored in `camera.json` in the app data folder (zod-validated, atomic write). `null` leaves the value to the camera. Saving is refused while a photo session is active.
+- Bridge command `camera.configure {iso, av, tv, maxEdge, quality}` runs before every `cameraOpen` and `cameraProbe`. `camera.open` then applies each configured value and **reads it back**; refusals and mismatches are traced (`camera.setting.iso|av|tv`) and returned in `applied`, never fatal. The probe shows the same result as a `settings` step.
+- Aperture and shutter are accepted by the camera only with the dial on Av, Tv or M (probe in P mode read both as 0). ISO works in every mode. The dial cannot be changed by software.
+- Output size: after download, `Shrink` resizes the JPEG to the configured longest edge (default 2000 px, quality 85, bicubic, EXIF orientation applied because re-encoding drops EXIF) before it is written to the capture path. Presets: 1280/80, 1600/82, 2000/85, 3000/90, original. The 24 MP original of about 6 to 8 MB becomes a few hundred KB.
+- While the camera focuses and exposes, live view is stopped; the UI now shows "Mengambil foto… Kamera sedang fokus" over the last frame instead of looking frozen.
+
+Not verified without hardware: Aperture/shutter code labels outside whole stops, `Shrink` (System.Drawing is Windows-only), and the set/readback behaviour on the real camera. Check with Tes kamera Canon after saving.

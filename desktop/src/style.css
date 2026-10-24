@@ -94,3 +94,8 @@ fieldset.templates legend{font-weight:800;padding:0 6px}.check-line{display:flex
 .check-line input{margin:0;min-height:0;width:20px;height:20px}
 
 .desktop-camera .sdk-preview{width:100%;max-height:58vh;object-fit:contain;display:block;background:#111;}
+
+.preview-wrap{position:relative}
+.preview-wrap .shooting{position:absolute;inset:0;display:grid;place-content:center;gap:6px;text-align:center;background:rgba(17,21,30,.55);color:#fff;border-radius:8px}
+.preview-wrap .shooting b{font-size:28px}
+.preview-wrap .shooting span{font-size:16px}

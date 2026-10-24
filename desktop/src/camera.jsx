@@ -8,7 +8,7 @@ export function useSessionCamera(api,{active,simulated,backend}){
  const video=useRef(null),[camera,setCamera]=useState({ready:false,error:'',source:'',url:''});
  const trace=(action,status,code,count)=>{void api.activityEvent?.({action,status,code:code&&/^[A-Z][A-Z0-9_]{0,79}$/.test(code)?code:undefined,count}).catch(()=>{});};
  const sdk=backend==='canon-sdk';
- const [epoch,setEpoch]=useState(0);
+ const [epoch,setEpoch]=useState(0),[shooting,setShooting]=useState(false);
  useEffect(()=>{
   if(!active||simulated){setCamera({ready:!!simulated,error:'',source:'',url:''});return;}
   let cancelled=false,stream,timer;
@@ -34,13 +34,15 @@ export function useSessionCamera(api,{active,simulated,backend}){
   return()=>{cancelled=true;clearTimeout(timer);stopCamera(stream);if(sdk)api.cameraClose().catch(()=>{});};
  },[active,simulated,sdk,api,epoch]);
  async function capture(){
-  if(simulated||sdk)return api.capture();
+  // The Canon stops live view while it focuses and exposes, so the last frame stays on screen; `shooting` tells the guest why.
+  if(sdk){setShooting(true);try{return await api.capture();}finally{setShooting(false);}}
+  if(simulated)return api.capture();
   const file=await captureCameraPhoto(video.current);
   const base64=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=reject;reader.readAsDataURL(file);});
   return api.captureWebcam(base64);
  }
- return {...camera,video,sdk,capture,decodeError:()=>{trace('camera.video.decode','error','PREVIEW_DECODE_FAILED');setCamera(c=>({...c,ready:false,error:'Preview kamera tidak bisa ditampilkan.'}));},reconnect:()=>{trace('camera.reconnect','begin');setEpoch(n=>n+1);},playing:()=>setCamera(c=>({...c,ready:true}))};
+ return {...camera,video,sdk,shooting,capture,decodeError:()=>{trace('camera.video.decode','error','PREVIEW_DECODE_FAILED');setCamera(c=>({...c,ready:false,error:'Preview kamera tidak bisa ditampilkan.'}));},reconnect:()=>{trace('camera.reconnect','begin');setEpoch(n=>n+1);},playing:()=>setCamera(c=>({...c,ready:true}))};
 }
 export function CameraPreview({camera,label='Preview kamera Canon'}){
- return camera.sdk?(camera.url?<img className="sdk-preview" src={camera.url} alt={label} onError={camera.decodeError}/>:<p role="status">{camera.error||'Menghubungkan kamera Canon…'}</p>):<video ref={camera.video} autoPlay muted playsInline aria-label={label} onPlaying={camera.playing}/>;
+ return camera.sdk?(camera.url?<div className="preview-wrap"><img className="sdk-preview" src={camera.url} alt={label} onError={camera.decodeError}/>{camera.shooting&&<div className="shooting" role="status"><b>Mengambil foto…</b><span>Kamera sedang fokus. Tahan pose sebentar.</span></div>}</div>:<p role="status">{camera.error||'Menghubungkan kamera Canon…'}</p>):<video ref={camera.video} autoPlay muted playsInline aria-label={label} onPlaying={camera.playing}/>;
 }

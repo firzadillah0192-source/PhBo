@@ -72,6 +72,10 @@ Mode event membutuhkan internet untuk proses dan QR. Basic/Advanced memakai kred
 - **Tidak ada update paksa.** Kiosk baru memperbarui diri saat staf menekan tombolnya. Kiosk yang belum diperbarui tetap bisa dipakai selama API masih kompatibel.
 - **Rollback:** publish ulang installer versi sebelumnya dengan nomor versi **lebih tinggi** (misalnya isi sama dengan 1.0.0 tetapi diberi versi 1.0.2). Updater tidak menurunkan versi.
 
+## Pengaturan kamera (v1.2.0)
+
+Menu staf > **Pengaturan kamera**: ISO, bukaan (f/), kecepatan rana, dan ukuran foto hasil. Pilih **Simpan pengaturan kamera**, lalu jalankan **Tes kamera Canon** dan lihat baris `settings`: itu menunjukkan apakah kamera menerima nilainya. ISO bisa di semua mode. Bukaan dan rana hanya diterima kalau dial kamera di Av, Tv, atau M (di mode P kamera menolak). "Biarkan kamera" berarti tidak diubah. Ukuran foto hasil memperkecil foto di komputer: default 2000 px (sekitar beberapa ratus KB), pilih Hemat untuk file lebih kecil lagi.
+
 ## Tes kamera Canon dan kirim log (v1.0.1)
 
 Untuk menguji EOS 2000D langsung dari aplikasi (tanpa EOS Utility atau program terpisah): **Menu staf** -> **Tes kamera Canon**.
