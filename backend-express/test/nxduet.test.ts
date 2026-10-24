@@ -74,8 +74,8 @@ test('NXDuet private object namespace supports storage and blocks traversal or s
   const stored=new Map<string,Buffer>();
   const client={putObject:async(_bucket:string,key:string,bytes:Buffer)=>{stored.set(key,bytes);},getObject:async(_bucket:string,key:string)=>Readable.from([stored.get(key)!]),removeObject:async(_bucket:string,key:string)=>{stored.delete(key);}};
   const objects=new NativeObjectStorage(client as never,'synthetic-test-bucket'),files=new DuetFiles('/unused',objects),id='b'.repeat(32),bytes=await syntheticOverlay();
-  const path=await files.put(id,'overlay',bytes);assert.equal(path,`minio://nxduet/${id}/overlay.png`);assert.deepEqual(await files.read(id,path,'overlay'),bytes);
-  await assert.rejects(files.read('c'.repeat(32),path,'overlay'));await assert.rejects(objects.read(`minio://nxduet/${id}/../source.jpg`));await assert.rejects(objects.signedUrl(path));
+  const path=await files.put(id,'overlay',bytes);assert.equal(path,`minio://results/nxduet/${id}/overlay.png`);assert.deepEqual(await files.read(id,path,'overlay'),bytes);
+  await assert.rejects(files.read('c'.repeat(32),path,'overlay'));await assert.rejects(objects.read(`minio://results/nxduet/${id}/../source.jpg`));await assert.rejects(objects.signedUrl(path));
   await files.remove(id,path,'overlay');assert.equal(stored.size,0);
 });
 test('NXDuet ambiguous completion retains the stored asset and avoids a contradictory refund',async()=>{
