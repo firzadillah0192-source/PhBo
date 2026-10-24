@@ -81,7 +81,7 @@ async function duetBlob(path,options={}) {
   if(!response.headers.get('content-type')?.startsWith('image/png'))throw new Error('Gambar NXDuet tidak dapat dibaca.')
   return response.blob()
 }
-export function getDuetOverlay(id) { return duetBlob('/nxduet/templates/'+encodeURIComponent(id)+'/image') }
+export function getDuetOverlay(id,slot=1) { return duetBlob('/nxduet/templates/'+encodeURIComponent(id)+'/image?slot='+slot) }
 export function composeDuetStrip(id,captures,placement) {
   const form=new FormData();captures.forEach((blob,i)=>form.append('captures',blob,`capture-${i+1}.jpg`));form.append('placement',JSON.stringify(placement))
   return duetBlob('/nxduet/templates/'+encodeURIComponent(id)+'/compose',{method:'POST',body:form})

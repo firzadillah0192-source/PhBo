@@ -72,3 +72,13 @@
 .duet-help h2{margin:0 0 8px;font-size:var(--fs-2xl)}
 
 @media(max-width:600px){.duet-main{padding:28px 16px 56px}.duet-card{padding:18px}.duet-library-heading{align-items:flex-start}.duet-library-heading .duet-primary{width:100%}.duet-grid{grid-template-columns:1fr}.duet-help{width:calc(100% - 24px)}.duet-main .duet-actions button{flex-grow:1}.duet-heading{margin-bottom:24px}.duet-main .duet-drop{min-height:130px}}
+
+/* Three poses */
+.duet-poses{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;border:var(--retro-border);border-radius:10px;background:var(--paper);padding:16px 18px;margin:0}
+.duet-poses legend{padding:0 8px;font-weight:800}
+.duet-pose-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.duet-pose-strip figure{margin:0;display:grid;gap:6px;min-width:0}
+.duet-pose-strip figcaption{font-size:var(--fs-xs);font-weight:700;text-align:center;overflow-wrap:anywhere}
+.duet-pose-strip .duet-overlay-preview{height:200px}
+.duet-grid .duet-pose-strip .duet-overlay-preview{height:130px}
+@media(max-width:600px){.duet-pose-strip{gap:6px}.duet-pose-strip .duet-overlay-preview{height:140px}.duet-grid .duet-pose-strip .duet-overlay-preview{height:110px}}

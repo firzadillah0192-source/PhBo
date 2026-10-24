@@ -2,7 +2,12 @@
 export function companionRect(width,height,imageWidth,imageHeight,placement) {
   const ratio=Math.min(width*0.5/imageWidth,height/imageHeight)*placement.scale
   const w=Math.max(1,Math.round(imageWidth*ratio)),h=Math.max(1,Math.round(imageHeight*ratio))
-  return {width:w,height:h,left:placement.side==='right'?width-w:0,top:height-h}
+  return {width:w,height:h,left:0,top:height-h}
+}
+// Capture canvas follows the Classic frame slot so the live preview matches the strip.
+export function captureSize(frame,width=1200) {
+  const ratio=frame?.slot_width&&frame?.slot_height?frame.slot_height/frame.slot_width:0.85
+  return {width,height:Math.round(width*ratio)}
 }
 export function cameraCrop(width,height,targetWidth=1200,targetHeight=900) {
   const ratio=Math.max(targetWidth/width,targetHeight/height)

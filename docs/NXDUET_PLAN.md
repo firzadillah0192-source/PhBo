@@ -34,6 +34,9 @@ terkasih, meski terpisah jarak.”
 4. First version: preserve the uploaded pose and appearance, remove the background,
    and produce one reusable transparent cutout. Additional generated poses are a
    separate scope decision: they take extra preparation and require identity review.
+   **Superseded by owner decision 2026-10-24:** three customer-chosen poses (server-owned
+   list), 100 credits total, three-quarter-body crop, companion fixed on the left, and the
+   Classic 3-slot frame `classic-frame-003`. See `NXDUET_API.md` revision 2.
 5. Validate actual transparency, image readability, and output dimensions. A PNG file
    extension or successful HTTP response alone does not establish a usable cutout.
 6. Let the user inspect the result and adjust companion size and left/right placement.

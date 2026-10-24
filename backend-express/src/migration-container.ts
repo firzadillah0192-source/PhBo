@@ -62,6 +62,7 @@ import { DuitkuSandboxGateway } from './services/duitku-sandbox.service.js';
 import { DuetModel } from './nxduet/model.js';
 import { DuetFiles } from './nxduet/files.js';
 import { DuetService } from './nxduet/service.js';
+import { DuetFrame } from './nxduet/frame.js';
 import { DuetWorker } from './nxduet/worker.js';
 
 export function migrationContainer(db:PrismaClient,config:z.output<typeof migrationConfigSchema>){
@@ -75,7 +76,7 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
     publicClient ? { client: publicClient,origin: publicOrigin,ttlSeconds: config.MINIO_PRESIGNED_URL_TTL_SECONDS } : undefined) : undefined;
   const storageReady = async () => {
     await objects?.health();
-    if(config.NXDUET_ENABLED){if(!config.SUBSCRIPTION_V2_ENABLED)throw new Error('NXDuet requires subscription wallet v2');await db.$queryRaw`SELECT id,charge_status,placement FROM nxduet_templates LIMIT 0`;}
+    if(config.NXDUET_ENABLED){if(!config.SUBSCRIPTION_V2_ENABLED)throw new Error('NXDuet requires subscription wallet v2');await db.$queryRaw`SELECT id,charge_status,placement,pose_keys FROM nxduet_templates LIMIT 0`;await db.$queryRaw`SELECT template_id,slot FROM nxduet_template_poses LIMIT 0`;}
     if(webhookModel)await db.$queryRaw`SELECT e.id,d.lease_token,a.attempt_number FROM integration_webhook_endpoints e LEFT JOIN integration_webhook_deliveries d ON false LEFT JOIN integration_webhook_attempts a ON false LIMIT 0`;
     if(config.PUBLIC_API_GENERATION_ENABLED && !config.SUBSCRIPTION_V2_ENABLED) throw new Error('Public generation requires subscription v2');
     if(config.PUBLIC_API_KEY_PEPPER) await db.$queryRaw`SELECT k.secret_hash,u.key_id FROM integration_api_keys k LEFT JOIN integration_api_key_usage u ON false LIMIT 0`;
@@ -114,10 +115,11 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
   const provider=config.AI_PROVIDER==='9router'?new NativeNineRouterProvider({baseUrl:config.NINEROUTER_BASE_URL,key:config.NINEROUTER_API_KEY,timeoutMs:config.NINEROUTER_TIMEOUT_SECONDS*1000,resultOrigins:config.PROVIDER_RESULT_ORIGINS}):new NativeNullProvider();
   const duetModel=config.NXDUET_ENABLED&&subscriptions?new DuetModel(db,subscriptions):undefined;
   const duetFiles=new DuetFiles(join(config.TEMPLATES_DIR,'nxduet'),objects);
-  const duet=duetModel?new DuetService(duetModel,duetFiles,uploads,provider,async()=>config.NXDUET_MODEL||(await db.nxExperience.findUnique({where:{id:config.BASIC_MODEL_EXPERIENCE_ID}}))?.model||''):undefined;
+  const classicEngine=new ClassicImageEngineService(imageBase?`${imageBase}/compose-classic`:'',config.AI_ENGINE_API_KEY);
+  const duet=duetModel?new DuetService(duetModel,duetFiles,uploads,provider,async()=>config.NXDUET_MODEL||(await db.nxExperience.findUnique({where:{id:config.BASIC_MODEL_EXPERIENCE_ID}}))?.model||'',new DuetFrame(model,assets,classicEngine)):undefined;
   const duetWorker=duetModel?new DuetWorker(duetModel,duetFiles,provider):undefined;
   const images=new NativeImageEngineService(imageBase,config.AI_ENGINE_API_KEY);
-  const classic=new ClassicGenerationRunner(model,uploads,assets,new ClassicImageEngineService(imageBase?`${imageBase}/compose-classic`:'',config.AI_ENGINE_API_KEY));
+  const classic=new ClassicGenerationRunner(model,uploads,assets,classicEngine);
   const runner=new NativeGenerationRunner(model,new ProviderRunModel(db),uploads,classic,images,provider,config.BASIC_MODEL_EXPERIENCE_ID,assets,apiRoutes);
   const worker=new CustomerGenerationWorkerService(model,runner,join(config.RUNTIME_DIR,'results'),objects);
   const adminModel=new AdminDataModel(db),adminCatalog=new AdminCatalogService(adminModel,assets,{templatesDir:config.TEMPLATES_DIR,tmpDir:join(config.RUNTIME_DIR,'tmp'),minDimension:config.UPLOAD_MIN_DIMENSION,maxDimension:config.UPLOAD_MAX_DIMENSION});

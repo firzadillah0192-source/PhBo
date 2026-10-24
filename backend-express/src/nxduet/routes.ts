@@ -23,7 +23,7 @@ export function duetAdminRoutes(service:DuetService,auth:AdminAuthService){
   router.use(async(req,res,next)=>{const actor=await auth.resolve(req.cookies??{});auth.requireRole(actor,'operator');res.locals.duetActor=actor;next();});
   router.use(rateLimit({windowMs:60000,limit:120}));
   router.get('/templates',async(req,res)=>{res.json(await service.adminList(req.query));});
-  router.get('/templates/:id/image',async(req,res)=>{res.type('png').send(await service.adminImage(String(req.params.id)));});
+  router.get('/templates/:id/image',async(req,res)=>{res.type('png').send(await service.adminImage(String(req.params.id),req.query.slot));});
   router.post('/templates/:id/control',async(req,res)=>{res.json(await service.adminControl(res.locals.duetActor,String(req.params.id),req.body));});
   return router;
 }

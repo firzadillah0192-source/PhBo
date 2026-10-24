@@ -1,32 +1,33 @@
 import sharp from 'sharp';
 import { AppError } from '../lib/errors.js';
-import { placementSchema } from './policy.js';
+import { POSE_COUNT,placementSchema } from './policy.js';
+import type { DuetFrame,DuetFrameInfo } from './frame.js';
 
-export function companionRect(width:number,height:number,imageWidth:number,imageHeight:number,placement:{side:'left'|'right';scale:number}){
+// The companion always stands on the left and is bottom-aligned, sized from the slot.
+export function companionRect(width:number,height:number,imageWidth:number,imageHeight:number,placement:{side:'left';scale:number}){
   const ratio=Math.min(width*0.5/imageWidth,height/imageHeight)*placement.scale;
   const w=Math.max(1,Math.round(imageWidth*ratio)),h=Math.max(1,Math.round(imageHeight*ratio));
-  return {width:w,height:h,left:placement.side==='right'?width-w:0,top:height-h};
+  return {width:w,height:h,left:0,top:height-h};
 }
-export async function composeDuet(captures:Express.Multer.File[],overlay:Buffer,rawPlacement:unknown){
+// Each capture k gets pose k, then the three composites are placed into the Classic frame slots.
+export async function composeDuet(captures:Express.Multer.File[],overlays:Buffer[],rawPlacement:unknown,frame:DuetFrame,info:DuetFrameInfo){
   const placement=placementSchema.parse(rawPlacement);
-  if(captures.length!==3)throw new AppError(422,'NXDUET_CAPTURE_COUNT','Ambil tepat tiga foto.');
-  const width=1200,photoHeight=900,padding=50,gap=30,header=110,footer=130;
-  const meta=await sharp(overlay,{limitInputPixels:16_000_000}).metadata();
-  if(!meta.width||!meta.height)throw new AppError(502,'NXDUET_OVERLAY_INVALID','Template tidak dapat dibaca.');
-  const rect=companionRect(width,photoHeight,meta.width,meta.height,placement);
-  const companion=await sharp(overlay).resize(rect.width,rect.height).png().toBuffer();
+  if(captures.length!==POSE_COUNT||overlays.length!==POSE_COUNT)throw new AppError(422,'NXDUET_CAPTURE_COUNT','Ambil tepat tiga foto.');
   const photos:Buffer[]=[];
-  for(const file of captures){
+  for(const [index,file] of captures.entries()){
     if(!['image/jpeg','image/png','image/webp'].includes(file.mimetype)||!(/\.(jpe?g|png|webp)$/i.test(file.originalname)))throw new AppError(422,'VALIDATION_FAILED','Format foto tidak didukung.');
+    const slot=info.slots[index]!;
+    let camera:Buffer;
     try{
-      const image=sharp(file.buffer,{limitInputPixels:16_000_000,failOn:'warning'}),info=await image.metadata();
-      if(!info.width||!info.height||info.width<256||info.height<256||!['jpeg','png','webp'].includes(info.format??''))throw new Error();
-      const camera=await image.rotate().resize(width,photoHeight,{fit:'cover'}).removeAlpha().png().toBuffer();
-      photos.push(await sharp(camera).composite([{input:companion,left:rect.left,top:rect.top}]).png().toBuffer());
+      const image=sharp(file.buffer,{limitInputPixels:16_000_000,failOn:'warning'}),meta=await image.metadata();
+      if(!meta.width||!meta.height||meta.width<256||meta.height<256||!['jpeg','png','webp'].includes(meta.format??''))throw new Error();
+      camera=await image.rotate().resize(slot.width,slot.height,{fit:'cover'}).removeAlpha().png().toBuffer();
     }catch{throw new AppError(422,'VALIDATION_FAILED','Foto tidak dapat dibaca atau dimensinya tidak sesuai.');}
+    const overlay=overlays[index]!,size=await sharp(overlay,{limitInputPixels:16_000_000}).metadata();
+    if(!size.width||!size.height)throw new AppError(502,'NXDUET_OVERLAY_INVALID','Template tidak dapat dibaca.');
+    const rect=companionRect(slot.width,slot.height,size.width,size.height,placement);
+    const companion=await sharp(overlay).resize(rect.width,rect.height).png().toBuffer();
+    photos.push(await sharp(camera).composite([{input:companion,left:rect.left,top:rect.top}]).jpeg({quality:95}).toBuffer());
   }
-  const height=header+3*photoHeight+2*gap+footer,canvasWidth=width+2*padding;
-  // Fixed server-owned lettering; no user text is interpolated into SVG.
-  const lettering=Buffer.from(`<svg width="${canvasWidth}" height="${height}"><text x="${canvasWidth/2}" y="72" text-anchor="middle" font-family="sans-serif" font-size="42" fill="#ffffff">NXDuet</text><text x="${canvasWidth/2}" y="${height-55}" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#d8d2ef">Beda dunia, satu frame.</text></svg>`);
-  return sharp({create:{width:canvasWidth,height,channels:4,background:'#181422'}}).composite([...photos.map((input,i)=>({input,left:padding,top:header+i*(photoHeight+gap)})),{input:lettering,left:0,top:0}]).png().toBuffer();
+  return frame.compose(info,photos);
 }

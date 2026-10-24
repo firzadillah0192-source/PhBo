@@ -1,5 +1,32 @@
 # NXDuet API — production release 2026-10-24
 
+> **Revision 2 (three poses + Classic frame) — implemented, NOT deployed.** Requires
+> additive migration `backend/migrations/029_nxduet_poses.sql` (apply only with owner
+> approval after a backup, before the API/worker are replaced). Differences from the
+> text below, which still describes release 1:
+>
+> - One source photo is turned into **three** server-prompted poses chosen by the
+>   customer from a server-owned list (`POST` body adds `poses:[key,key,key]`, three
+>   distinct keys from `capabilities.poses`; free text is rejected). Price stays
+>   **100 credits** for all three; one hold, one refund/consume. Sequential provider
+>   calls, one per pose. Any failure refunds exactly once and removes stored poses.
+> - Full-body sources are accepted. The prompt asks for a three-quarter body portrait
+>   (head to mid-thigh) and the server also crops each cutout to the visible subject
+>   so it stands flush on the bottom of the photo slot.
+> - The companion is always on the **left** (`placement.side` is only `left`; only
+>   `scale` is adjustable). Legacy `right` rows are returned as `left`.
+> - Template metadata adds `poses:[{slot,key,label,image_url}]`. `GET .../image?slot=1..3`
+>   returns that pose (default 1). Legacy single-pose templates (no pose rows) serve the
+>   same cutout for all three slots.
+> - `GET /api/nxduet/capabilities` adds `pose_count,poses:[{key,label}],frame:{ready,
+>   slot_width,slot_height}`. Prompts and instructions are never returned.
+> - `compose` takes three captures; capture *k* gets pose *k* and is placed in slot *k* of
+>   the admin-managed Classic layout `classic-frame-003` using the existing Classic
+>   compositor (output is that layout's canvas, currently 1200×3600 PNG). If that layout
+>   is missing/inactive/not 3-slot, creation returns 503 `NXDUET_FRAME_UNAVAILABLE`
+>   before any charge.
+> - Storage accounting counts all three outputs; pending reservation is 3×25 MiB.
+
 Production entrypoints: Express migration API/worker. `NXDUET_ENABLED=false` by
 default. Enabling requires subscription wallet v2, migration 028 and private asset
 storage. It must not be enabled before both API and worker versions are prepared.

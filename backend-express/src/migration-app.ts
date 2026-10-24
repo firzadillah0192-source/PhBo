@@ -81,7 +81,7 @@ export function createMigrationApp(catalog: CustomerCatalogService, config: Migr
   app.get('/health', (_req, res) => { res.json({ status: 'ok', service: 'nxbooth-express' }); });
   if(config.health)app.get('/api/health',async(_req,res)=>{res.json(await config.health!());});
   if(config.admin)app.use('/api/admin',nativeAdminRoutes(config.admin,config.uploadMaxBytes??12*1024*1024));
-  app.get('/api/nxduet/capabilities',(_req,res)=>{res.json({enabled:Boolean(config.duet),preparation_credits:100});});
+  app.get('/api/nxduet/capabilities',async(_req,res)=>{res.json(config.duet?await config.duet.capabilities():{enabled:false,preparation_credits:100});});
   if(config.duet&&account)app.use('/api/nxduet',duetRoutes(config.duet,account,config.uploadMaxBytes??12*1024*1024));
   if(config.duet&&config.admin)app.use('/api/admin/nxduet',duetAdminRoutes(config.duet,config.admin.auth));
   if(account?.payments)app.use('/api/payments',paymentRoutes(account.payments));
