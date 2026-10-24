@@ -8,7 +8,7 @@ export type TemplateReference = { bytes: Buffer; width: number; height: number }
 export interface NativeAIProvider {
   readonly name: string;
   available(): boolean;
-  generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference): Promise<ProviderImage>;
+  generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference, quality?: 'low', options?: { transparentBackground?: boolean }): Promise<ProviderImage>;
 }
 export class ProviderFailure extends AppError {
   constructor(code: string, message: string, readonly meta: OperationalMeta = {}) { super(502, code, message); }
@@ -67,11 +67,11 @@ export class NativeNineRouterProvider implements NativeAIProvider {
   readonly name = '9router';
   constructor(private readonly config: { baseUrl: string; key: string; timeoutMs: number; resultOrigins: string[] }, private readonly fetcher: typeof fetch = fetch) {}
   available() { return Boolean(this.config.baseUrl.trim() && this.config.key.trim()); }
-  async generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference, quality?: 'low'): Promise<ProviderImage> {
+  async generate(image: Buffer | null, prompt: string, model: string, template?: TemplateReference, quality?: 'low', options?: { transparentBackground?: boolean }): Promise<ProviderImage> {
     if (!this.available()) throw new ProviderFailure('AI_PROVIDER_NOT_CONNECTED', 'The AI provider is not connected.', { upstream_status: 'NOT_CONNECTED', retry_count: 0 });
     const signal = AbortSignal.timeout(this.config.timeoutMs);
     if (template && !image) throw new ProviderFailure('BASIC_INPUT_INVALID', 'An identity photo is required.');
-    const payload = { model, prompt, size: template ? `${template.width}x${template.height}` : '1024x1024', n: 1, ...(quality ? { quality } : {}), ...(returnsBase64ByDefault(model) ? {} : { response_format: 'b64_json' }),
+    const payload = { model, prompt, size: template ? `${template.width}x${template.height}` : '1024x1024', n: 1, ...(quality ? { quality } : {}), ...(options?.transparentBackground ? { background: 'transparent', output_format: 'png' } : {}), ...(returnsBase64ByDefault(model) ? {} : { response_format: 'b64_json' }),
       ...(template ? { images: [`data:image/png;base64,${template.bytes.toString('base64')}`, `data:image/jpeg;base64,${image!.toString('base64')}`] }
         : image ? { image: `data:image/jpeg;base64,${image.toString('base64')}` } : {}) };
     let response: Response;

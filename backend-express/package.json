@@ -8,6 +8,9 @@
     "node": ">=22.12"
   },
   "scripts": {
+    "test:nxduet": "tsx --test test/nxduet.test.ts",
+    "test:nxduet-integration": "tsx --test test/nxduet.integration.ts",
+    "test:nxduet-integration:isolated": "node scripts/test-nxduet-integration.mjs",
     "dev:migration": "tsx watch src/migration-server.ts",
     "start:migration": "node --enable-source-maps dist/migration-server.js",
     "worker:migration": "tsx src/migration-worker.ts",

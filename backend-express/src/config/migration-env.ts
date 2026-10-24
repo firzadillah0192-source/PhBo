@@ -11,6 +11,8 @@ export const migrationConfigSchema = z.object({
   RUNTIME_DIR: z.string().default('/srv/photobooth'),
   TEMPLATES_DIR: z.string().default('/srv/photobooth/templates'),
   PHOTO_FOLDERS_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  NXDUET_ENABLED: z.enum(['true','false']).default('false').transform(value=>value==='true'),
+  NXDUET_MODEL: z.string().trim().default(''),
   SUBSCRIPTION_V2_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   STORAGE_BACKEND: z.enum(['filesystem', 'minio']).default('filesystem'),
   MINIO_ENDPOINT: z.string().default(''),

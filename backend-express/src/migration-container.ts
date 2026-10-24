@@ -59,6 +59,10 @@ import { GenerationApiRoutesService } from './services/generation-api-routes.ser
 import { PaymentModel } from './models/payment.model.js';
 import { PaymentService } from './services/payment.service.js';
 import { DuitkuSandboxGateway } from './services/duitku-sandbox.service.js';
+import { DuetModel } from './nxduet/model.js';
+import { DuetFiles } from './nxduet/files.js';
+import { DuetService } from './nxduet/service.js';
+import { DuetWorker } from './nxduet/worker.js';
 
 export function migrationContainer(db:PrismaClient,config:z.output<typeof migrationConfigSchema>){
   if(config.GENERATION_WEBHOOKS_ENABLED && (!config.PUBLIC_API_KEY_PEPPER || !config.SUBSCRIPTION_V2_ENABLED || !config.PUBLIC_API_GENERATION_ENABLED))throw new Error('Webhooks require public generation and subscription wallet');
@@ -71,6 +75,7 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
     publicClient ? { client: publicClient,origin: publicOrigin,ttlSeconds: config.MINIO_PRESIGNED_URL_TTL_SECONDS } : undefined) : undefined;
   const storageReady = async () => {
     await objects?.health();
+    if(config.NXDUET_ENABLED){if(!config.SUBSCRIPTION_V2_ENABLED)throw new Error('NXDuet requires subscription wallet v2');await db.$queryRaw`SELECT id,charge_status,placement FROM nxduet_templates LIMIT 0`;}
     if(webhookModel)await db.$queryRaw`SELECT e.id,d.lease_token,a.attempt_number FROM integration_webhook_endpoints e LEFT JOIN integration_webhook_deliveries d ON false LEFT JOIN integration_webhook_attempts a ON false LIMIT 0`;
     if(config.PUBLIC_API_GENERATION_ENABLED && !config.SUBSCRIPTION_V2_ENABLED) throw new Error('Public generation requires subscription v2');
     if(config.PUBLIC_API_KEY_PEPPER) await db.$queryRaw`SELECT k.secret_hash,u.key_id FROM integration_api_keys k LEFT JOIN integration_api_key_usage u ON false LIMIT 0`;
@@ -89,7 +94,7 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
   const assets=new CatalogAssetsService([config.RUNTIME_DIR,config.TEMPLATES_DIR],config.TEMPLATES_DIR,objects,join(config.RUNTIME_DIR,'cache','catalog'));
   const catalog=new CustomerCatalogService(new CustomerCatalogModel(db),assets);
   const payments=new PaymentService(new PaymentModel(db),new DuitkuSandboxGateway({merchantCode:config.DUITKU_MERCHANT_CODE,apiKey:config.DUITKU_API_KEY}),{enabled:config.DUITKU_ENABLED,publicOrigin:config.DUITKU_PUBLIC_ORIGIN,creditRupiah:config.SUBSCRIPTION_V2_ENABLED?10:100});
-  const subscriptions = config.SUBSCRIPTION_V2_ENABLED ? new SubscriptionWalletModel(db) : undefined;
+  const subscriptions = config.SUBSCRIPTION_V2_ENABLED ? new SubscriptionWalletModel(db,undefined,config.NXDUET_ENABLED) : undefined;
   const apiRoutes = config.SUBSCRIPTION_V2_ENABLED ? new GenerationApiRoutesService(db, { sessionSecret: config.SESSION_SECRET_KEY, baseUrl: config.NINEROUTER_BASE_URL, standardKey: config.NINEROUTER_API_KEY, timeoutMs: config.NINEROUTER_TIMEOUT_SECONDS * 1000, resultOrigins: config.PROVIDER_RESULT_ORIGINS }) : undefined;
   const account=new CustomerAccountService(new CustomerAccountModel(db,config.SUBSCRIPTION_V2_ENABLED),{sessionSecret:config.SESSION_SECRET_KEY,sessionDays:config.SESSION_DAYS,cookieSecure:config.COOKIE_SECURE||config.NODE_ENV==='production'},new GoogleIdentityService(config.GOOGLE_CLIENT_ID),assets,payments,subscriptions,apiRoutes,config.PHOTO_FOLDERS_ENABLED);
   const results=new CustomerResultService(new CustomerResultModel(db,subscriptions),{resultsDir:join(config.RUNTIME_DIR,'results'),claimHours:config.RESULT_CLAIM_TTL_HOURS,publicOrigin:config.RESULT_CLAIM_PUBLIC_BASE_URL,production:config.NODE_ENV==='production',kioskResetSeconds:config.KIOSK_RESET_SECONDS},objects);
@@ -107,6 +112,10 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
     apiKey: config.KIOSK_API_KEY,ttlSeconds: config.KIOSK_PHOTO_SESSION_TTL_SECONDS,generationLimit: config.KIOSK_GENERATION_LIMIT,
     secureCookie: account.config.cookieSecure,devices }) : undefined;
   const provider=config.AI_PROVIDER==='9router'?new NativeNineRouterProvider({baseUrl:config.NINEROUTER_BASE_URL,key:config.NINEROUTER_API_KEY,timeoutMs:config.NINEROUTER_TIMEOUT_SECONDS*1000,resultOrigins:config.PROVIDER_RESULT_ORIGINS}):new NativeNullProvider();
+  const duetModel=config.NXDUET_ENABLED&&subscriptions?new DuetModel(db,subscriptions):undefined;
+  const duetFiles=new DuetFiles(join(config.TEMPLATES_DIR,'nxduet'),objects);
+  const duet=duetModel?new DuetService(duetModel,duetFiles,uploads,provider,async()=>config.NXDUET_MODEL||(await db.nxExperience.findUnique({where:{id:config.BASIC_MODEL_EXPERIENCE_ID}}))?.model||''):undefined;
+  const duetWorker=duetModel?new DuetWorker(duetModel,duetFiles,provider):undefined;
   const images=new NativeImageEngineService(imageBase,config.AI_ENGINE_API_KEY);
   const classic=new ClassicGenerationRunner(model,uploads,assets,new ClassicImageEngineService(imageBase?`${imageBase}/compose-classic`:'',config.AI_ENGINE_API_KEY));
   const runner=new NativeGenerationRunner(model,new ProviderRunModel(db),uploads,classic,images,provider,config.BASIC_MODEL_EXPERIENCE_ID,assets,apiRoutes);
@@ -125,5 +134,5 @@ export function migrationContainer(db:PrismaClient,config:z.output<typeof migrat
   // Public API stays unmounted until a pepper is configured; keys are HMAC-hashed with it.
   const publicKeyModel=new PublicApiKeyModel(db,Boolean(webhooks));
   const publicApi=config.PUBLIC_API_KEY_PEPPER?{keys:new PublicApiKeyService(publicKeyModel,config.PUBLIC_API_KEY_PEPPER),keyModel:publicKeyModel,webhooks,dashboard:subscriptions?new DeveloperDashboardService(new DeveloperDashboardModel(db),subscriptions):undefined,generationEnabled:config.PUBLIC_API_GENERATION_ENABLED,window:(key:string,seconds:number)=>rateLimitStore.window(key,seconds)}:undefined;
-  return {catalog,account,publicApi,webhooks,folders,results,uploads,generations,kiosk,devices,queue,previewQueue,worker,previews,leases:model.leases,admin,health,storageReady,queueReady,limiter:new NativeRateLimitService(rateLimitStore),async close(){await queue.close();await previewQueue.close();await rateLimitStore.close();}};
+  return {catalog,account,publicApi,webhooks,folders,duet,duetWorker,results,uploads,generations,kiosk,devices,queue,previewQueue,worker,previews,leases:model.leases,admin,health,storageReady,queueReady,limiter:new NativeRateLimitService(rateLimitStore),async close(){await queue.close();await previewQueue.close();await rateLimitStore.close();}};
 }

@@ -9,7 +9,7 @@ type Charge = { job_id: string; owner_scope: string; lane: 'classic' | 'standard
 export const RESULT_CAPACITY_RESERVATION = 25 * 1024 * 1024;
 
 export class SubscriptionWalletModel {
-  constructor(private readonly db: PrismaClient, private readonly clock: () => Date = () => new Date()) {}
+  constructor(private readonly db: PrismaClient, private readonly clock: () => Date = () => new Date(), private readonly nxduetEnabled = false) {}
   private scope(owner: SubscriptionOwner) {
     if (Boolean(owner.account_id) === Boolean(owner.guest_id)) throw new AppError(401, 'IDENTITY_UNAVAILABLE', 'Identitas pengguna tidak tersedia.');
     return owner.account_id ? `account:${owner.account_id}` : `guest:${owner.guest_id}`;
@@ -53,10 +53,11 @@ export class SubscriptionWalletModel {
     const wallet = await this.ensureIn(tx, owner), plan = subscriptionPlan(wallet.plan_code), day = jakartaDay(this.clock());
     const [stats] = await tx.$queryRaw<{ classic_used: number; classic_reserved: number; reserved_bytes: bigint }[]>`SELECT count(*) FILTER(WHERE lane='classic' AND day_wib=${day}::date AND status='CONSUMED')::int AS classic_used,count(*) FILTER(WHERE lane='classic' AND day_wib=${day}::date AND status='RESERVED')::int AS classic_reserved,COALESCE(sum(storage_reserved) FILTER(WHERE status='RESERVED'),0)::bigint AS reserved_bytes FROM subscription_v2_jobs WHERE owner_scope=${wallet.owner_scope}`;
     const [stored] = await tx.$queryRaw<{ bytes: bigint }[]>`SELECT COALESCE(sum(r.size_bytes),0)::bigint AS bytes FROM results r JOIN generation_jobs j ON j.id=r.job_id WHERE r.deleted_at IS NULL AND ((j.account_id=${owner.account_id} AND ${owner.account_id}::text IS NOT NULL) OR (j.guest_id=${owner.guest_id} AND ${owner.guest_id}::text IS NOT NULL)) AND j.kiosk_session_id IS NULL`;
+    const duet = this.nxduetEnabled && owner.account_id ? (await tx.$queryRaw<{ bytes: bigint; reserved: bigint }[]>`SELECT COALESCE(sum(source_bytes+size_bytes),0)::bigint AS bytes,COALESCE(sum(CASE WHEN state IN ('QUEUED','PROCESSING') THEN 26214400 ELSE 0 END),0)::bigint AS reserved FROM nxduet_templates WHERE account_id=${owner.account_id}`)[0] : null;
     return { policy_version: 2, plan: { ...plan }, period_start: wallet.period_start, period_end: wallet.period_end,
       ai: { monthly_remaining: wallet.ai_monthly, top_up_remaining: wallet.ai_top_up, remaining: wallet.ai_monthly + wallet.ai_top_up },
       classic: { monthly_remaining: wallet.classic_monthly, top_up_remaining: wallet.classic_top_up, remaining: wallet.classic_monthly + wallet.classic_top_up, daily_limit: plan.classic_daily_results, daily_used: stats?.classic_used ?? 0, daily_reserved: stats?.classic_reserved ?? 0, daily_remaining: Math.max(0, plan.classic_daily_results - (stats?.classic_used ?? 0) - (stats?.classic_reserved ?? 0)) },
-      storage: { used_bytes: Number(stored?.bytes ?? 0), reserved_bytes: Number(stats?.reserved_bytes ?? 0), limit_bytes: plan.storage_bytes },
+      storage: { used_bytes: Number(stored?.bytes ?? 0)+Number(duet?.bytes??0), reserved_bytes: Number(stats?.reserved_bytes ?? 0)+Number(duet?.reserved??0), limit_bytes: plan.storage_bytes },
       legacy_converted_ai_credits: wallet.legacy_converted, catalog: subscriptionCatalog() };
   }
   snapshot(owner: SubscriptionOwner) { return this.db.$transaction(tx => this.snapshotIn(tx, owner)); }
@@ -106,7 +107,8 @@ export class SubscriptionWalletModel {
     const scope = accountId ? `account:${accountId}` : null;
     const [spent] = await this.db.$queryRaw<{ ai: bigint; classic: bigint }[]>`SELECT COALESCE(sum(credits) FILTER(WHERE currency='AI'),0)::bigint AS ai,COALESCE(sum(credits) FILTER(WHERE currency='CLASSIC'),0)::bigint AS classic FROM subscription_v2_jobs WHERE status='CONSUMED' AND (${scope}::text IS NULL OR owner_scope=${scope})`;
     const [ledger] = await this.db.$queryRaw<{ granted: bigint; refunded: bigint }[]>`SELECT COALESCE(sum(amount) FILTER(WHERE amount>0 AND idempotency_key NOT LIKE 'v2:refund:%'),0)::bigint AS granted,COALESCE(sum(amount) FILTER(WHERE idempotency_key LIKE 'v2:refund:%'),0)::bigint AS refunded FROM subscription_v2_ledger WHERE currency='AI' AND (${scope}::text IS NULL OR owner_scope=${scope})`;
-    return { ai_spent: Number(spent?.ai ?? 0), classic_spent: Number(spent?.classic ?? 0), ai_granted: Number(ledger?.granted ?? 0), ai_refunded: Number(ledger?.refunded ?? 0) };
+    const duet = this.nxduetEnabled ? (await this.db.$queryRaw<{ spent: bigint }[]>`SELECT COALESCE(sum(credits),0)::bigint AS spent FROM nxduet_templates WHERE charge_status='CONSUMED' AND (${accountId}::text IS NULL OR account_id=${accountId})`)[0] : null;
+    return { ai_spent: Number(spent?.ai ?? 0)+Number(duet?.spent??0), classic_spent: Number(spent?.classic ?? 0), ai_granted: Number(ledger?.granted ?? 0), ai_refunded: Number(ledger?.refunded ?? 0) };
   }
 
   async reserveIn(tx: Tx, job: { id: string; mode: string }, owner: SubscriptionOwner, lane: 'standard' | 'fast') {

@@ -1,8 +1,9 @@
 # NXDuet — proposed upload-your-own companion flow
 
 Status: account ownership, auto-save and 100-credit preparation price confirmed by
-the owner. Implementation design remains for review; not implemented or deployed.
-No production database changes.
+the owner. Implemented and tested locally; not deployed. No production database
+changes. See `NXDUET_API.md` for the implemented contract and `NXDUET_HANDOFF.md` for
+validation, limitations and activation prerequisites.
 
 ## Product
 
@@ -13,7 +14,7 @@ terkasih, meski terpisah jarak.”
 
 ## Entry and help
 
-- Proposed entry: `/nxduet`.
+- Entry: `/nxduet`.
 - Show “Template saya” and “Buat template baru”.
 - Require sign-in for creation and access to saved templates. Templates are private
   and bound to the creating account; another account cannot read/use/delete them.
@@ -30,7 +31,7 @@ terkasih, meski terpisah jarak.”
 3. Show “Siapkan template · 100 kredit” before submission. Check available credits,
    reserve 100 atomically, and show “Menyiapkan teman foto” while the backend
    processes a real preparation job. Insufficient balance prevents preparation.
-4. Initial proposal: preserve the uploaded pose and appearance, remove the background,
+4. First version: preserve the uploaded pose and appearance, remove the background,
    and produce one reusable transparent cutout. Additional generated poses are a
    separate scope decision: they take extra preparation and require identity review.
 5. Validate actual transparency, image readability, and output dimensions. A PNG file
@@ -53,8 +54,8 @@ Confirmed preparation price: 100 credits per new template preparation. This is n
 
 Follow existing reserve/settle/refund semantics: reserve at accepted submission,
 consume only when a valid prepared template and its owned asset references are
-durably saved, and refund failed preparation exactly once. Confirm accounting
-integration against the active wallet/subscription path before implementation.
+durably saved, and refund failed preparation exactly once. Integration uses the
+existing subscription wallet and preserves period-aware allocation/refund rules.
 Automatic technical retries and duplicate client submissions must use the same
 operation identity and cannot charge again. An explicitly requested new preparation
 is a new paid operation with the 100-credit price shown before submission.
@@ -99,16 +100,17 @@ Confirmed scope: account storage, available across devices after sign-in. Browse
 storage is not the product requirement. Keep image bytes in existing object storage
 and account ownership/asset references/composition metadata in the database.
 
-Admin control is confirmed; proposed minimum controls are listing/filtering templates
+Admin controls include listing/filtering templates
 by owner and status, inspecting preparation/credit outcomes, disabling/re-enabling
 use, and deletion with confirmation. Enforce existing admin role checks server-side
 and audit admin actions. Disabled/deleted templates must be rejected by the backend,
 including requests from a previously open browser. Do not expose private customer
 assets in public catalogs or give ordinary users another account's access.
 
-A reviewed metadata/ownership design and likely additive SQL are required. Drafting
-SQL does not authorize applying it to production. Production application requires
-explicit approval after backup, per AGENTS.md.
+Metadata/ownership and charge snapshots use the additive draft
+`backend/migrations/028_nxduet.sql`, tested on disposable PostgreSQL. Drafting SQL does
+not authorize applying it to production. Production application requires explicit
+approval after backup, per AGENTS.md.
 
 Define retention for the source upload separately from the saved processed cutout;
 provide deletion and ensure the normal cleanup job does not break saved templates.

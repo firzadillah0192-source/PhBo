@@ -46,6 +46,7 @@ import { startGenerationPolling } from './generationPolling.js'
 import { getLanguage, tr, useT } from './i18n.js'
 import { recordStudioStep, restoredStudioStep } from './studioHistory.js'
 import './customer.css'
+import NXDuet from './components/customer/NXDuet.jsx'
 
 function readRoute() {
   return parseCustomerRoute(window.location.pathname, window.location.search)
@@ -69,6 +70,7 @@ function uploadFailureMessage(error) {
 export default function App() {
   const admin = window.location.pathname === '/admin' || window.location.pathname === '/admin/'
   const route = parseCustomerRoute(window.location.pathname, window.location.search)
+  if (route.name === 'nxduet') return <NXDuet />
   if (route.name === 'developers') return <DeveloperDocs />
   if (route.name === 'folder-share' && route.id) return <SharedFolderPage token={route.id} />
   if (route.name === 'claim' && route.id) return <PublicResultPage token={route.id} />

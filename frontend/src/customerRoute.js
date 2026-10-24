@@ -23,6 +23,7 @@ export function kioskResultRoute(resultId) {
 
 export function parseCustomerRoute(pathname = '/', search = '') {
   const path = pathname.replace(/\/$/, '') || '/'
+  if(path==='/nxduet')return {name:'nxduet',id:null,mode:null,tab:null,kiosk:false}
   if(path === '/developers') return {name:'developers',id:null,mode:null,tab:null,kiosk:false}
   const folderShare=path.match(/^\/s\/([A-Za-z0-9_-]{43})$/)
   if(folderShare)return {name:'folder-share',id:folderShare[1],mode:null,tab:null,kiosk:false}

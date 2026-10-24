@@ -1,5 +1,12 @@
 # Photobooth API contract — Sprint 2 mode foundation
 
+## NXDuet implementation (not deployed)
+
+The separate account-owned companion-template API is specified in
+[`NXDUET_API.md`](NXDUET_API.md). Creation reserves 100 AI Credit and automatically
+saves valid completed templates. Existing modes and their endpoints are unchanged.
+Routes are feature-gated; the SQL draft has not been applied to production.
+
 ## Current Express Classic event contract (2026-10-10)
 
 Production uses `backend-express/src/migration-app.ts`; historical mode notes

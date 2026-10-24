@@ -5,6 +5,7 @@ import { MODE_NAMES } from '../../creditCatalog.js'
 import { modeRoute } from '../../customerRoute.js'
 import { useT } from '../../i18n.js'
 import './landing.css'
+import { DuetEntryLink } from '../customer/NXDuet.jsx'
 
 export default function CreationChooser({ templates, experiences, layouts, onSelect, savedFlow }) {
   const t = useT()
@@ -18,6 +19,7 @@ export default function CreationChooser({ templates, experiences, layouts, onSel
     </header>
     {canResume && <p className="creation-resume">{t('Sudah mulai?', 'Already started?')} <a href={modeRoute(savedFlow.mode)}>{t(`Lanjutkan kreasi ${MODE_NAMES[savedFlow.mode]} Anda`, `Resume your ${MODE_NAMES[savedFlow.mode]} creation`)} <span aria-hidden="true">→</span></a></p>}
     <ModeCards previews={modePreviews({ templates, experiences, layouts })} onSelect={onSelect} chooser />
+    <DuetEntryLink />
     <p className="creation-footnote">{t('Pilih mode untuk menjelajah. Tidak perlu masuk untuk memulai.', 'Choose a mode to explore. No sign-in needed to get started.')}</p>
   </main>
 }

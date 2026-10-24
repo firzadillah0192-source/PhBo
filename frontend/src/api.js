@@ -67,6 +67,25 @@ export function getFrameStyles() { return request('/advanced/frame-styles') }
 export function getOrnaments() { return request('/advanced/ornaments') }
 export function getUsage() { return request('/account/usage') }
 export function getAccountMe() { return request('/account/me') }
+export function getDuetCapabilities() { return request('/nxduet/capabilities') }
+export function getDuetTemplates(offset=0) { return request('/nxduet/templates?offset='+offset) }
+export function getDuetTemplate(id) { return request('/nxduet/templates/'+encodeURIComponent(id)) }
+export function createDuetTemplate(body,key) { return request('/nxduet/templates',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify(body)}) }
+export function updateDuetTemplate(id,body) { return request('/nxduet/templates/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}) }
+export function deleteDuetTemplate(id) { return request('/nxduet/templates/'+encodeURIComponent(id),{method:'DELETE'}) }
+export function getAdminDuetTemplates(account='',offset=0) { return request('/admin/nxduet/templates?account_id='+encodeURIComponent(account)+'&offset='+offset) }
+export function controlAdminDuetTemplate(id,body) { return request('/admin/nxduet/templates/'+encodeURIComponent(id)+'/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}) }
+async function duetBlob(path,options={}) {
+  const response=await fetch(BASE+path,{credentials:'include',cache:'no-store',...options})
+  if(!response.ok)throw await parseError(response)
+  if(!response.headers.get('content-type')?.startsWith('image/png'))throw new Error('Gambar NXDuet tidak dapat dibaca.')
+  return response.blob()
+}
+export function getDuetOverlay(id) { return duetBlob('/nxduet/templates/'+encodeURIComponent(id)+'/image') }
+export function composeDuetStrip(id,captures,placement) {
+  const form=new FormData();captures.forEach((blob,i)=>form.append('captures',blob,`capture-${i+1}.jpg`));form.append('placement',JSON.stringify(placement))
+  return duetBlob('/nxduet/templates/'+encodeURIComponent(id)+'/compose',{method:'POST',body:form})
+}
 export function getAccountCenter() { return request('/account/center') }
 export function createTopUpCheckout(credits, requestKey = globalThis.crypto.randomUUID()) { return request('/account/topups/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestKey }, body: JSON.stringify({ credits }) }) }
 export function updateAccountProfile(body) { return request('/account/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) }

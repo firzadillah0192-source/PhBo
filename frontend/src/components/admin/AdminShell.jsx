@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 const GROUPS = [
- ['Workspace', ['overview','users','credits','payments','generations','provider-ops','api-routes']],
+ ['Workspace', ['overview','users','credits','payments','generations','nxduet','provider-ops','api-routes']],
  ['Studio catalog', ['classic-layouts','templates','experiences','advanced-presets']],
  ['Administration', ['subscriptions','ai-lab','admin-users','audit','settings']],
 ]

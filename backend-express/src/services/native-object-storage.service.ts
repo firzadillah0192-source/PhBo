@@ -6,6 +6,7 @@ export type NativeObjectSigning = { client: Pick<Client,'presignedGetObject'>; o
 export class NativeObjectStorage {
   constructor(private readonly client: Pick<Client, 'putObject' | 'getObject' | 'statObject' | 'removeObject' | 'bucketExists'>, readonly bucket: string, private readonly signing?: NativeObjectSigning) {}
   private key(reference: string) {
+    if (/^minio:\/\/nxduet\/[a-f0-9]{32}\/(source\.jpg|overlay\.png)$/.test(reference)) return reference.slice('minio://'.length);
     if (reference.startsWith('minio://catalog/')) {
       const key = reference.slice('minio://'.length);
       const parts = key.slice('catalog/'.length).split('/');

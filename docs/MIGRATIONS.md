@@ -1,5 +1,14 @@
 # Database migrations
 
+## 028 NXDuet — draft, not applied to production
+
+`028_nxduet.sql` adds the account-owned template/preparation table and indexes.
+It requires subscription v2 (024), changes no existing balances or modes, and was
+applied twice successfully to a disposable PostgreSQL database. Application code
+defaults to `NXDUET_ENABLED=false` and does not query the new table while disabled.
+Production application requires explicit owner approval after a verified backup;
+no Prisma migration or automatic startup DDL is permitted. See `NXDUET_HANDOFF.md`.
+
 The project has no Alembic configuration, migration runner, or schema-version
 table. SQL migration files are **not** automatically executed by filename.
 Apply them manually, forward-only, in the sequence below.
