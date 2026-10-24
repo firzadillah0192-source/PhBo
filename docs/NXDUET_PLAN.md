@@ -1,8 +1,8 @@
 # NXDuet — proposed upload-your-own companion flow
 
 Status: account ownership, auto-save and 100-credit preparation price confirmed by
-the owner. Implemented and tested locally; not deployed. No production database
-changes. See `NXDUET_API.md` for the implemented contract and `NXDUET_HANDOFF.md` for
+the owner. Deployed as `nxduet-20261024T093735Z` on 2026-10-24 after verified backup
+and additive migration 028. See `NXDUET_API.md` for the contract and `NXDUET_HANDOFF.md` for
 validation, limitations and activation prerequisites.
 
 ## Product
@@ -108,9 +108,9 @@ including requests from a previously open browser. Do not expose private custome
 assets in public catalogs or give ordinary users another account's access.
 
 Metadata/ownership and charge snapshots use the additive draft
-`backend/migrations/028_nxduet.sql`, tested on disposable PostgreSQL. Drafting SQL does
-not authorize applying it to production. Production application requires explicit
-approval after backup, per AGENTS.md.
+`backend/migrations/028_nxduet.sql`, tested on disposable PostgreSQL and applied with
+the owner's deployment approval after backup. Future production schema changes still
+require explicit approval after backup, per AGENTS.md.
 
 Define retention for the source upload separately from the saved processed cutout;
 provide deletion and ensure the normal cleanup job does not break saved templates.

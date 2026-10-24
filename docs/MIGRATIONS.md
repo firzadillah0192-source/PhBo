@@ -1,13 +1,21 @@
 # Database migrations
 
-## 028 NXDuet — draft, not applied to production
+## 028 NXDuet — applied with owner approval (2026-10-24)
 
 `028_nxduet.sql` adds the account-owned template/preparation table and indexes.
 It requires subscription v2 (024), changes no existing balances or modes, and was
-applied twice successfully to a disposable PostgreSQL database. Application code
-defaults to `NXDUET_ENABLED=false` and does not query the new table while disabled.
-Production application requires explicit owner approval after a verified backup;
-no Prisma migration or automatic startup DDL is permitted. See `NXDUET_HANDOFF.md`.
+applied twice successfully to a disposable PostgreSQL database. The owner requested
+commit/deploy after being informed of the migration prerequisite. Applied manually
+after verified dump backup; retained across two image rollbacks and rechecked
+idempotently for final release `nxduet-20261024T093735Z`.
+
+Initial backup: `/srv/photobooth/backups/pre-nxduet-20261024T092813Z.dump`.
+Final preactivation backup: `/srv/photobooth/backups/pre-nxduet-20261024T093735Z.dump`,
+434092 bytes, SHA256 `6671341cdafa5cf35a7bf8d4dbdf0c5add0a21ab33e91ba8c1d8227225ebc405`.
+SQL SHA256: `f53a761913ef732e8c9ae7e5d4304a4bb91056905f89d879c6bcf9caad20d3e6`.
+No Prisma migration/db push or startup DDL was run. Source default remains
+`NXDUET_ENABLED=false`; the production release override enables it for API/worker.
+See `NXDUET_HANDOFF.md` and the release manifest for evidence.
 
 The project has no Alembic configuration, migration runner, or schema-version
 table. SQL migration files are **not** automatically executed by filename.

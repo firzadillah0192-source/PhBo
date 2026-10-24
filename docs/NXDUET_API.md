@@ -1,8 +1,12 @@
-# NXDuet API — implemented, not deployed
+# NXDuet API — production release 2026-10-24
 
 Production entrypoints: Express migration API/worker. `NXDUET_ENABLED=false` by
 default. Enabling requires subscription wallet v2, migration 028 and private asset
 storage. It must not be enabled before both API and worker versions are prepared.
+Production release `nxduet-20261024T093735Z` enables it on both services. Client
+library/pending-request binding uses the existing `/api/account/me` `analytics_id`;
+that response does not contain an `id` field. Backend ownership always comes from
+the authenticated account session, never from this browser binding.
 
 ## Customer
 
@@ -68,7 +72,10 @@ upload. Permission denial and track termination are handled in the UI.
 Original temporary uploads retain existing upload-retention rules. The preparation
 source copy is removed after completion/failure; the processed cutout remains until
 the user/admin deletes it. Source/overlay bytes stay in existing storage, never in
-PostgreSQL. No public catalog publication, source-image download or per-template
+PostgreSQL. Private object paths are `uploads/nxduet/<id>/source.jpg` and
+`results/nxduet/<id>/overlay.png`, under the existing allowed storage roots. NXDuet
+signed delivery is rejected; image delivery requires the account/admin API session.
+No public catalog publication, source-image download or per-template
 build/deploy takes place.
 
 Common errors: 401 `AUTHENTICATION_REQUIRED`; 404 `NXDUET_NOT_FOUND` for another
