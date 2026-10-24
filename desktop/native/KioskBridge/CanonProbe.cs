@@ -17,6 +17,32 @@ static class CanonProbe {
     static string Code(Exception e) => e is TimeoutException ? "TIMEOUT" : e.GetType().Name.ToUpperInvariant() switch { var n when n.Length <= 40 => n, _ => "ERROR" };
     static bool IsJpeg(byte[]? b) => b is { Length: > 8 } && b[0] == 0xff && b[1] == 0xd8 && b[2] == 0xff;
 
+    // Read-only inspection of exposure settings. FC.SDK is called by name so the probe still builds if a signature differs;
+    // the recorded signatures and allowed values tell us the exact API for a later settings feature. Nothing here changes the camera.
+    static string Fmt(object? v) {
+        if (v is null) return "null";
+        if (v is string text) return text;
+        if (v is System.Collections.IEnumerable list) return "[" + string.Join(",", list.Cast<object?>().Take(40).Select(x => x?.ToString())) + "]";
+        return v.ToString() ?? "";
+    }
+    static string TypeName(Type t) => t.IsGenericType ? t.Name.Split('`')[0] + "<" + string.Join(",", t.GetGenericArguments().Select(TypeName)) + ">" : t.Name;
+    static string Signature(System.Reflection.MethodInfo m) => $"{m.Name.Replace("Async", "")}:{TypeName(m.ReturnType).Replace("Task", "T").Replace("ValueT", "VT")}({string.Join(", ", m.GetParameters().Select(p => TypeName(p.ParameterType)))})";
+    static async Task<string> ReadSetting(CanonCamera canon, string name) {
+        var method = typeof(CanonCamera).GetMethods().Where(m => m.Name == name && m.GetParameters().All(p => p.HasDefaultValue)).FirstOrDefault();
+        if (method is null) throw new MissingMethodException(name);
+        var result = method.Invoke(canon, method.GetParameters().Select(p => p.DefaultValue is DBNull ? null : p.DefaultValue).ToArray());
+        if (result is not null && result.GetType().Name.StartsWith("ValueTask")) result = result.GetType().GetMethod("AsTask")!.Invoke(result, null);
+        if (result is Task task) {
+            await task.WaitAsync(TimeSpan.FromSeconds(10));
+            return Fmt(task.GetType().GetProperty("Result")?.GetValue(task));
+        }
+        return Fmt(result);
+    }
+    static readonly string[] SettingGetters = { "GetISOAsync", "GetApertureAsync", "GetShutterSpeedAsync", "GetAEModeAsync", "GetAvailableShotsAsync" };
+    static readonly (string, string[])[] SettingApiGroups = {
+        ("iso", new[] { "GetISOAsync", "SetISOAsync" }), ("av-tv", new[] { "GetApertureAsync", "SetApertureAsync", "GetShutterSpeedAsync", "SetShutterSpeedAsync" }),
+        ("raw", new[] { "GetRawAllowedValuesAsync", "GetRawPropertyAsync" }), ("set", new[] { "SetPropertyAsync", "SetPropertyUInt32Async", "SetWhiteBalanceAsync" }) };
+
     public static async Task<object> Run(string root, string probeId) {
         if (Interlocked.Exchange(ref running, 1) == 1) throw new Exception("CAMERA_BUSY");
         var total = Stopwatch.StartNew();
@@ -53,6 +79,21 @@ static class CanonProbe {
                 if (!steps[^1].ok) return Result(false);
                 canon.StartEventPolling();
 
+                await Do("info-values", async () => {
+                    var parts = new List<string>();
+                    foreach (var getter in SettingGetters) {
+                        try { parts.Add(getter.Replace("Get", "").Replace("Async", "") + "=" + await ReadSetting(canon, getter)); }
+                        catch (Exception ex) { parts.Add(getter.Replace("Get", "").Replace("Async", "") + "!" + ex.GetType().Name); }
+                    }
+                    return string.Join(" ", parts);
+                }, v => (true, null, v, null));
+                foreach (var (label, names) in SettingApiGroups)
+                    await Do("info-api-" + label, () => Task.FromResult(string.Join(" | ", typeof(CanonCamera).GetMethods().Where(m => names.Contains(m.Name)).Select(Signature))),
+                        v => (v.Length > 0, v.Length > 0 ? null : "NO_METHOD", v.Length > 0 ? v : label, null));
+                await Do("info-enums", () => Task.FromResult(string.Join(" ", typeof(CanonCamera).Assembly.GetTypes()
+                        .Where(t => t.IsEnum && t.IsPublic && (t.Name.Contains("Quality") || t.Name.Contains("ImageSize")))
+                        .Select(t => t.Name + "=" + string.Join(",", Enum.GetNames(t).Take(30))))), v => (true, null, v.Length > 0 ? v : "none", null));
+
                 await Do("liveview", async () => {
                     await canon.StartLiveViewAsync().WaitAsync(TimeSpan.FromSeconds(15));
                     byte[]? last = null; var good = 0; string error = "";
@@ -85,7 +126,7 @@ static class CanonProbe {
             } finally {
                 if (canon is not null) { try { await canon.DisposeAsync(); } catch { } }
             }
-            return Result(steps.All(s => s.ok));
+            return Result(steps.Where(s => !s.name.StartsWith("info-")).All(s => s.ok));
         } finally {
             if (photo is not null) { try { File.Delete(photo); } catch { } }
             Interlocked.Exchange(ref running, 0);
