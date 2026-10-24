@@ -43,6 +43,8 @@ static class CanonProbe {
         ("iso", new[] { "GetISOAsync", "SetISOAsync" }), ("av-tv", new[] { "GetApertureAsync", "SetApertureAsync", "GetShutterSpeedAsync", "SetShutterSpeedAsync" }),
         ("raw", new[] { "GetRawAllowedValuesAsync", "GetRawPropertyAsync" }), ("set", new[] { "SetPropertyAsync", "SetPropertyUInt32Async", "SetWhiteBalanceAsync" }) };
 
+    static readonly (string, ushort[])[] AllowedProps = { ("iso", new ushort[] { 0xD103 }), ("img", new ushort[] { 0xD120, 0xD121 }) };
+
     public static async Task<object> Run(string root, string probeId) {
         if (Interlocked.Exchange(ref running, 1) == 1) throw new Exception("CAMERA_BUSY");
         var total = Stopwatch.StartNew();
@@ -90,9 +92,19 @@ static class CanonProbe {
                 foreach (var (label, names) in SettingApiGroups)
                     await Do("info-api-" + label, () => Task.FromResult(string.Join(" | ", typeof(CanonCamera).GetMethods().Where(m => names.Contains(m.Name)).Select(Signature))),
                         v => (v.Length > 0, v.Length > 0 ? null : "NO_METHOD", v.Length > 0 ? v : label, null));
-                await Do("info-enums", () => Task.FromResult(string.Join(" ", typeof(CanonCamera).Assembly.GetTypes()
-                        .Where(t => t.IsEnum && t.IsPublic && (t.Name.Contains("Quality") || t.Name.Contains("ImageSize")))
-                        .Select(t => t.Name + "=" + string.Join(",", Enum.GetNames(t).Take(30))))), v => (true, null, v.Length > 0 ? v : "none", null));
+                // PTP property codes are guesses from the Canon EOS PTP map; each is read independently so a wrong code only shows as an error.
+                foreach (var (label, codes) in AllowedProps)
+                    await Do("info-allowed-" + label, async () => {
+                        var parts = new List<string>();
+                        foreach (var code in codes) {
+                            try {
+                                var (err, now) = await canon.GetRawPropertyAsync(code, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+                                var allowed = await canon.GetRawAllowedValuesAsync(code, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+                                parts.Add($"{code:X4} {err} now={now:X} [{string.Join(",", (allowed ?? Array.Empty<uint>()).Take(24).Select(v => v.ToString("X")))}]");
+                            } catch (Exception ex) { parts.Add($"{code:X4}!{ex.GetType().Name}"); }
+                        }
+                        return string.Join(" ", parts);
+                    }, v => (true, null, v, null));
 
                 await Do("liveview", async () => {
                     await canon.StartLiveViewAsync().WaitAsync(TimeSpan.FromSeconds(15));
