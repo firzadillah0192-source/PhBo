@@ -1,0 +1,6 @@
+{
+  "name": "Photobooth AI",
+  "description": "A visual-first, cinematic interactive digital photography experience.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -43,6 +43,7 @@ class ExperienceResponse(BaseModel):
     id: str
     name: str
     description: str
+    category: str
     thumbnail: str | None = None
     enabled: bool
     sort_order: int = 0
@@ -170,7 +171,7 @@ class ResultResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Admin catalog API (all routes require X-Admin-Token)
+# Admin catalog API (all protected routes require an admin session cookie)
 # ---------------------------------------------------------------------------
 class AdminExperienceResponse(BaseModel):
     id: str
@@ -182,6 +183,11 @@ class AdminExperienceResponse(BaseModel):
     model: str
     reference_mode: str
     output_format: str
+    status: Literal["draft", "published", "disabled"]
+    category: str
+    preview_missing: bool
+    preview_status: Literal["MISSING", "GENERATING", "READY", "FAILED"]
+    preview_error: str | None = None
     enabled: bool
     sort_order: int
     created_at: datetime
@@ -199,6 +205,8 @@ class AdminExperienceCreate(BaseModel):
     model: str = "cx/gpt-image-2.5"
     reference_mode: str = "SINGLE_USER_IMAGE"
     output_format: str = "PNG"
+    status: Literal["draft", "published", "disabled"] = "draft"
+    category: str = Field(default="Design", min_length=1, max_length=64)
     enabled: bool = True
     sort_order: int = 0
 
@@ -208,6 +216,8 @@ class AdminExperiencePatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     internal_prompt: str | None = Field(default=None, min_length=1)
+    status: Literal["draft", "published", "disabled"] | None = None
+    category: str | None = Field(default=None, min_length=1, max_length=64)
     enabled: bool | None = None
     sort_order: int | None = None
 
@@ -217,7 +227,11 @@ class AdminTemplateResponse(BaseModel):
     name: str
     description: str
     image_path: str
+    marketing_preview_path: str | None = None
     metadata_path: str | None = None
+    preview_missing: bool
+    processing_asset_present: bool
+    marketing_preview_url: str | None = None
     enabled: bool
     sort_order: int
     created_at: datetime
@@ -242,6 +256,45 @@ class AdminTemplatePatch(BaseModel):
     sort_order: int | None = None
 
 
+class AdminConfirmRequest(BaseModel):
+    confirm: bool = False
+
+
+class PreviewSourceResponse(BaseModel):
+    id: str
+    source_type: str
+    has_asset: bool
+    content_type: str | None = None
+    updated_at: datetime
+    updated_by: str
+
+
+class PreviewJobResponse(BaseModel):
+    id: str
+    experience_id: str
+    source_id: str
+    purpose: Literal["admin_preview_generation"]
+    state: Literal["QUEUED", "PROCESSING", "COMPLETED", "FAILED"]
+    provider: str | None = None
+    model: str | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class PreviewBatchRequest(BaseModel):
+    confirm: bool = False
+    source_id: str = "portrait-default"
+
+
+class PreviewBatchResponse(BaseModel):
+    queued: int
+    skipped_ready: int
+    jobs: list[PreviewJobResponse]
+
+
 __all__ = [
     "ErrorCode",
     "JobState",
@@ -258,4 +311,6 @@ __all__ = [
     "ResultResponse",
     "AdminExperienceResponse", "AdminExperienceCreate", "AdminExperiencePatch",
     "AdminTemplateResponse", "AdminTemplateCreate", "AdminTemplatePatch",
+    "AdminConfirmRequest", "PreviewSourceResponse", "PreviewJobResponse",
+    "PreviewBatchRequest", "PreviewBatchResponse",
 ]

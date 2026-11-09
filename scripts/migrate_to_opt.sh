@@ -13,7 +13,8 @@
 #      committed or printed
 #   4. re-points the runtime at the HOST /srv/photobooth tree via bind mounts
 #      (compose override), replacing the named volume
-#   5. validates the new compose config and reports the exact next commands
+#   5. prepares/verifies runtime permissions for the image's non-root user
+#   6. validates the new compose config and reports the exact next commands
 #
 # WHAT IT DOES NOT DO
 #   - it does NOT stop, start, remove or recreate any container
@@ -70,7 +71,9 @@ if ! command -v rsync >/dev/null 2>&1; then
   exit 1
 fi
 
-rsync -a --delete-excluded \
+# Do not delete excluded files: this protects production-only files such as
+# .env, runtime overrides, and any operator-maintained deployment config.
+rsync -a \
   --exclude '.git/' \
   --exclude '.venv/' \
   --exclude '__pycache__/' \
@@ -82,14 +85,19 @@ rsync -a --delete-excluded \
   "$SRC"/ "$APP_DIR"/
 echo "[ok] source copied to $APP_DIR"
 
-# --- 3. secrets: copy, never print ----------------------------------------
-if [[ -f "$SRC/.env" ]]; then
+# --- 3. secrets: preserve production .env, never print --------------------
+# The active deployment is authoritative for secrets. Only bootstrap .env
+# when the target does not have one; never overwrite an existing production
+# environment with a developer checkout's values.
+if [[ -f "$APP_DIR/.env" ]]; then
+  chmod 0600 "$APP_DIR/.env"
+  echo "[ok] existing production .env preserved (contents not displayed)"
+elif [[ -f "$SRC/.env" ]]; then
   install -m 0600 "$SRC/.env" "$APP_DIR/.env"
-  echo "[ok] .env copied (mode 0600, contents not displayed)"
+  echo "[ok] .env initialized from source (mode 0600, contents not displayed)"
 else
-  echo "[warn] $SRC/.env not found — copy .env.example and fill in values"
+  echo "[warn] no .env found — copy .env.example and fill in values"
 fi
-
 # --- 4. compose override: host /srv/photobooth instead of a named volume ---
 # Spec section 6 wants the runtime tree to live at the host path
 # /srv/photobooth/{templates,tmp,cache,backups}. The base compose file uses a
@@ -110,16 +118,42 @@ services:
   photobooth-api:
     volumes:
       - /srv/photobooth:/srv/photobooth
-      - /srv/photobooth/templates:/srv/photobooth/templates:ro
+      - /opt/photobooth/templates:/opt/photobooth-seed/templates:ro
 
   photobooth-worker:
     volumes:
       - /srv/photobooth:/srv/photobooth
-      - /srv/photobooth/templates:/srv/photobooth/templates:ro
+      - /opt/photobooth/templates:/opt/photobooth-seed/templates:ro
 YAML
 echo "[ok] docker-compose.override.yml written (host /srv/photobooth bind mounts)"
 
-# --- 5. validate -----------------------------------------------------------
+# --- 5. runtime permissions -------------------------------------------------
+# A bind mount keeps host ownership. The backend image deliberately runs as
+# the non-root `photobooth` user, so host-side ownership alone is insufficient.
+# If the local backend image exists, use its root entrypoint only to prepare
+# the five application-writable runtime directories. No application data is
+# deleted and the backup directory remains host-owned.
+if docker image inspect photobooth-api:local >/dev/null 2>&1; then
+  container_uid="$(docker run --rm --entrypoint id photobooth-api:local -u)"
+  host_gid="$(id -g)"
+  if [[ ! "$container_uid" =~ ^[0-9]+$ ]] || [[ ! "$host_gid" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: unable to determine numeric runtime ownership" >&2
+    exit 1
+  fi
+  docker run --rm --user 0 --entrypoint sh \
+    -v "$RUNTIME_DIR:/mnt" photobooth-api:local \
+    -c "set -eu
+for sub in templates tmp cache uploads results; do
+  mkdir -p \"/mnt/\$sub\"
+  chown \"${container_uid}:${host_gid}\" \"/mnt/\$sub\"
+  chmod 2775 \"/mnt/\$sub\"
+done"
+  echo "[ok] runtime directories writable by image UID $container_uid (host group preserved)"
+else
+  echo "[warn] photobooth-api:local is not built yet; verify runtime ownership after build" >&2
+fi
+
+# --- 6. validate -----------------------------------------------------------
 cd "$APP_DIR"
 echo
 echo "== Validating compose configuration at $APP_DIR =="

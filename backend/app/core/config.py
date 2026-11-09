@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import shutil
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,6 +25,11 @@ class Settings(BaseSettings):
     environment: str = "development"
     # Empty means all admin endpoints are disabled (fail closed).
     admin_token: str = ""
+    session_secret_key: str = ""
+    cookie_secure: bool = False
+    session_days: int = 30
+    admin_default_role: str = "superadmin"
+    google_client_id: str = ""
 
     # --- Database (PostgreSQL) -------------------------------------------
     database_url: str = Field(
@@ -40,6 +46,9 @@ class Settings(BaseSettings):
     # the project stays isolated and needs no root access.
     runtime_dir: Path = Field(default=Path("/srv/photobooth"))
     templates_dir: Path = Field(default=Path("/srv/photobooth/templates"))
+    # Docker mounts the repository's built-in assets here only for first-run
+    # seeding. Managed assets subsequently live in templates_dir.
+    seed_templates_dir: Path = Field(default=Path("/opt/photobooth-seed/templates"))
 
     upload_max_bytes: int = 12 * 1024 * 1024
     upload_min_dimension: int = 256
@@ -102,6 +111,25 @@ class Settings(BaseSettings):
             self.templates_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
+
+        # Keep the existing built-in template available in a fresh runtime
+        # volume without making the managed templates mount read-only. Never
+        # overwrite an existing runtime asset: admin replacements must survive
+        # restarts and image rebuilds.
+        candidates = [self.seed_templates_dir]
+        repo_templates = Path(__file__).resolve().parents[3] / "templates"
+        if repo_templates not in candidates:
+            candidates.append(repo_templates)
+        source = next((path for path in candidates if path.is_dir()), None)
+        if source is None:
+            return
+        for source_dir in source.iterdir():
+            if not source_dir.is_dir():
+                continue
+            target_dir = self.templates_dir / source_dir.name
+            if target_dir.exists():
+                continue
+            shutil.copytree(source_dir, target_dir)
 
 
 @lru_cache

@@ -42,6 +42,8 @@ def test_templates_lists_mvp_template(client):
     template = next(t for t in body["templates"] if t["id"] == "sci-fi-space-commander-001")
     assert template["name"] == "Sci-Fi Space Commander"
     assert template["width"] > 0 and template["height"] > 0
+    assert template["preview_url"] is None
+    assert "image_path" not in template and "metadata_path" not in template
     assert "prompt" not in template  # Internal preset text stays on the server.
 
 

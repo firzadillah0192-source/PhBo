@@ -46,6 +46,38 @@ class GenerationMode:
     ALL = (BASIC, ADVANCED)
 
 
+class ExperienceStatus:
+    """Customer publication lifecycle for Admin-managed AI experiences."""
+
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    DISABLED = "disabled"
+
+    ALL = (DRAFT, PUBLISHED, DISABLED)
+
+
+class PreviewStatus:
+    MISSING = "MISSING"
+    GENERATING = "GENERATING"
+    READY = "READY"
+    FAILED = "FAILED"
+
+    ALL = (MISSING, GENERATING, READY, FAILED)
+
+
+class PreviewJobPurpose:
+    ADMIN_PREVIEW_GENERATION = "admin_preview_generation"
+
+
+class PreviewJobState:
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+    ALL = (QUEUED, PROCESSING, COMPLETED, FAILED)
+
+
 class ErrorCode:
     VALIDATION_FAILED = "VALIDATION_FAILED"
     UPLOAD_NOT_FOUND = "UPLOAD_NOT_FOUND"
@@ -60,8 +92,14 @@ class ErrorCode:
     BASIC_MULTIPLE_FACES = "BASIC_MULTIPLE_FACES"
     BASIC_LANDMARKS_UNAVAILABLE = "BASIC_LANDMARKS_UNAVAILABLE"
     BASIC_TEMPLATE_METADATA_MISSING = "BASIC_TEMPLATE_METADATA_MISSING"
+    EXPERIENCE_NOT_FOUND = "EXPERIENCE_NOT_FOUND"
     BASIC_ENGINE_ERROR = "BASIC_ENGINE_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+    AI_QUOTA_EXHAUSTED = "AI_QUOTA_EXHAUSTED"
+    QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
+    AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    ACCOUNT_EXISTS = "ACCOUNT_EXISTS"
 
 
 class Upload(Base):
@@ -79,6 +117,8 @@ class Upload(Base):
     height: Mapped[int] = mapped_column(Integer)
     format: Mapped[str] = mapped_column(String(16))
     sha256: Mapped[str] = mapped_column(String(64))
+    account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
+    guest_id: Mapped[str | None] = mapped_column(ForeignKey("guest_sessions.id"), nullable=True, index=True)
 
     validation_status: Mapped[str] = mapped_column(String(16), default="VALID")
     validation_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -96,6 +136,8 @@ class GenerationJob(Base):
     )
 
     upload_id: Mapped[str] = mapped_column(ForeignKey("uploads.id"), index=True)
+    account_id: Mapped[str | None] = mapped_column(ForeignKey("accounts.id"), nullable=True, index=True)
+    guest_id: Mapped[str | None] = mapped_column(ForeignKey("guest_sessions.id"), nullable=True, index=True)
     template_id: Mapped[str] = mapped_column(String(128), index=True)
     experience_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     # Existing jobs predate modes; they used the AI path.
@@ -155,11 +197,25 @@ class ManagedExperience(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text, default="")
     thumbnail_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    preview_status: Mapped[str] = mapped_column(
+        String(16), default=PreviewStatus.MISSING,
+        server_default=PreviewStatus.MISSING, index=True,
+    )
+    preview_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     internal_prompt: Mapped[str] = mapped_column(Text)
     provider: Mapped[str] = mapped_column(String(64))
     model: Mapped[str] = mapped_column(String(128))
     reference_mode: Mapped[str] = mapped_column(String(64), default="SINGLE_USER_IMAGE")
     output_format: Mapped[str] = mapped_column(String(16), default="PNG")
+    # `enabled` is retained as a legacy/internal switch. Customer visibility
+    # is governed exclusively by the explicit publication status below.
+    status: Mapped[str] = mapped_column(
+        String(16), default=ExperienceStatus.DRAFT,
+        server_default=ExperienceStatus.DRAFT, index=True,
+    )
+    category: Mapped[str] = mapped_column(
+        String(64), default="Design", server_default="Design", index=True,
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -176,9 +232,46 @@ class ManagedTemplate(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text, default="")
     image_path: Mapped[str] = mapped_column(String(512))
+    marketing_preview_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     metadata_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
     updated_by: Mapped[str] = mapped_column(String(128), default="admin")
+
+
+class PreviewSource(Base):
+    """Admin-owned canonical input for internal marketing preview generation."""
+
+    __tablename__ = "preview_sources"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_type: Mapped[str] = mapped_column(String(32), default="portrait")
+    storage_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    updated_by: Mapped[str] = mapped_column(String(128), default="admin")
+
+
+class PreviewGenerationJob(Base):
+    """Internal Admin preview job; deliberately has no customer/quota owner."""
+
+    __tablename__ = "preview_generation_jobs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    experience_id: Mapped[str] = mapped_column(String(128), index=True)
+    source_id: Mapped[str] = mapped_column(String(128), index=True)
+    purpose: Mapped[str] = mapped_column(String(64), default=PreviewJobPurpose.ADMIN_PREVIEW_GENERATION)
+    state: Mapped[str] = mapped_column(String(16), default=PreviewJobState.QUEUED, index=True)
+    provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    output_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requested_by: Mapped[str] = mapped_column(String(128), default="admin")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

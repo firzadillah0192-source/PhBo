@@ -7,13 +7,44 @@ job queue, polling, result and download endpoints. Client code lives in
 | Request | Response | Purpose |
 | --- | --- | --- |
 | `GET /api/health` | `200` with dependency checks | Service readiness. `ai_provider_connected` only checks credentials/configuration, not live generation. |
-| `GET /api/templates` | `200 {templates, count}` | One current sci-fi template. Internal prompts are not sent to the browser; Basic engine cannot use this template yet. |
+| `GET /api/templates` | `200 {templates, count}` | Customer-safe Basic catalog. `preview_url` points only to an Admin-managed marketing preview; a missing preview returns `null` and never falls back to the processing asset. |
 | `POST /api/uploads` (multipart `file`) | `201 {upload_id, validation_status, preview_url, ...}` | Validate and temporarily store user image. |
 | `POST /api/generations` JSON `{upload_id, template_id, mode}` | `202 {job_id, state, upload_id, template_id, mode, created_at}` | Queue a job. `mode` is `BASIC` or `ADVANCED`; omitted means `ADVANCED` for older clients. Other values return `422`. |
 | `GET /api/generations/{job_id}` | `200 {job_id, state, mode, upload_id, template_id, error_code, error_message, result_id, ...}` | Poll `QUEUED → PROCESSING → COMPLETED` or `FAILED`. |
 | `GET /api/results/{result_id}` | `200` metadata | Only exists for completed jobs. |
 | `GET /api/results/{result_id}/image` | `200` image bytes | Preview. |
 | `GET /api/results/{result_id}/download` | `200` attachment | Download. |
+
+## Advanced experience publication
+
+`GET /api/experiences` is customer-facing and returns only Admin-managed
+experiences whose explicit `status` is `published`. `draft` and `disabled`
+rows remain available through the protected Admin catalog API but are not
+selectable by customers. Public records contain safe discovery metadata only:
+id, name, description, category, thumbnail, enabled availability and sort
+order; prompts, providers, models and filesystem paths remain private.
+
+The publication migration adds `status` with a default of `draft`, so the
+existing seeded catalog is preserved without automatically publishing all
+records. The owner must explicitly publish approved experiences from Admin.
+`category` is editable catalog metadata and empty categories naturally stay
+hidden from the customer gallery.
+
+## Basic template marketing previews
+
+Basic templates keep two separate assets. `image_path` remains the private
+processing asset used by the deterministic Basic engine. The optional
+`marketing_preview_path` is a customer-safe image managed by Admin and is the
+only source used by `GET /api/templates` and its preview endpoint. If it is
+missing, the customer receives `preview_url: null` and the UI shows a neutral
+branded placeholder.
+
+Protected Admin actions are:
+
+- `POST /api/admin/templates/{template_id}/image` — replace processing asset;
+- `POST /api/admin/templates/{template_id}/preview` — replace marketing preview;
+- `DELETE /api/admin/templates/{template_id}/preview` — remove marketing preview;
+- `GET /api/admin/templates/{template_id}/image` and `/preview` — operator-only previews.
 
 Basic jobs are accepted by the API and return `BASIC_ENGINE_NOT_CONNECTED` in
 the `FAILED` status once the worker processes them. The UI keeps the Generate
@@ -31,6 +62,14 @@ URL strategy are not in this repository. Treat live Advanced generation as
 The PostgreSQL mode column is added on startup with a default of `ADVANCED`;
 old rows keep their original meaning. The worker is optional in Compose via
 the `generation` profile; enabling it is required for jobs to leave `QUEUED`.
+
+Apply the Basic marketing-preview migration after the existing registry and
+publication migrations: `001_admin_registry.sql`, `002_usage_auth.sql`,
+`003_control_plane.sql`, `004_experience_publication.sql`,
+`005_preview_factory.sql`, `006_basic_marketing_preview.sql`, then
+`007_publish_initial_experience.sql`. The final migration only publishes the
+untouched `mini-me` starter when the public catalog is otherwise empty; it
+does not override an existing Admin publication decision.
 
 ## Local verification
 

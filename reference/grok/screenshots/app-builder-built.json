@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Photobooth AI",
+      "hasCanvas": false,
+      "bodyTextLen": 191,
+      "bodyTextHash": "240ef2871fa4d07efdf2ffb437eb5ae874d803939f952fc6daae8418c93b692e",
+      "bodyTextPrefix": "Photobooth AI Basic Advanced 2 AI credits Account PHOTOBOOTH AI ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Photobooth AI",
+      "hasCanvas": false,
+      "bodyTextLen": 155,
+      "bodyTextHash": "1dcdb65f32a04fa27baf89cb1b436f0398cc291fa2b6acc3da0a617a37f3e95f",
+      "bodyTextPrefix": "Photobooth AI PHOTOBOOTH AI Step into another version of you. Ch",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

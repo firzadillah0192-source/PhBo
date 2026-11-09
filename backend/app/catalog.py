@@ -1,7 +1,6 @@
 """Database-backed admin catalog with legacy registry seeding."""
 from __future__ import annotations
 
-from dataclasses import replace
 from pathlib import Path
 
 from sqlalchemy import select
@@ -9,9 +8,25 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.experiences import ExperienceDefinition, list_experiences
-from app.models import ManagedExperience, ManagedTemplate
+from app.models import ExperienceStatus, ManagedExperience, ManagedTemplate
 from app.templates_registry import TemplateDefinition, get_registry
 
+
+class ExperienceNotFound(KeyError):
+    """Raised when a queued Advanced job no longer has its preset row."""
+
+
+def _seed_category(experience_id: str) -> str:
+    """Give newly seeded rows a useful starting category without publishing them."""
+    if any(token in experience_id for token in ("portrait", "headshot", "lighting", "makeup", "hair", "enhance", "color")):
+        return "Portrait"
+    if any(token in experience_id for token in ("underwater", "wanderlust", "landscape", "fantasy", "tarot", "statue", "wallpaper")):
+        return "Fantasy"
+    if any(token in experience_id for token in ("game", "comic", "chibi", "sticker", "caricature", "bobble", "figurine", "disco", "mini-me")):
+        return "Playful"
+    if any(token in experience_id for token in ("80s", "film", "flash", "retro", "drawing", "sketch", "scribble")):
+        return "Retro"
+    return "Design"
 
 def seed_catalog(session: Session) -> None:
     settings = get_settings()
@@ -22,6 +37,7 @@ def seed_catalog(session: Session) -> None:
                 thumbnail_path=None, internal_prompt=item.prompt,
                 provider=item.provider, model=item.model,
                 reference_mode=item.reference_mode, output_format=item.output_format,
+                status=ExperienceStatus.DRAFT, category=_seed_category(item.id),
                 enabled=item.enabled, sort_order=order, updated_by="seed",
             ))
     for order, item in enumerate(get_registry().list()):
@@ -31,16 +47,21 @@ def seed_catalog(session: Session) -> None:
             metadata = directory / "template.json"
             session.add(ManagedTemplate(
                 id=item.id, name=item.name, description=item.description,
-                image_path=str(asset), metadata_path=str(metadata) if metadata.exists() else None,
+                image_path=str(asset), marketing_preview_path=None,
+                metadata_path=str(metadata) if metadata.exists() else None,
                 enabled=True, sort_order=order, updated_by="seed",
             ))
     session.commit()
 
 
-def list_experience_rows(session: Session, *, enabled_only: bool = False) -> list[ManagedExperience]:
+def list_experience_rows(
+    session: Session, *, enabled_only: bool = False, status: str | None = None,
+) -> list[ManagedExperience]:
     stmt = select(ManagedExperience).order_by(ManagedExperience.sort_order, ManagedExperience.id)
     if enabled_only:
         stmt = stmt.where(ManagedExperience.enabled.is_(True))
+    if status is not None:
+        stmt = stmt.where(ManagedExperience.status == status)
     return list(session.scalars(stmt))
 
 
@@ -51,10 +72,10 @@ def get_experience_row(session: Session, experience_id: str) -> ManagedExperienc
 def experience_definition(session: Session, experience_id: str) -> ExperienceDefinition:
     row = get_experience_row(session, experience_id)
     if row is None:
-        raise KeyError(f"experience not found: {experience_id}")
+        raise ExperienceNotFound(f"experience not found: {experience_id}")
     return ExperienceDefinition(
         id=row.id, name=row.name, description=row.description,
-        thumbnail=None, enabled=row.enabled, status="ACTIVE" if row.enabled else "DISABLED",
+        thumbnail=None, enabled=row.enabled, status=row.status.upper(),
         provider=row.provider, model=row.model, prompt=row.internal_prompt,
         reference_mode=row.reference_mode, output_format=row.output_format,
     )

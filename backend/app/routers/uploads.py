@@ -7,12 +7,16 @@ with an explicit error_code, never a success response.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db import get_db
+from app.dependencies import get_identity
+from app.auth import Identity
 from app.models import ErrorCode, Upload, new_id
 from app.schemas import UploadResponse
 from app.services import storage
@@ -34,6 +38,7 @@ router = APIRouter(tags=["uploads"])
 async def create_upload(
     file: UploadFile = File(..., description="JPEG, PNG or WEBP photo"),
     db: Session = Depends(get_db),
+    identity: Identity = Depends(get_identity),
 ) -> UploadResponse:
     settings = get_settings()
 
@@ -80,10 +85,14 @@ async def create_upload(
         height=validated.height,
         format=validated.format,
         sha256=validated.sha256,
+        account_id=identity.account_id,
+        guest_id=identity.guest_id,
         validation_status="VALID",
         validation_detail=None,
     )
     db.add(upload)
+    if identity.account is not None:
+        identity.account.last_activity_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(upload)
 
@@ -107,9 +116,9 @@ async def create_upload(
     summary="Preview the uploaded photo",
     responses={404: {"description": "UPLOAD_NOT_FOUND"}},
 )
-def upload_preview(upload_id: str, db: Session = Depends(get_db)) -> Response:
+def upload_preview(upload_id: str, identity: Identity = Depends(get_identity), db: Session = Depends(get_db)) -> Response:
     upload = db.get(Upload, upload_id)
-    if upload is None:
+    if upload is None or ((upload.account_id and upload.account_id != identity.account_id) or (upload.guest_id and upload.guest_id != identity.guest_id)):
         raise HTTPException(
             status_code=404,
             detail={

@@ -10,20 +10,23 @@ from __future__ import annotations
 import io
 import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 
 from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.ai.base import AIProviderError, GenerationOptions
 from app.ai.factory import get_provider
+from app.catalog import ExperienceNotFound, experience_definition, get_template_row, template_definition
 from app.core.config import get_settings
 from app.db import SessionLocal
 from app.generation.basic import BasicGenerationError, get_basic_engine
 from app.generation.basic.engine import make_session_output
 from app.models import ErrorCode, GenerationJob, GenerationMode, JobState, Result
 from app.services import storage
-from app.templates_registry import TemplateNotFound, get_registry
-from app.experiences import get_experience
+from app.services.control_plane import record_generation_event
+from app.services.quota import settle_for_job
+from app.templates_registry import TemplateNotFound
 
 
 def _now() -> datetime:
@@ -44,19 +47,22 @@ def process_job(job_id: str, *, db: Session | None = None) -> str:
             print(f"[worker] job {job_id} not found in database", flush=True)
             return JobState.FAILED
 
-        if job.state == JobState.COMPLETED:
+        if job.state in (JobState.COMPLETED, JobState.FAILED):
             return job.state
 
         job.state = JobState.PROCESSING
         job.started_at = _now()
         job.error_code = None
         job.error_message = None
+        record_generation_event(session, job.id, "processing_started", "Worker started processing")
         session.commit()
 
         try:
             _run_generation(session, job)
         except TemplateNotFound as exc:
             _fail(session, job, ErrorCode.TEMPLATE_NOT_FOUND, str(exc))
+        except ExperienceNotFound as exc:
+            _fail(session, job, ErrorCode.EXPERIENCE_NOT_FOUND, str(exc))
         except AIProviderError as exc:
             # Surfaces AI_PROVIDER_NOT_CONNECTED / AI_PROVIDER_ERROR / AI_EMPTY_RESULT
             _fail(session, job, exc.code, exc.message, detail=exc.detail)
@@ -90,14 +96,29 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
     if upload is None:
         raise FileNotFoundError(f"upload row missing for job {job.id}")
 
-    template = get_registry().get(job.template_id) if job.mode == GenerationMode.BASIC else None
-    experience = get_experience(job.experience_id) if job.mode == GenerationMode.ADVANCED and job.experience_id else None
+    template_row = get_template_row(session, job.template_id) if job.mode == GenerationMode.BASIC else None
+    if job.mode == GenerationMode.BASIC:
+        if template_row is None:
+            raise TemplateNotFound(job.template_id)
+        template = template_definition(session, job.template_id)
+    else:
+        template = None
+    experience = (
+        experience_definition(session, job.experience_id)
+        if job.mode == GenerationMode.ADVANCED and job.experience_id
+        else None
+    )
 
     user_image = storage.read_file(upload.storage_path)
 
     if job.mode == GenerationMode.BASIC:
         settings.ensure_runtime_dirs()
-        template_path = settings.templates_dir / template.id / (template.asset_filename or "")
+        template_path = Path(template_row.image_path)
+        if not template_path.is_file():
+            raise BasicGenerationError(
+                f"BASIC_TEMPLATE_METADATA_MISSING: template asset missing for '{job.template_id}': {template_path}",
+                code=ErrorCode.BASIC_TEMPLATE_METADATA_MISSING,
+            )
         output_path = make_session_output(settings.tmp_dir, job.id)
         basic_result = get_basic_engine().generate(
             user_image_path=upload.storage_path,
@@ -178,6 +199,8 @@ def _run_generation(session: Session, job: GenerationJob) -> None:
     )
     session.add(result)
 
+    settle_for_job(session, job.id, successful=True)
+    record_generation_event(session, job.id, "result_stored", "Generation result stored")
     job.state = JobState.COMPLETED
     job.finished_at = _now()
     job.error_code = None
@@ -202,6 +225,8 @@ def _fail(
     detail: str | None = None,
 ) -> None:
     job.state = JobState.FAILED
+    settle_for_job(session, job.id, successful=False)
+    record_generation_event(session, job.id, "job_failed", code)
     job.error_code = code
     job.error_message = message if not detail else f"{message} | {detail[:800]}"
     job.finished_at = _now()

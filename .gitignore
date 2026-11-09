@@ -64,3 +64,16 @@ dist/
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# Imported reference workspace: local state, build output, and source archives
+/reference/*.zip
+/reference/grok/.vercel/
+/reference/grok/.grok/app-env.json
+/reference/grok/.grok/preview.pid
+/reference/grok/.grok/status
+/reference/grok/.node_modules.lock
+/reference/grok/.project_id
+
+# Accidental terminal output
+/h -u origin main
+/ting Photobooth AI application"

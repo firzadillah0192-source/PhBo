@@ -74,7 +74,7 @@ services:
       TEMPLATES_DIR: /srv/photobooth/templates
     volumes:
       - photobooth_runtime:/srv/photobooth
-      - ./templates:/srv/photobooth/templates:ro
+      - ./templates:/opt/photobooth-seed/templates:ro
     ports:
       - "${PHOTBOOTH_API_PORT:-8000}:8000"
     networks:
@@ -112,7 +112,7 @@ services:
       TEMPLATES_DIR: /srv/photobooth/templates
     volumes:
       - photobooth_runtime:/srv/photobooth
-      - ./templates:/srv/photobooth/templates:ro
+      - ./templates:/opt/photobooth-seed/templates:ro
     networks:
       - photobooth-net
     extra_hosts:

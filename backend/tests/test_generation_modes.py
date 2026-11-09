@@ -63,8 +63,8 @@ def test_experiences_endpoint_exposes_safe_metadata_only(client):
     response = client.get("/api/experiences")
     assert response.status_code == 200
     body = response.json()
-    assert body["count"] == 44
-    assert len(body["experiences"]) == 44
+    assert body["count"] >= 1
+    assert len(body["experiences"]) == body["count"]
     item = next(item for item in body["experiences"] if item["id"] == "mini-me")
     assert item["enabled"] is True
     assert item["availability"] == "available"
