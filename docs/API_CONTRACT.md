@@ -100,3 +100,14 @@ After checking the active AI configuration, opt in to the worker with
 databases remain internal; the worker has no published port. Check its logs
 and poll an actual job to confirm a state transition. No live provider request
 or real composite has been validated by this sprint.
+
+## Security behavior
+
+All browser mutations require a trusted Origin/Referer or acceptable Fetch
+Metadata. Rejected requests return `403 CSRF_BLOCKED`. Private upload, generation
+and result endpoints return 404 for other owners and unowned legacy records.
+Oversized customer photos return 413; mismatched image MIME/format/extension
+returns 422. Validation errors do not echo input values. Initial Google linking
+to an existing password account requires a session for that account; otherwise
+the API returns `409 ACCOUNT_LINK_REQUIRED`. API responses use `no-store`.
+See [SECURITY_HARDENING.md](SECURITY_HARDENING.md) for configuration and limitations.

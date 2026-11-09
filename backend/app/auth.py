@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.auth_models import Account, AuthSession, GuestSession
 from app.core.config import get_settings
+from app.models import ErrorCode
 
 GUEST_COOKIE = "photobooth_guest"
 ACCOUNT_COOKIE = "photobooth_session"
@@ -42,7 +43,7 @@ class Identity:
 def _secret() -> bytes:
     configured = get_settings().session_secret_key.strip()
     # Development/test can operate without a checked-in secret. Production
-    # should always set SESSION_SECRET_KEY so sessions survive restarts.
+    # settings validation requires SESSION_SECRET_KEY.
     return configured.encode("utf-8") if configured else _PROCESS_SECRET
 
 
@@ -55,6 +56,8 @@ def unsign_value(value: str | None) -> str | None:
     if not value or "." not in value:
         return None
     raw, signature = value.rsplit(".", 1)
+    if len(signature) != 64 or not signature.isascii():
+        return None
     expected = hmac.new(_secret(), raw.encode("utf-8"), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature, expected):
         return None
@@ -172,7 +175,9 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, encoded: str) -> bool:
     try:
-        _scheme, n, r, p, salt_text, digest_text = encoded.split("$")
+        scheme, n, r, p, salt_text, digest_text = encoded.split("$")
+        if (scheme, n, r, p) != ("scrypt", "16384", "8", "1"):
+            return False
         salt = base64.urlsafe_b64decode(salt_text.encode("ascii"))
         expected = base64.urlsafe_b64decode(digest_text.encode("ascii"))
         actual = hashlib.scrypt(

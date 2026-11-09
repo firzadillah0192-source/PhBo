@@ -16,16 +16,13 @@ from app.queue import enqueue
 from app.schemas import GenerationCreateRequest, GenerationCreateResponse, GenerationStatusResponse
 from app.services.control_plane import record_generation_event
 from app.services.quota import QuotaExhausted, reserve_for_job, settle_for_job
+from app.security import owns_record
 
 router = APIRouter(tags=["generations"])
 
 
 def _belongs_to_owner(record, identity: Identity) -> bool:
-    if record.account_id is None and record.guest_id is None:
-        return True
-    return (
-        identity.account_id is not None and record.account_id == identity.account_id
-    ) or (identity.guest_id is not None and record.guest_id == identity.guest_id)
+    return owns_record(record, identity)
 
 
 def _job_not_found(job_id: str) -> HTTPException:

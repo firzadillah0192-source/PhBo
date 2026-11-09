@@ -8,7 +8,9 @@ are never downgraded to success.
 from __future__ import annotations
 
 import hashlib
+import warnings
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 
 from PIL import Image, UnidentifiedImageError
 
@@ -33,7 +35,11 @@ class ValidatedImage:
     size_bytes: int
 
 
-def validate_image_bytes(data: bytes, *, content_type: str | None = None) -> ValidatedImage:
+_IMAGE_TYPES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+_IMAGE_EXTENSIONS = {"JPEG": {".jpg", ".jpeg"}, "PNG": {".png"}, "WEBP": {".webp"}}
+
+
+def validate_image_bytes(data: bytes, *, content_type: str | None = None, filename: str | None = None) -> ValidatedImage:
     """Validate raw upload bytes.
 
     Raises ImageValidationError with a precise, user-actionable message.
@@ -58,9 +64,31 @@ def validate_image_bytes(data: bytes, *, content_type: str | None = None) -> Val
     sha256 = hashlib.sha256(data).hexdigest()
 
     try:
-        with Image.open(_io(data)) as img:
-            # force_decode: catches truncated/corrupt files that still have a header
-            img.verify()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(_io(data)) as img:
+                width, height = img.size
+                fmt = (img.format or "UNKNOWN").upper()
+                # Reject hostile headers before verify/load allocates pixel buffers.
+                if min(width, height) < settings.upload_min_dimension:
+                    raise ImageValidationError(f"Image is too small: {width}x{height}. Minimum is {settings.upload_min_dimension}px on both sides.")
+                if max(width, height) > settings.upload_max_dimension:
+                    raise ImageValidationError(f"Image is too large: {width}x{height}. Maximum is {settings.upload_max_dimension}px on the longest side.")
+                if fmt not in _IMAGE_TYPES:
+                    raise ImageValidationError("Only JPEG, PNG or WEBP photos are allowed.")
+                if content_type and content_type != _IMAGE_TYPES[fmt]:
+                    raise ImageValidationError("Uploaded MIME type does not match the image format.")
+                if filename is not None:
+                    if len(filename) > 255 or any(char in filename for char in ("/", "\\", ":")) or any(ord(char) < 32 for char in filename):
+                        raise ImageValidationError("Photo filename is invalid.")
+                    if PurePosixPath(filename).suffix.lower() not in _IMAGE_EXTENSIONS[fmt]:
+                        raise ImageValidationError("Photo filename extension does not match the image format.")
+                img.verify()
+            # verify() invalidates the handle, so reopen for full decode.
+            with Image.open(_io(data)) as img:
+                img.load()
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise ImageValidationError("Image dimensions exceed the safe decoding limit.") from exc
     except UnidentifiedImageError as exc:
         raise ImageValidationError(
             "File could not be decoded as an image. Please upload a valid "
@@ -68,31 +96,8 @@ def validate_image_bytes(data: bytes, *, content_type: str | None = None) -> Val
         ) from exc
     except OSError as exc:
         raise ImageValidationError(
-            "Image file appears to be truncated or corrupted.", detail=str(exc)
+            "Image file appears to be truncated or corrupted."
         ) from exc
-
-    # verify() invalidates the handle, so reopen for real metadata
-    try:
-        with Image.open(_io(data)) as img:
-            img.load()
-            width, height = img.size
-            fmt = (img.format or "UNKNOWN").upper()
-    except OSError as exc:
-        raise ImageValidationError(
-            "Image data could not be fully decoded.", detail=str(exc)
-        ) from exc
-
-    if min(width, height) < settings.upload_min_dimension:
-        raise ImageValidationError(
-            f"Image is too small: {width}x{height}. Minimum is "
-            f"{settings.upload_min_dimension}px on both sides."
-        )
-
-    if max(width, height) > settings.upload_max_dimension:
-        raise ImageValidationError(
-            f"Image is too large: {width}x{height}. Maximum is "
-            f"{settings.upload_max_dimension}px on the longest side."
-        )
 
     return ValidatedImage(
         width=width,

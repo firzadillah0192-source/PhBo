@@ -12,6 +12,7 @@ from app.dependencies import get_identity
 from app.models import ErrorCode, Result
 from app.schemas import ResultResponse
 from app.services import storage
+from app.security import owns_record
 
 router = APIRouter(tags=["results"])
 
@@ -21,7 +22,7 @@ def _load_result(result_id: str, db: Session, identity: Identity) -> Result:
     if result is None:
         raise HTTPException(status_code=404, detail={"error_code": ErrorCode.RESULT_NOT_FOUND, "message": f"result '{result_id}' not found"})
     job = result.job
-    if (job.account_id and job.account_id != identity.account_id) or (job.guest_id and job.guest_id != identity.guest_id):
+    if job is None or not owns_record(job, identity):
         raise HTTPException(status_code=404, detail={"error_code": ErrorCode.RESULT_NOT_FOUND, "message": f"result '{result_id}' not found"})
     return result
 
@@ -30,7 +31,7 @@ def _read_or_404(result: Result) -> bytes:
     try:
         return storage.read_file(result.storage_path)
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail={"error_code": ErrorCode.RESULT_NOT_FOUND, "message": "result file no longer exists on disk", "detail": str(exc)}) from exc
+        raise HTTPException(status_code=404, detail={"error_code": ErrorCode.RESULT_NOT_FOUND, "message": "result file no longer exists on disk"}) from exc
 
 
 @router.get("/api/results/{result_id}", response_model=ResultResponse, summary="Result metadata")

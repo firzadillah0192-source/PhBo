@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 import shutil
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     app_name: str = "Photobooth AI"
@@ -78,6 +79,17 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     )
+
+    @model_validator(mode="after")
+    def validate_production_security(self):
+        if self.environment.lower() in {"production", "prod"}:
+            if len(self.session_secret_key.strip()) < 32 or self.session_secret_key.strip() == "replace-with-a-long-random-secret":
+                raise ValueError("Production requires a strong SESSION_SECRET_KEY of at least 32 characters.")
+            if self.admin_token and (len(self.admin_token.strip()) < 32 or self.admin_token == "change-me-in-production"):
+                raise ValueError("Production ADMIN_TOKEN must be empty (disabled) or a strong token of at least 32 characters.")
+            if "*" in self.cors_origins:
+                raise ValueError("Production CORS_ORIGINS must contain explicit trusted origins.")
+        return self
 
     @property
     def uploads_dir(self) -> Path:

@@ -21,6 +21,7 @@ from app.models import ErrorCode, Upload, new_id
 from app.schemas import UploadResponse
 from app.services import storage
 from app.services.image_validation import ImageValidationError, validate_image_bytes
+from app.security import owns_record
 
 router = APIRouter(tags=["uploads"])
 
@@ -48,10 +49,12 @@ async def create_upload(
             detail={"error_code": ErrorCode.VALIDATION_FAILED, "message": "No file provided."},
         )
 
-    data = await file.read()
+    data = await file.read(settings.upload_max_bytes + 1)
+    if len(data) > settings.upload_max_bytes:
+        raise HTTPException(status_code=413, detail={"error_code": ErrorCode.VALIDATION_FAILED, "message": "Photo exceeds the upload size limit."})
 
     try:
-        validated = validate_image_bytes(data, content_type=file.content_type)
+        validated = validate_image_bytes(data, content_type=file.content_type, filename=file.filename)
     except ImageValidationError as exc:
         # Explicit, actionable failure. Never downgraded to success.
         raise HTTPException(
@@ -118,7 +121,7 @@ async def create_upload(
 )
 def upload_preview(upload_id: str, identity: Identity = Depends(get_identity), db: Session = Depends(get_db)) -> Response:
     upload = db.get(Upload, upload_id)
-    if upload is None or ((upload.account_id and upload.account_id != identity.account_id) or (upload.guest_id and upload.guest_id != identity.guest_id)):
+    if upload is None or not owns_record(upload, identity):
         raise HTTPException(
             status_code=404,
             detail={
@@ -135,7 +138,6 @@ def upload_preview(upload_id: str, identity: Identity = Depends(get_identity), d
             detail={
                 "error_code": ErrorCode.UPLOAD_NOT_FOUND,
                 "message": "upload file no longer exists on disk",
-                "detail": str(exc),
             },
         ) from exc
 

@@ -14,6 +14,7 @@ from app.auth_models import AdminUser, AuthSession
 from app.core.config import get_settings
 from app.db import get_db
 from app.models import ErrorCode, _now
+from app.security import require_same_origin
 
 ADMIN_ROLES = {"superadmin", "operator", "content_manager"}
 
@@ -30,7 +31,7 @@ class AdminPrincipal:
 
 def _default_role() -> str:
     role = get_settings().admin_default_role.strip().lower()
-    return role if role in ADMIN_ROLES else "superadmin"
+    return role if role in ADMIN_ROLES else "operator"
 
 
 def _ensure_token_admin(db: Session) -> AdminUser:
@@ -46,9 +47,11 @@ def admin_login(response: Response, credential: str, db: Session) -> None:
     configured = get_settings().admin_token.strip()
     if not configured:
         raise HTTPException(status_code=404, detail="Admin API is disabled")
-    if not credential or not secrets.compare_digest(credential, configured):
+    if not credential or not secrets.compare_digest(credential.encode(), configured.encode()):
         raise HTTPException(status_code=401, detail={"error_code": ErrorCode.INVALID_CREDENTIALS, "message": "Invalid admin credentials."})
     actor = _ensure_token_admin(db)
+    if not actor.is_active or actor.role not in ADMIN_ROLES:
+        raise HTTPException(status_code=401, detail={"error_code": ErrorCode.INVALID_CREDENTIALS, "message": "Invalid admin credentials."})
     token = create_auth_session(db, is_admin=True, admin_user_id=actor.id, admin_role=actor.role)
     set_admin_cookie(response, token)
 
@@ -63,14 +66,15 @@ def require_admin_session(
     if signed:
         session = db.get(AuthSession, hashlib.sha256(signed.encode("utf-8")).hexdigest())
         if session and session.is_admin and _is_active(session.expires_at):
-            role = (session.admin_role or "superadmin").lower()
             actor = db.get(AdminUser, session.admin_user_id) if session.admin_user_id else None
-            if role in ADMIN_ROLES and (actor is None or actor.is_active):
-                return AdminPrincipal(actor_id=session.admin_user_id or "admin", role=role)
+            if actor is not None and actor.is_active and actor.role in ADMIN_ROLES:
+                return AdminPrincipal(actor_id=actor.id, role=actor.role)
 
     configured = get_settings().admin_token.strip()
-    if configured and x_admin_token and secrets.compare_digest(x_admin_token, configured):
-        return AdminPrincipal(actor_id="token-admin", role="superadmin")
+    if configured and x_admin_token and secrets.compare_digest(x_admin_token.encode(), configured.encode()):
+        actor = _ensure_token_admin(db)
+        if actor.is_active and actor.role in ADMIN_ROLES:
+            return AdminPrincipal(actor_id=actor.id, role=actor.role)
     raise HTTPException(status_code=401, detail={"error_code": ErrorCode.AUTHENTICATION_REQUIRED, "message": "Admin authentication required."})
 
 
@@ -86,14 +90,7 @@ def require_admin_roles(*roles: str):
 
 
 def require_admin_csrf(request: Request) -> None:
-    """Same-origin check for browser state changes; absent origin is allowed for API tools."""
-    origin = request.headers.get("origin")
-    if not origin:
-        return
-    settings = get_settings()
-    same_origin = f"{request.url.scheme}://{request.headers.get('host', '')}"
-    if origin != same_origin and origin not in set(settings.cors_origins):
-        raise HTTPException(status_code=403, detail={"error_code": "CSRF_BLOCKED", "message": "Cross-site admin mutation blocked."})
+    require_same_origin(request)
 
 
 def admin_logout(request: Request, response: Response, db: Session) -> None:

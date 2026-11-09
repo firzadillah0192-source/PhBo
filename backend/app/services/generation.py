@@ -65,11 +65,11 @@ def process_job(job_id: str, *, db: Session | None = None) -> str:
             _fail(session, job, ErrorCode.EXPERIENCE_NOT_FOUND, str(exc))
         except AIProviderError as exc:
             # Surfaces AI_PROVIDER_NOT_CONNECTED / AI_PROVIDER_ERROR / AI_EMPTY_RESULT
-            _fail(session, job, exc.code, exc.message, detail=exc.detail)
+            _fail(session, job, exc.code, "AI provider is not connected." if exc.code == ErrorCode.AI_PROVIDER_NOT_CONNECTED else "AI generation failed. Please try again later.")
         except BasicGenerationError as exc:
             _fail(session, job, exc.code, exc.message)
         except FileNotFoundError as exc:
-            _fail(session, job, ErrorCode.UPLOAD_NOT_FOUND, f"Upload file missing: {exc}")
+            _fail(session, job, ErrorCode.UPLOAD_NOT_FOUND, "Upload file is no longer available.")
         except Exception as exc:  # noqa: BLE001 - must never leave a job stuck
             tb = traceback.format_exc()
             print(f"[worker] unexpected failure for job {job_id}:\n{tb}", flush=True)
@@ -77,8 +77,7 @@ def process_job(job_id: str, *, db: Session | None = None) -> str:
                 session,
                 job,
                 ErrorCode.INTERNAL_ERROR,
-                f"{type(exc).__name__}: {exc}",
-                detail=tb[-2000:],
+                "Generation failed due to an internal error.",
             )
 
         session.refresh(job)
@@ -228,7 +227,7 @@ def _fail(
     settle_for_job(session, job.id, successful=False)
     record_generation_event(session, job.id, "job_failed", code)
     job.error_code = code
-    job.error_message = message if not detail else f"{message} | {detail[:800]}"
+    job.error_message = message
     job.finished_at = _now()
     session.commit()
     print(

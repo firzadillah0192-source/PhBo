@@ -107,7 +107,7 @@ def signup(payload: SignupRequest, request: Request, response: Response, db: Ses
 
 
 @router.post("/google", response_model=AccountResponse)
-def google_sign_in(payload: GoogleSignInRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> AccountResponse:
+def google_sign_in(payload: GoogleSignInRequest, request: Request, response: Response, db: Session = Depends(get_db), current=Depends(get_identity)) -> AccountResponse:
     try:
         claims = verify_google_id_token(payload.id_token)
     except RuntimeError as exc:
@@ -121,9 +121,11 @@ def google_sign_in(payload: GoogleSignInRequest, request: Request, response: Res
     ).one_or_none()
     created = False
     if identity is None:
-        # Email is profile metadata, never the provider identity key. Linking an
-        # already verified local account avoids duplicate user records.
+        # Password signup does not verify email ownership. Matching email alone
+        # must never link a Google identity to an attacker-preclaimed account.
         account = db.query(Account).filter(Account.email == claims.email).one_or_none()
+        if account is not None and current.account_id != account.id:
+            raise HTTPException(status_code=409, detail={"error_code": "ACCOUNT_LINK_REQUIRED", "message": "Sign in to the existing account before linking Google."})
         if account is None:
             account = Account(
                 email=claims.email,

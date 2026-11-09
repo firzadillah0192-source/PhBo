@@ -8,13 +8,15 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.db import init_db
 from app.routers import account, admin, admin_operations, experiences, generations, health, results, templates, uploads
+from app.security import SECURITY_HEADERS, SecurityHeadersMiddleware, require_same_origin
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,6 +52,10 @@ def create_app() -> FastAPI:
             "generate -> processing -> preview -> download."
         ),
         lifespan=lifespan,
+        dependencies=[Depends(require_same_origin)],
+        docs_url=None if settings.environment.lower() in {"production", "prod"} else "/docs",
+        redoc_url=None if settings.environment.lower() in {"production", "prod"} else "/redoc",
+        openapi_url=None if settings.environment.lower() in {"production", "prod"} else "/openapi.json",
     )
 
     app.add_middleware(
@@ -59,6 +65,7 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
+    app.add_middleware(SecurityHeadersMiddleware)
 
     app.include_router(health.router)
     app.include_router(account.router)
@@ -71,6 +78,14 @@ def create_app() -> FastAPI:
     app.include_router(generations.router)
     app.include_router(results.router)
 
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_handler(request: Request, exc: RequestValidationError):
+        # Pydantic's default errors can echo passwords, tokens and request bodies.
+        return JSONResponse(status_code=422, content={"detail": [
+            {"type": error["type"], "loc": error["loc"], "msg": "Invalid request value."}
+            for error in exc.errors()
+        ]})
+
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         # Never hide an error behind a fallback success response.
@@ -79,8 +94,9 @@ def create_app() -> FastAPI:
             status_code=500,
             content={
                 "error_code": "INTERNAL_ERROR",
-                "message": f"{type(exc).__name__}: {exc}",
+                "message": "An internal error occurred. Please try again later.",
             },
+            headers={**SECURITY_HEADERS, "Cache-Control": "no-store"},
         )
 
     return app
